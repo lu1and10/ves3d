@@ -1,0 +1,275 @@
+\documentclass[11pt]{article}
+
+\textwidth 6.5in
+\oddsidemargin=0in
+\evensidemargin=0in
+\textheight 9in
+\topmargin -0.5in
+
+\usepackage{graphicx,bm,amssymb,amsmath,amsthm}
+
+\usepackage{showlabels}
+
+\newcommand{\bi}{\begin{itemize}}
+\newcommand{\ei}{\end{itemize}}
+\newcommand{\ben}{\begin{enumerate}}
+\newcommand{\een}{\end{enumerate}}
+\newcommand{\be}{\begin{equation}}
+\newcommand{\ee}{\end{equation}}
+\newcommand{\bea}{\begin{eqnarray}} 
+\newcommand{\eea}{\end{eqnarray}}
+\newcommand{\ba}{\begin{align}} 
+\newcommand{\ea}{\end{align}}
+\newcommand{\bse}{\begin{subequations}} 
+\newcommand{\ese}{\end{subequations}}
+\newcommand{\bc}{\begin{center}}
+\newcommand{\ec}{\end{center}}
+\newcommand{\bfi}{\begin{figure}}
+\newcommand{\efi}{\end{figure}}
+\newcommand{\ca}[2]{\caption{#1 \label{#2}}}
+\newcommand{\ig}[2]{\includegraphics[#1]{#2}}
+\newcommand{\tbox}[1]{{\mbox{\tiny #1}}}
+\newcommand{\mbf}[1]{{\mathbf #1}}
+\newcommand{\half}{\mbox{\small $\frac{1}{2}$}}
+\newcommand{\vt}[2]{\left[\begin{array}{r}#1\\#2\end{array}\right]} % 2-col-vec
+\newcommand{\mt}[4]{\left[\begin{array}{rr}#1&#2\\#3&#4\end{array}\right]} % 2x2
+\newcommand{\eps}{\varepsilon}
+\newcommand{\bigO}{{\mathcal O}}
+\newcommand{\sfrac}[2]{\mbox{\small $\frac{#1}{#2}$}}
+\newcommand{\qqquad}{\qquad\qquad}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\C}{\mathbb{C}}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\Z}{\mathbb{Z}}
+\DeclareMathOperator{\re}{Re}
+\DeclareMathOperator{\im}{Im}
+\DeclareMathOperator{\tr}{Tr}
+\DeclareMathOperator{\res}{res}
+\newtheorem{thm}{Theorem}
+\newtheorem{lem}[thm]{Lemma}
+\newtheorem{alg}[thm]{Algorithm}
+\newtheorem{pro}[thm]{Proposition}
+\newtheorem{cor}[thm]{Corollary}
+\newtheorem{rmk}[thm]{Remark}
+\newtheorem{conj}[thm]{Conjecture}
+% this work...
+\newcommand{\x}{\mbf{x}}
+\newcommand{\n}{\mbf{n}}
+\newcommand{\kk}{\mbf{k}}
+\newcommand{\uu}{\mbf{u}}
+\newcommand{\vv}{\mbf{v}}
+
+
+
+\begin{document}
+\title{How to test a surface advection-reaction-diffusion solver}
+\author{Alex Barnett; with Yuan-Nan Young, Libin Lu, Mike Shelley}
+\date{\today}
+\maketitle
+\begin{abstract}
+  Notes on how to set up tests of correctness for a numerical solver
+  for on-surface advection-diffusion equation of a scalar surface function,
+  eg, a concentration.
+  The surface is smooth, embedded in $\R^3$, and functions are smooth.
+  Fixed surface for now; we will need moving surface eventually.
+\end{abstract}
+
+
+\section{Fixed surface case}
+\label{s:fixed}
+
+Let $\Gamma \subset \R^3$ be a closed simply-connected surface,
+fixed in time for now, with outward unit normal vector $\n$.
+Since it is fixed, fluid velocity $\mbf{u}\equiv \mbf{0}$ on $\Gamma$,
+and we do not have to worry about moving-surface terms.
+
+In this case,
+for all $\x\in\Gamma$ and all $t>0$,
+we are given a diffusion rate function $D(\x,t)$,
+a source function $f(\x,t)$,
+and a tangential advection field $\vv_s(\x,t)$,
+where the subscript $s$ is simply a reminder that
+$\n\cdot\vv_s\equiv 0$.
+In the static-surface case, our $\vv_s$ would be interpreted as the tangential
+projection of the pulling force.
+
+The general PDE IVP for a surface concentration $c(\x,t)$ is then
+\bea
+\partial_t c + \nabla_s \cdot(\vv_s c) &= &\nabla_s \cdot (D \nabla_s c) + f
+, \qquad \x\in\Gamma, \;t>0
+\label{pde}
+\\
+c(\x,0) & = & c_0(\x), \qqquad\qquad \x\in\Gamma
+\label{ic}
+\eea
+where $c_0$ is the initial data.
+
+The notation $\nabla_s \cdot$ for div$_s$ is not great since the
+surface divergence is not simply a dot with the vector of partials.
+
+For any vector field $\mbf{F}:\R^3\to\R^3$, not generally tangential,
+\be
+\nabla_s \cdot \mbf{F} = 
+\nabla \cdot \mbf{F} - \n\cdot(\nabla \mbf{F}) \cdot \n
+\label{divs}
+\ee
+in terms of the Euclidean divergence and the Jacobian matrix
+$\nabla \mbf{F}$.
+
+
+\subsection{Material conservation test}
+
+Setting $f\equiv0$, and for any surface transport
+field $\vv_s$ and diffusion function $D$, then any solution to \eqref{pde},
+the total amount of surface material
+$$
+C(t) := \int_\Gamma c \,dS
+$$
+is contant in time.
+This would be easiest to test separately in the cases of advection
+only then diffusion only.
+
+
+\subsection{Reaction-diffusion only test}
+
+An easy way to generate a constant-surface-diffusion test solution is
+by restriction of a heat equation solution in $\R^3$.
+Setting $D$ const in space and time and $\vv_s\equiv\mbf{0}$,
+the surface PDE is
+\be
+\partial_t c \;=\;
+D \Delta_s c + f
+, \qquad \x\in\Gamma, \;t>0
+\label{surfheat}
+\ee
+where $\Delta_s := \nabla_s\cdot (\nabla_s \cdot)$ is the Laplace--Beltrami
+operator.
+Letting $\Delta$ be the Laplacian in $\R^3$, a standard formula is
+\be
+\Delta \;=\; \Delta_s + \partial_{nn} + \kappa \partial_n
+\label{LB}
+\ee
+where the total curvature, a scalar function on $\Gamma$, is
+\be
+\kappa := \nabla_s\cdot \n = 2H
+\label{kappa}
+\ee
+where $H$ is called the mean curvature.
+Obviously
+$\partial_{n} u= \n \cdot \nabla u = \sum_{i=1}^3 n_i \partial_{x_i} u$.
+Less obviously,
+$\partial_{nn} u= \n\cdot (\nabla\nabla u) \cdot \n = \sum_{i,j=1}^3 n_i n_j \partial_{x_ix_j} u$, ie, there are no surprises because in a local surface-conforming $(\mbf{s},n)$
+coordinate system we have chosen $n$ to correspond to signed distance in the
+normal direction.
+
+The test procedure for a solver for \eqref{surfheat} is:
+\ben
+\item
+  Evaluate $\kappa$ on $\Gamma$ (meaning, at all surface nodes). This
+  is purely geometry.
+\item Pick an analytic
+  solution $u$ to the heat equation in $\R^3$,
+  \be
+  u_t \;=\;D \Delta u,
+  \label{heat}
+  \ee
+  eg a decaying
+  plane wave with generic wavevector $\kk\in\R^3$ and phase offset $\phi\in\R$,
+  $$
+  u(\x,t) = e^{-D\|\kk\|^2 t} \sin(\kk\cdot \x + \phi).
+  $$
+  Increasing the magnitude of $\kk$ would test accuracy vs higher spatial
+  resolution.
+\item
+  Set up a function to evaluate a source
+  \be
+  f \;=\; D(\partial_{nn} u + \kappa \partial_n u)
+  \label{f}
+  \ee
+  on $\Gamma$ for all times $t$. Use the analytic partials of $u$ in $\R^3$.
+\item
+  Apply the solver to \eqref{surfheat}, using the above $f$ source function,
+  with initial conditions $u_0 = u(\cdot,0)|_\Gamma$,
+  to generate a numerical $c(\x,t)$ on the surface for future times.
+\item
+  Combining \eqref{LB}, \eqref{heat} and \eqref{f} shows that
+  $c \equiv u|_\Gamma$ is the exact solution to \eqref{surfheat} with the above
+  IC.
+  Thus, measure and report the error $c - u|_\Gamma$.
+\een
+
+\subsection{Advection-reaction only test}
+
+This tests advection is correct on a fixed surface for $D\equiv 0$,
+using the simplest advection in 3D.
+
+Given any smooth vector field $\mbf{F}$ in $\R^3$, with tangential part
+$\mbf{F}_s$ on $\Gamma$,
+a useful formula (from Marz--MacDonald 2012, ``Calculus on surfaces with general closest point functions'', \S2.3)
+relating surface divergence to the surface divergence of the tangential part is
+\be
+\nabla_s \cdot \mbf{F}
+\;=\;
+\nabla_s \cdot \mbf{F}_s + \kappa \n\cdot \mbf{F}
+\label{divss}
+\ee
+where $\kappa$ is defined in \eqref{kappa}.
+
+Pick a constant 3D advection vector $\vv\in\R^3$.
+Let
+$$
+\vv_s = \vv - (\n\cdot\vv)\n  \qquad \mbox{ on } \Gamma
+$$
+be its tangential part, which will advect material
+from one end of the vesicle to the other, but slowing down at these ends (poles).
+
+Let $u_0:\R^3\to\R$ be a fixed test function, eg a Gaussian
+$u_0(\x) = e^{-\|x\|^2/2\sigma^2}$ with numerical support centered at the vesicle
+and $\sigma$ about the size of the vesicle.
+We construct an $f$ such that $c \equiv u|_\Gamma$ for the advecting
+field
+\be
+u(\x,t) = u_0(\x - t\vv)
+\label{u}
+\ee
+
+Set $\mbf{F} := \vv u$, and combining \eqref{divs} and \eqref{divss}
+gives
+\bea
+\nabla_s\cdot(\vv_s u) &=& \nabla\cdot (\vv u) - \n\cdot (\nabla(\vv u)) \cdot n
+- \kappa \n \cdot\vv u
+\nonumber\\
+&=& \vv \cdot \nabla u - (\n\cdot\vv) \n\cdot \nabla u - \kappa \n \cdot \vv u.
+\eea
+Since $\partial_u = -\vv\cdot u$ by \eqref{u}, the first term cancel
+and the source
+\be
+f = \partial_u + \nabla_s\cdot(\vv_s u) = (\n\cdot\vv)(\n\cdot \nabla u - \kappa u)
+\label{fadv}
+\ee
+results in the restriction
+$c(\x) = u_0(\x-t\vv)$ for $\x\in\Gamma$, $t>0$, being a
+solution to \eqref{pde} with $D\equiv 0$.
+
+For the numerical test,
+evaluate \eqref{fadv} as the source, using
+$\nabla u(\x,t) = \nabla u_0(\x-t\vv)$.
+The difference between $c$ and $u$ on $\Gamma$ gives an error metric.
+
+It may be possible to combine the last two tests via
+a 3D solution of advection-diffusion (a translating heat solution).
+It is probably not necessary.
+
+
+\section{Deforming vesicle}
+
+Stone 1990 derives transport on a deforming surface.
+
+The conservation law test will also apply here.
+
+
+
+%\bibliographystyle{abbrv}
+%\bibliography{refs}
+
+\end{document}
