@@ -3,7 +3,7 @@
 ### put customizations in the platform or cxx files. ###
 ########################################################
 
-VES3D_DIR = /Users/llu/projects/forks/libin/ves3d
+VES3D_DIR = $(shell pwd)/..
 
 ifndef VES3D_DIR
 $(error "$${VES3D_DIR} environment variable is not set.")

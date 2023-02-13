@@ -1,4 +1,4 @@
-VES3D_DIR = /Users/llu/projects/forks/libin/ves3d
+VES3D_DIR = $(shell pwd)
 
 # include rules and flag for compiler/host
 VES3D_MKDIR ?= ${VES3D_DIR}/makefile.in.files
