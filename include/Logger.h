@@ -174,7 +174,11 @@ std::ostream& emph(std::ostream& os);
 #define WHENVERBOSE(expr)
 #endif //VERBOSE
 
+#ifdef HAS_MPI
 #define COUT(str) {int _rank; MPI_Comm_rank(VES3D_COMM_WORLD, &_rank); std::cout<<"["<<_rank<<"] "<<str<<std::endl; }
+#else
+#define COUT(str) {std::cout<<str<<std::endl; }
+#endif
 
 #ifdef QUIET
 #define INFO(str)

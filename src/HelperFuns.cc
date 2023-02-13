@@ -63,7 +63,7 @@ void axpy(typename ScalarContainer::value_type a_in,
 {
     ASSERT(AreCompatible(x_in,axpy_out),"Incompatible containers");
 
-    x_in.getDevice().axpy<typename ScalarContainer::value_type>(
+    x_in.getDevice().axpy(
         a_in, x_in.begin(), 0, x_in.size(), axpy_out.begin());
 }
 
@@ -227,7 +227,7 @@ inline void xv(const ScalarContainer &x_in,
     ASSERT(AreCompatible(x_in,v_in),"Incompatible containers");
     ASSERT(AreCompatible(v_in,xv_out),"Incompatible containers");
 
-    x_in.getDevice().xvpw<typename ScalarContainer::value_type>(
+    x_in.getDevice().xvpw(
         x_in.begin(), v_in.begin(), NULL, v_in.getStride(),
         v_in.getNumSubs(), xv_out.begin());
 }

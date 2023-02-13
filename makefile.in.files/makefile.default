@@ -10,7 +10,7 @@ MAKE_DEP += ${VES3D_MKDIR}/makefile.default
 # user flags
 VES3D_DEBUG      ?= no  #affects only compiler flags (not printing)
 VES3D_PROFILE    ?= no  #turns on profiling macros
-VES3D_VERBOSE    ?= 2   #1=most verbose, 2=normal, 3=quiet
+VES3D_VERBOSE    ?= 3   #1=most verbose, 2=normal, 3=quiet
 VES3D_TESTING    ?= no  #equal to DEBUG and PROFILE
 
 VES3D_USE_GPU    ?= no
@@ -20,7 +20,7 @@ VES3D_USE_PETSC  ?= no     #turns on VES3D_USE_MPI (could be avoided)
 VES3D_PETSC_VER  ?= 33     #use xx instead of x.x for easier comparison in the code (tested for 33 and 35)
 VES3D_PREC       ?= DOUBLE #or SINGLE
 
-COMPILER_VENDOR  ?= intel  #or gnu
+COMPILER_VENDOR  ?= gnu  #or gnu
 
 # implicit variables
 AR      = ar
@@ -116,5 +116,15 @@ LDLIBS         += $(addprefix -l,${VES3D_LIBS})
 # misc
 ARFLAGS = r
 ARFILES = $(addprefix lib,$(addsuffix .a,${VES3D_LIBS}))
+
+BLASPKG        = HAS_BLAS
+BLAS_LDFLAGS   = -L/usr/lib
+BLAS_LDLIBS    = -llapack -lblas
+BLAS_INCLUDE   =
+CXXFLAGS       += -D${BLASPKG} ${BLAS_INCLUDE}  -std=c++14 -fabi-version=6 #-fpermissive -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk
+
+# linker
+LDFLAGS        += ${BLAS_LDFLAGS}
+LDLIBS         += $(BLAS_LDLIBS) -lpthread
 
 include $(VES3D_MKDIR)/makefile.vesflags

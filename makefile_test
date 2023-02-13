@@ -1,11 +1,4 @@
-########################################################
-### Do not add any customization to this file.       ###
-### put customizations in the platform or cxx files. ###
-########################################################
-
-ifndef VES3D_DIR
-$(error "$${VES3D_DIR} environment variable is not set.")
-endif
+VES3D_DIR = /Users/llu/projects/forks/libin/ves3d
 
 # include rules and flag for compiler/host
 VES3D_MKDIR ?= ${VES3D_DIR}/makefile.in.files
@@ -17,7 +10,7 @@ VES3D_BINS = surftest
 all: install
 
 lib:
-	${MAKE} -C  ${VES3D_LIBDIR}
+	${MAKE} -C lib
 
 install: $(addprefix ${VES3D_BINDIR}/,${VES3D_BINS})
 
@@ -42,7 +35,6 @@ ${VES3D_BINDIR}/%: ${VES3D_SRCDIR}/%.o ${MAKE_DEP} lib
 	${CXX} -MM -MT ${VES3D_SRCDIR}/$*.o ${CXXFLAGS} ${CPPFLAGS} -c -o ${VES3D_SRCDIR}/$*.d ${VES3D_SRCDIR}/$*.cc
 
 clean:
-	${MAKE} -C ${VES3D_TSTDIR} clean
 	${MAKE} -C ${VES3D_LIBDIR} clean
 	-${RM} *.o ${VES3D_SRCDIR}/*.o ${VES3D_SRCDIR}/*.d
 	-${RM} -r ${VES3D_DOCDIR}/latex ${VES3D_DOCDIR}/html TAGS
