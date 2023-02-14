@@ -46,5 +46,16 @@ int main(int argc, char **argv)
     COUT("Creating the surface object");
     Surface<ScaCPU_t, VecCPU_t> S(x0.getShOrder(),mats, &x0);
 
+    // define some vector scalar field on surface
+    ScaCPU_t density;
+    VecCPU_t force;
+    force.replicate(x0);
+    density.replicate(x0);
+
+    // some machinery
+    S.div(force, density);
+    xv(density, force, force);
+    S.grad(density, force);
+
     return 0;
 }
