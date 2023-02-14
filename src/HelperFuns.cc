@@ -64,7 +64,7 @@ void axpy(typename ScalarContainer::value_type a_in,
     ASSERT(AreCompatible(x_in,axpy_out),"Incompatible containers");
 
     x_in.getDevice().axpy(
-        a_in, x_in.begin(), 0, x_in.size(), axpy_out.begin());
+        a_in, x_in.begin(), (typename ScalarContainer::value_type*)NULL, x_in.size(), axpy_out.begin());
 }
 
 

@@ -76,7 +76,7 @@
 #define STR_EXPAND(tok) #tok
 #define STR(tok) STR_EXPAND(tok)
 
-const std::string VES3D_PATH(getenv("VES3D_DIR"));
+const std::string VES3D_PATH("./");
 const std::string VERSION(STR(VES3D_VERSION));
 
 #ifdef DOUBLE_PREC
