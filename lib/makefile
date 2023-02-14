@@ -40,6 +40,7 @@ libves3dgpu.a: ${LIB_OBJ_GPU} ${MAKE_DEP}
 	${RANLIB} ${VES3D_LIBDIR}/libves3dgpu.a
 
 clean:
+	-$(RM) *.a
 
 distclean:
 	-$(RM) *.a
