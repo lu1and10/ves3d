@@ -119,9 +119,10 @@ ARFILES = $(addprefix lib,$(addsuffix .a,${VES3D_LIBS}))
 
 BLASPKG        = HAS_BLAS
 BLAS_LDFLAGS   = -L/usr/lib
-BLAS_LDLIBS    = -llapack -lblas
+#BLAS_LDLIBS    = -llapack -lblas
+BLAS_LDLIBS    = -lopenblas
 BLAS_INCLUDE   =
-CXXFLAGS       += -D${BLASPKG} ${BLAS_INCLUDE} -fpermissive -std=c++14 -fabi-version=6 #-fpermissive -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk
+CXXFLAGS       += -D${BLASPKG} ${BLAS_INCLUDE} -std=c++14 #-fpermissive -std=c++14 -fabi-version=6 #-fpermissive -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk
 
 # linker
 LDFLAGS        += ${BLAS_LDFLAGS}

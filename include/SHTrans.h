@@ -68,8 +68,8 @@ class SHTrans
 
     const Mats &mats_;
 
-    static const value_type alpha_ = (value_type) 1.0;
-    static const value_type beta_  = (value_type) 0.0;
+    static constexpr value_type alpha_ = (value_type) 1.0;
+    static constexpr value_type beta_  = (value_type) 0.0;
 
     int p;
     int dft_size;
