@@ -11,7 +11,7 @@ ifeq ($(strip ${VES3D_DEBUG}),yes)
   CXXFLAGS += -O0 -g -pedantic #-gstabs+
 else
   CXXFLAGS += -O3 -std=c++14 -finline-functions -funroll-loops -w	\
-	      -funsafe-loop-optimizations -msse3 #-malign-double
+	      -funsafe-loop-optimizations -march=native -malign-double
 endif
 
 ## for ref, these are the implicit rule gnu make uses for compile/link
