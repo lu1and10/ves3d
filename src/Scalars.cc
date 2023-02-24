@@ -297,7 +297,8 @@ std::ostream& operator<<(std::ostream& output,
           <<" Number of functions : "<<sc.getNumSubFuncs()<<"\n"
           <<"=====================================================";
 
-    if(output.iword(scalars_xalloc) == true){
+    //if(output.iword(scalars_xalloc) == true){
+    if(true){
         output<<std::endl;
 
         T *buffer;
