@@ -49,7 +49,6 @@ void set_exp(const VectorContainer &x, const real *x0, ScalarContainer &out){
     // store x - x0 in v_tmp
     x.getDevice().apx(a_tmp.begin(),x.begin(),x.getStride(),x.getNumSubFuncs(),v_tmp.begin());
 
-
     // init s_tmp
     ScalarContainer s_tmp;
     s_tmp.replicate(x);
@@ -69,7 +68,7 @@ void set_exp(const VectorContainer &x, const real *x0, ScalarContainer &out){
 }
 
 template<typename ScalarContainer, typename VectorContainer>
-void timestep(real dt, int n_step, VectorContainer &force, ScalarContainer &density, Surf_t &S){
+void timestep(const real &dt, const int &n_step, const Surf_t &S, const VectorContainer &force, ScalarContainer &density){
     // temp work space
     ScalarContainer s_tmp; s_tmp.replicate(force); set_zero(s_tmp);
     VectorContainer v_tmp; v_tmp.replicate(force); set_zero(v_tmp);
@@ -84,7 +83,9 @@ void timestep(real dt, int n_step, VectorContainer &force, ScalarContainer &dens
     for(int i=0; i<n_step; i++){
         // scalar field times vector field point wise
         xv(density, v_tmp, v_tmp2);
+        // surface div
         S.div(v_tmp2, s_tmp);
+        // advect
         axpy(-dt, s_tmp, density, density);
     }
 }
@@ -170,7 +171,7 @@ int main(int argc, char **argv)
     set_one(force);
     real dt = 0.01;
     int n_step = 100;
-    timestep(dt, n_step, force, density, S);
+    timestep(dt, n_step, S, force, density);
 
     // is mass conserved?
     // integrate density over surf and store in int_density
