@@ -35,20 +35,23 @@ void set_one(Container &x){
 
 template<typename ScalarContainer, typename VectorContainer>
 void set_exp(const VectorContainer &x, const real *x0, ScalarContainer &out){
+  // This writes scalar function exp(-||x-x0||) into "out", at nodes "x".
+  
     // store point -x0
     Arr_t a_tmp(x.getNumSubFuncs());
     for(int i=0; i<x.getNumSubFuncs(); i++){
         a_tmp.begin()[i] = -x0[i%3];
     }
 
-    // init v_tmp
+    // init v_tmp for output of apx
     VectorContainer v_tmp;
     v_tmp.replicate(x);
     set_zero(v_tmp);
 
-    // store x - x0 in v_tmp
+    // store x - x0 in v_tmp          (apx does "a plus x" where a is const vec)
     x.getDevice().apx(a_tmp.begin(),x.begin(),x.getStride(),x.getNumSubFuncs(),v_tmp.begin());
-
+    // The point of doing this in an abstracted way is could be CPU or GPU, real/double.
+    
     // init s_tmp
     ScalarContainer s_tmp;
     s_tmp.replicate(x);
@@ -60,12 +63,30 @@ void set_exp(const VectorContainer &x, const real *x0, ScalarContainer &out){
     // store sqrt(s_tmp) in s_tmp
     Sqrt(s_tmp, s_tmp);
 
-    // TODO: exp for ScalarContainer should be added to help functions
+    // [maybe exp for ScalarContainer should be added to help functions? or not and use loop]
 #pragma omp parallel for
     for(int idx = 0; idx < out.size(); idx++){
-        out.begin()[idx] = std::exp(-s_tmp.begin()[idx]);
+      // out.begin() is C++ vec style for 1st element. a[idx] is C-style
+      out.begin()[idx] = std::exp(-s_tmp.begin()[idx]);
     }
 }
+
+template<typename ScalarContainer, typename VectorContainer>
+void set_exp_simple(const VectorContainer &x, const real *x0, ScalarContainer &out){
+  // This writes scalar function exp(-||x-x0||) into "out", at nodes "x".
+  // Would not be abstracted (not on GPU)!  
+
+  int N = out.size();         // # nodes on surf of vesicle
+#pragma omp parallel for
+    for(int idx = 0; idx < N; idx++){
+      real d[3];  // displacement vector x[idx]-x0
+      for (int i=0; i<3; i++)
+        d[i] = x.begin()[idx+N*i] - x0[i];      // note a flattened array xxx...yyy..zzz
+      real d2 = d[0]*d[0]+d[1]*d[1]+d[2]*d[2];      
+      out.begin()[idx] = std::exp(-std::sqrt(d2));
+    }
+}
+
 
 template<typename ScalarContainer, typename VectorContainer>
 void timestep(const real &dt, const int &n_step, const Surf_t &S, const VectorContainer &force, ScalarContainer &density){
@@ -130,9 +151,9 @@ int main(int argc, char **argv)
     xv(density, force, force);    // (in,in,out).   see HelperFUns.h : pointwise scalar-vector mult
     S.grad(density, force);
 
-    // integrate over surf?
+    // how to integrate over surf:
     GaussLegendreIntegrator<ScaCPU_t> integrator;
-    // container to store integral result
+    // container to store integral result (one number, same type)
     ScaCPU_t int_density;
     // set size
     int_density.replicate(x0);
@@ -143,7 +164,7 @@ int main(int argc, char **argv)
     set_one(density);
     COUT(density);
 
-    // integrate density over surf and store in int_density
+    // integrate density over surf and store in int_density[0] (a slight waste to use whole array, part of legacy *** maybe change)
     integrator(density, S.getAreaElement(), int_density);
     // print out content of int_density
     COUT(int_density);
@@ -151,7 +172,8 @@ int main(int argc, char **argv)
     // how set up density = exp(-||x-x0||) ?
     real point0[3] = {0.0, 0.0, 2.16};
     set_zero(density);
-    set_exp(S.getPosition(),point0,density);
+    set_exp(S.getPosition(),point0,density);   // custom routine for this particular func
+    // set_exp_simple(S.getPosition(),point0,density);   // custom routine for this particular func, dumb version
     COUT(density);
 
     //check div_S grad_S u = 0
