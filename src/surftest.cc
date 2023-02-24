@@ -90,24 +90,27 @@ void set_exp_simple(const VectorContainer &x, const real *x0, ScalarContainer &o
 
 template<typename ScalarContainer, typename VectorContainer>
 void timestep(const real &dt, const int &n_step, const Surf_t &S, const VectorContainer &force, ScalarContainer &density){
+  // n_step advection timesteps using "force" as fluid velocity; no source term.
+  // fwd Euler, 1st-order
+  
     // temp work space
     ScalarContainer s_tmp; s_tmp.replicate(force); set_zero(s_tmp);
     VectorContainer v_tmp; v_tmp.replicate(force); set_zero(v_tmp);
     VectorContainer v_tmp2; v_tmp2.replicate(force); set_zero(v_tmp2);
 
     // map force to surface tangent space
-    axpy(0.0, v_tmp, force, v_tmp);
-    // false means calculation without upsample
-    S.mapToTangentSpace(v_tmp, false);
+    axpy(0.0, v_tmp, force, v_tmp);               // easy way to memcpy of force -> v_tmp
+    // here false means calculation without upsample...
+    S.mapToTangentSpace(v_tmp, false);            // overwrites v_tmp
 
     // update density explicitly
-    for(int i=0; i<n_step; i++){
-        // scalar field times vector field point wise
-        xv(density, v_tmp, v_tmp2);
-        // surface div
-        S.div(v_tmp2, s_tmp);
-        // advect
-        axpy(-dt, s_tmp, density, density);
+    for(int i=0; i<n_step; i++){         // time steps
+      // scalar field times vector field point wise
+      xv(density, v_tmp, v_tmp2);      // v_tmp2 = density.v_tmp   (pointwise)
+      // surface div
+      S.div(v_tmp2, s_tmp);           // s_tmp = div_Gamma (density force_tang)
+      // advect
+      axpy(-dt, s_tmp, density, density);  // density -= dt * s_tmp
     }
 }
 
@@ -169,7 +172,7 @@ int main(int argc, char **argv)
     // print out content of int_density
     COUT(int_density);
 
-    // how set up density = exp(-||x-x0||) ?
+    // how set up density = exp(-||x-x0||) :
     real point0[3] = {0.0, 0.0, 2.16};
     set_zero(density);
     set_exp(S.getPosition(),point0,density);   // custom routine for this particular func
@@ -181,26 +184,35 @@ int main(int argc, char **argv)
     VecCPU_t v_tmp; v_tmp.replicate(x0); set_zero(v_tmp);
     S.grad(density, v_tmp);
     S.div(v_tmp, s_tmp);
-    COUT(s_tmp);
+    COUT(s_tmp);                // surf Laplacian (density)
 
+    // MASS CONSERVATION TEST (ADVECTION ONLY) --------------------
     // integrate density over surf and store in int_density
     integrator(density, S.getAreaElement(), int_density);
+    real mass_before = int_density.begin()[0];
     // print out content of int_density
-    COUT(int_density);
-    COUT(density);
+    std::cout << "mass integral before: " << mass_before << "\n";
+    //COUT(int_density);
+    //COUT(density);
 
-    // timestep ?
-    set_one(force);
+    // timestep:
+    set_one(force);     // vec field = (1,1,1) at all nodes .. is not tangential
     real dt = 0.01;
     int n_step = 100;
-    timestep(dt, n_step, S, force, density);
+    timestep(dt, n_step, S, force, density);       // changes density
 
     // is mass conserved?
     // integrate density over surf and store in int_density
     integrator(density, S.getAreaElement(), int_density);
     // print out content of int_density
-    COUT(int_density);
-    COUT(density);
+    std::cout << "mass integral after: " << int_density.begin()[0] << "\n";
+    std::cout << "mass error: " << std::abs(mass_before-int_density.begin()[0]) << "\n";
+    //COUT(density);
+    // --------------------------------------------
 
+    // write to matlab or paraview?  (need nodes x, scalar and/or vector field on surf).
+
+    // conservation w/ diffusion term too?
+    
     return 0;
 }
