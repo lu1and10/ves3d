@@ -5,6 +5,7 @@
 #include "OperatorsMats.h"
 #include "Surface.h"
 #include "Parameters.h"
+#include "vtu_writer.h"
 
 #define DIM 3
 
@@ -95,6 +96,7 @@ void timestep(const real &dt, const int &n_step, const Surf_t &S, const VectorCo
   
     // temp work space
     ScalarContainer s_tmp; s_tmp.replicate(force); set_zero(s_tmp);
+    ScalarContainer s_tmp2; s_tmp2.replicate(force); set_zero(s_tmp2);
     VectorContainer v_tmp; v_tmp.replicate(force); set_zero(v_tmp);
     VectorContainer v_tmp2; v_tmp2.replicate(force); set_zero(v_tmp2);
 
@@ -103,16 +105,63 @@ void timestep(const real &dt, const int &n_step, const Surf_t &S, const VectorCo
     // here false means calculation without upsample...
     S.mapToTangentSpace(v_tmp, false);            // overwrites v_tmp
 
+    std::string filename_prefix = "timestep";
     // update density explicitly
     for(int i=0; i<n_step; i++){         // time steps
+      char suffix[7];
+      sprintf(suffix, "%06d", i);
+      std::string filename;
+      filename.append(filename_prefix);
+      filename.append(std::string(suffix));
+      filename.append(".vtu");
+      test_vtu_point_cloud_writer(S.getPosition(), force, v_tmp, density, filename);
       // scalar field times vector field point wise
       xv(density, v_tmp, v_tmp2);      // v_tmp2 = density.v_tmp   (pointwise)
       // surface div
       S.div(v_tmp2, s_tmp);           // s_tmp = div_Gamma (density force_tang)
+      // diffusion
+      S.grad(density, v_tmp2);
+      S.div(v_tmp2, s_tmp2);
       // advect
-      axpy(-dt, s_tmp, density, density);  // density -= dt * s_tmp
+      //axpy(-dt, s_tmp, density, density);  // density -= dt * s_tmp
+      // diffuse
+      axpy(dt, s_tmp2, density, density);  // density += dt * s_tmp2
     }
+
 }
+
+template<typename ScalarContainer, typename VectorContainer>
+void test_vtu_point_cloud_writer(const VectorContainer &X, const VectorContainer &v1, const VectorContainer &v2, const ScalarContainer &s, const std::string &filename){
+    int N = s.size();         // # nodes on surf of vesicle
+    const int dim = 3;
+    vtu_writer::VTUWriter writer;
+
+    std::vector<double> points(X.size(), 0.0);
+    std::vector<double> vector_field1(v1.size(), 0.0);
+    std::vector<double> vector_field2(v2.size(), 0.0);
+    std::vector<double> scalar_field(s.size(), 0.0);
+
+    for(int idx=0; idx<N; idx++){
+        for(int idim=0; idim<dim; idim++){
+            points[dim*idx + idim] = X.begin()[idx+N*idim];
+            vector_field1[dim*idx + idim] = v1.begin()[idx+N*idim];
+            vector_field2[dim*idx + idim] = v2.begin()[idx+N*idim];
+        }
+        scalar_field[idx] = s.begin()[idx];
+    }
+
+
+    writer.add_scalar_field("scalar_field", scalar_field);
+    writer.add_vector_field("vector_field1", vector_field1, dim);
+    writer.add_vector_field("vector_field2", vector_field2, dim);
+
+    writer.write_point_cloud(filename, dim,  points);
+}
+
+template<typename ScalarContainer, typename VectorContainer>
+void test_vtu_surface_writer(const VectorContainer &X, const VectorContainer &v, const ScalarContainer &s, const std::string &filename){
+}
+
 
 int main(int argc, char **argv)
 {
@@ -191,28 +240,27 @@ int main(int argc, char **argv)
     integrator(density, S.getAreaElement(), int_density);
     real mass_before = int_density.begin()[0];
     // print out content of int_density
-    std::cout << "mass integral before: " << mass_before << "\n";
+    std::cout << "mass integral before: " << std::setprecision(8) << mass_before << "\n";
     //COUT(int_density);
     //COUT(density);
 
     // timestep:
     set_one(force);     // vec field = (1,1,1) at all nodes .. is not tangential
     real dt = 0.01;
-    int n_step = 100;
+    int n_step = 1000;
     timestep(dt, n_step, S, force, density);       // changes density
 
     // is mass conserved?
     // integrate density over surf and store in int_density
     integrator(density, S.getAreaElement(), int_density);
     // print out content of int_density
-    std::cout << "mass integral after: " << int_density.begin()[0] << "\n";
-    std::cout << "mass error: " << std::abs(mass_before-int_density.begin()[0]) << "\n";
+    std::cout << "mass integral after: " << std::setprecision(8) << int_density.begin()[0] << "\n";
+    std::cout << "mass error: " << std::setprecision(8) << std::abs(mass_before-int_density.begin()[0]) << "\n";
     //COUT(density);
     // --------------------------------------------
 
     // write to matlab or paraview?  (need nodes x, scalar and/or vector field on surf).
 
     // conservation w/ diffusion term too?
-    
     return 0;
 }
