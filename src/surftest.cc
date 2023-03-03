@@ -100,6 +100,9 @@ void timestep(const real &dt, const int &n_step, const Surf_t &S, const VectorCo
     VectorContainer v_tmp; v_tmp.replicate(force); set_zero(v_tmp);
     VectorContainer v_tmp2; v_tmp2.replicate(force); set_zero(v_tmp2);
 
+    // diffusion constant
+    real D = 3.0;
+
     // map force to surface tangent space
     axpy(0.0, v_tmp, force, v_tmp);               // easy way to memcpy of force -> v_tmp
     // here false means calculation without upsample...
@@ -122,10 +125,10 @@ void timestep(const real &dt, const int &n_step, const Surf_t &S, const VectorCo
       // diffusion
       S.grad(density, v_tmp2);
       S.div(v_tmp2, s_tmp2);
-      // advect
-      //axpy(-dt, s_tmp, density, density);  // density -= dt * s_tmp
-      // diffuse
-      axpy(dt, s_tmp2, density, density);  // density += dt * s_tmp2
+      // advect update
+      axpy(-dt, s_tmp, density, density);  // density -= dt * s_tmp
+      // diffusion update
+      //axpy(dt*D, s_tmp2, density, density);  // density += dt * s_tmp2
     }
 
 }
@@ -247,7 +250,7 @@ int main(int argc, char **argv)
     // timestep:
     set_one(force);     // vec field = (1,1,1) at all nodes .. is not tangential
     real dt = 0.01;
-    int n_step = 1000;
+    int n_step = 100;
     timestep(dt, n_step, S, force, density);       // changes density
 
     // is mass conserved?
