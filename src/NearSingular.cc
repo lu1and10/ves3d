@@ -74,7 +74,7 @@ void NearSingular<Real_t>::SetTrgCoord(Real_t* trg_coord, size_t N, bool trg_is_
   update_interp=update_interp | NearSingular::UpdateTrgCoord;
   update_setup =update_setup  | NearSingular::UpdateTrgCoord;
   trg_is_surf=trg_is_surf_;
-  T.ReInit(N*COORD_VES3D_DIM,trg_coord);
+  T.ReInit(N*COORD_DIM,trg_coord);
 }
 
 template<typename Real_t>
@@ -105,8 +105,8 @@ void NearSingular<Real_t>::SetupCoordData(){
     pvfmm::Profile::Tic("VesLET",&comm,true);
 
     size_t M_ves = VES_STRIDE;                 // Points per vesicle
-    size_t N_ves = S->Dim()/(M_ves*COORD_VES3D_DIM); // Number of vesicles
-    assert(N_ves*(M_ves*COORD_VES3D_DIM) == S->Dim());
+    size_t N_ves = S->Dim()/(M_ves*COORD_DIM); // Number of vesicles
+    assert(N_ves*(M_ves*COORD_DIM) == S->Dim());
 
     size_t tree_depth=0;
     { // Determine bbox, r_near, tree_depth
@@ -125,20 +125,20 @@ void NearSingular<Real_t>::SetupCoordData(){
           Real_t r2_ves=0;
           Real_t one_over_M=1.0/M_ves;
           for(size_t i=a;i<b;i++){ // compute r2_ves
-            const Real_t* Si=&S[0][i*M_ves*COORD_VES3D_DIM];
-            Real_t center_coord[COORD_VES3D_DIM]={0,0,0};
+            const Real_t* Si=&S[0][i*M_ves*COORD_DIM];
+            Real_t center_coord[COORD_DIM]={0,0,0};
             for(size_t j=0;j<M_ves;j++){
-              center_coord[0]+=Si[j*COORD_VES3D_DIM+0];
-              center_coord[1]+=Si[j*COORD_VES3D_DIM+1];
-              center_coord[2]+=Si[j*COORD_VES3D_DIM+2];
+              center_coord[0]+=Si[j*COORD_DIM+0];
+              center_coord[1]+=Si[j*COORD_DIM+1];
+              center_coord[2]+=Si[j*COORD_DIM+2];
             }
             center_coord[0]*=one_over_M;
             center_coord[1]*=one_over_M;
             center_coord[2]*=one_over_M;
             for(size_t j=0;j<M_ves;j++){
-              Real_t dx=(Si[j*COORD_VES3D_DIM+0]-center_coord[0]);
-              Real_t dy=(Si[j*COORD_VES3D_DIM+1]-center_coord[1]);
-              Real_t dz=(Si[j*COORD_VES3D_DIM+2]-center_coord[2]);
+              Real_t dx=(Si[j*COORD_DIM+0]-center_coord[0]);
+              Real_t dy=(Si[j*COORD_DIM+1]-center_coord[1]);
+              Real_t dz=(Si[j*COORD_DIM+2]-center_coord[2]);
               Real_t r2=dx*dx+dy*dy+dz*dz;
               r2_ves=std::max(r2_ves,r2);
             }
@@ -165,16 +165,16 @@ void NearSingular<Real_t>::SetupCoordData(){
       }
 
       if(box_size_<=0){ // Determine bbox, tree_depth
-        Real_t scale_x, shift_x[COORD_VES3D_DIM];
+        Real_t scale_x, shift_x[COORD_DIM];
         Real_t scale_tmp;
         { // determine bounding box
-          Real_t s0, x0[COORD_VES3D_DIM];
-          Real_t s1, x1[COORD_VES3D_DIM];
+          Real_t s0, x0[COORD_DIM];
+          Real_t s1, x1[COORD_DIM];
           PVFMMBoundingBox(      N_ves*M_ves, &S[0][0], &s0, x0, comm);
-          PVFMMBoundingBox(T.Dim()/COORD_VES3D_DIM, &   T[0], &s1, x1, comm);
+          PVFMMBoundingBox(T.Dim()/COORD_DIM, &   T[0], &s1, x1, comm);
 
-          Real_t c0[COORD_VES3D_DIM]={(0.5-x0[0])/s0, (0.5-x0[1])/s0, (0.5-x0[2])/s0};
-          Real_t c1[COORD_VES3D_DIM]={(0.5-x1[0])/s1, (0.5-x1[1])/s1, (0.5-x1[2])/s1};
+          Real_t c0[COORD_DIM]={(0.5-x0[0])/s0, (0.5-x0[1])/s0, (0.5-x0[2])/s0};
+          Real_t c1[COORD_DIM]={(0.5-x1[0])/s1, (0.5-x1[1])/s1, (0.5-x1[2])/s1};
 
           scale_tmp=0;
           scale_tmp=std::max(scale_tmp, fabs(c0[0]-c1[0]));
@@ -200,7 +200,7 @@ void NearSingular<Real_t>::SetupCoordData(){
             tree_depth++;
           }
         }
-        for(size_t j=0;j<COORD_VES3D_DIM;j++){ // Update shift_x
+        for(size_t j=0;j<COORD_DIM;j++){ // Update shift_x
           shift_x[j]=((shift_x[j]/scale_tmp)+2*r_near)*scale_x;
         }
         coord_setup.bbox[0]=shift_x[0];
@@ -237,7 +237,7 @@ void NearSingular<Real_t>::SetupCoordData(){
       { // build scatter-indices (pt_id) and tree (let_mid, let_pt_cnt, let_pt_dsp)
         pvfmm::Vector<pvfmm::MortonId> pt_mid(N_ves*M_ves);
         { // build pt_mid
-          Real_t scale_x, shift_x[COORD_VES3D_DIM];
+          Real_t scale_x, shift_x[COORD_DIM];
           { // set scale_x, shift_x
             shift_x[0]=coord_setup.bbox[0];
             shift_x[1]=coord_setup.bbox[1];
@@ -247,12 +247,12 @@ void NearSingular<Real_t>::SetupCoordData(){
 
           #pragma omp parallel for
           for(size_t tid=0;tid<omp_p;tid++){
-            Real_t c[COORD_VES3D_DIM];
+            Real_t c[COORD_DIM];
             size_t a=((tid+0)*N_ves*M_ves)/omp_p;
             size_t b=((tid+1)*N_ves*M_ves)/omp_p;
             for(size_t i=a;i<b;i++){
-              for(size_t k=0;k<COORD_VES3D_DIM;k++){
-                c[k]=S[0][i*COORD_VES3D_DIM+k]*scale_x+shift_x[k];
+              for(size_t k=0;k<COORD_DIM;k++){
+                c[k]=S[0][i*COORD_DIM+k]*scale_x+shift_x[k];
                 while(c[k]< 0.0) c[k]+=1.0;
                 while(c[k]>=1.0) c[k]-=1.0;
               }
@@ -411,7 +411,7 @@ void NearSingular<Real_t>::SetupCoordData(){
             pvfmm::Vector<pvfmm::MortonId>&  let_mid=S_let. mid;
             pvfmm::Vector<pvfmm::MortonId>& let_mins=S_let.mins;
 
-            Real_t coord[COORD_VES3D_DIM];
+            Real_t coord[COORD_DIM];
             Real_t s=pow(0.5,tree_depth);
             pvfmm::par::SortPair<int, size_t> pair;
             size_t a=(let_mid.Dim()*(tid+0))/omp_p;
@@ -426,7 +426,7 @@ void NearSingular<Real_t>::SetupCoordData(){
               if(j0 || j1 || j2){
                 Real_t c[3]={coord[0]+j0*s+0.5*s,coord[1]+j1*s+0.5*s,coord[2]+j2*s+0.5*s};
                 if(box_size_>0){
-                  for(size_t k=0;k<COORD_VES3D_DIM;k++){
+                  for(size_t k=0;k<COORD_DIM;k++){
                     if(c[k]< 0.0) c[k]+=1.0;
                     if(c[k]>=1.0) c[k]-=1.0;
                   }
@@ -543,7 +543,7 @@ void NearSingular<Real_t>::SetupCoordData(){
       pvfmm::Vector<size_t> send_pt_id;
       { // Send-recv pt data
         size_t send_size_pt=send_pt_dsp[send_mid.Dim()];
-        send_pt_coord.ReInit(send_size_pt*COORD_VES3D_DIM);
+        send_pt_coord.ReInit(send_size_pt*COORD_DIM);
         send_pt_vesid.ReInit(send_size_pt);
         send_pt_id   .ReInit(send_size_pt);
         { // Set send data
@@ -552,9 +552,9 @@ void NearSingular<Real_t>::SetupCoordData(){
             size_t offset_in=S_let.pt_dsp[snode_id[i]];
             size_t offset_out=send_pt_dsp[i];
             for(size_t j=0;j<send_pt_cnt[i];j++){
-              send_pt_coord[(offset_out+j)*COORD_VES3D_DIM+0]=S_let.pt_coord[(offset_in+j)*COORD_VES3D_DIM+0];
-              send_pt_coord[(offset_out+j)*COORD_VES3D_DIM+1]=S_let.pt_coord[(offset_in+j)*COORD_VES3D_DIM+1];
-              send_pt_coord[(offset_out+j)*COORD_VES3D_DIM+2]=S_let.pt_coord[(offset_in+j)*COORD_VES3D_DIM+2];
+              send_pt_coord[(offset_out+j)*COORD_DIM+0]=S_let.pt_coord[(offset_in+j)*COORD_DIM+0];
+              send_pt_coord[(offset_out+j)*COORD_DIM+1]=S_let.pt_coord[(offset_in+j)*COORD_DIM+1];
+              send_pt_coord[(offset_out+j)*COORD_DIM+2]=S_let.pt_coord[(offset_in+j)*COORD_DIM+2];
               send_pt_vesid[ offset_out+j             ]=S_let.pt_vesid[ offset_in+j             ];
               send_pt_id   [ offset_out+j             ]=S_let.pt_id   [ offset_in+j             ];
             }
@@ -562,7 +562,7 @@ void NearSingular<Real_t>::SetupCoordData(){
         }
 
         size_t recv_size_pt=recv_pt_dsp[recv_mid.Dim()];
-        recv_pt_coord.ReInit(recv_size_pt*COORD_VES3D_DIM);
+        recv_pt_coord.ReInit(recv_size_pt*COORD_DIM);
         recv_pt_vesid.ReInit(recv_size_pt);
         recv_pt_id   .ReInit(recv_size_pt);
 
@@ -589,8 +589,8 @@ void NearSingular<Real_t>::SetupCoordData(){
           MPI_Alltoallv(&send_pt_vesid[0], &send_cnt[0], &send_dsp[0], pvfmm::par::Mpi_datatype<size_t>::value(),
                         &recv_pt_vesid[0], &recv_cnt[0], &recv_dsp[0], pvfmm::par::Mpi_datatype<size_t>::value(), comm);
           for(size_t i=0;i<np;i++){
-            send_cnt[i]*=COORD_VES3D_DIM; send_dsp[i]*=COORD_VES3D_DIM;
-            recv_cnt[i]*=COORD_VES3D_DIM; recv_dsp[i]*=COORD_VES3D_DIM;
+            send_cnt[i]*=COORD_DIM; send_dsp[i]*=COORD_DIM;
+            recv_cnt[i]*=COORD_DIM; recv_dsp[i]*=COORD_DIM;
           }
           MPI_Alltoallv(&send_pt_coord[0], &send_cnt[0], &send_dsp[0], pvfmm::par::Mpi_datatype<Real_t>::value(),
                         &recv_pt_coord[0], &recv_cnt[0], &recv_dsp[0], pvfmm::par::Mpi_datatype<Real_t>::value(), comm);
@@ -626,7 +626,7 @@ void NearSingular<Real_t>::SetupCoordData(){
 
         { // Copy pt_coord
           size_t offset=0, size=0;
-          size_t recv_split=recv_pt_dsp[rnode_dsp[rank]]*COORD_VES3D_DIM;
+          size_t recv_split=recv_pt_dsp[rnode_dsp[rank]]*COORD_DIM;
           size=                     recv_split; memcpy(&new_pt_coord[0]+offset, & recv_pt_coord[0]           , size*sizeof(Real_t)); offset+=size;
           size=S_let.pt_coord.Dim()           ; memcpy(&new_pt_coord[0]+offset, &S_let.pt_coord[0]           , size*sizeof(Real_t)); offset+=size;
           size= recv_pt_coord.Dim()-recv_split; memcpy(&new_pt_coord[0]+offset, & recv_pt_coord[0]+recv_split, size*sizeof(Real_t));
@@ -676,7 +676,7 @@ void NearSingular<Real_t>::SetupCoordData(){
     size_t trg_id_offset;
     { // Get trg_id_offset
       long long disp=0;
-      long long size=pt_coord.Dim()/COORD_VES3D_DIM;
+      long long size=pt_coord.Dim()/COORD_DIM;
       MPI_Scan(&size, &disp, 1, MPI_LONG_LONG, MPI_SUM, comm);
       trg_id_offset=disp-size;
     }
@@ -686,10 +686,10 @@ void NearSingular<Real_t>::SetupCoordData(){
     pvfmm::Vector<size_t>          tree_pt_dsp;
     { // Construct target point tree
       pvfmm::Profile::Tic("TrgTree",&comm,true);
-      pvfmm::Vector<pvfmm::MortonId> pt_mid(pt_coord.Dim()/COORD_VES3D_DIM);
+      pvfmm::Vector<pvfmm::MortonId> pt_mid(pt_coord.Dim()/COORD_DIM);
 
       { // Set pt_mid
-        Real_t scale_x, shift_x[COORD_VES3D_DIM];
+        Real_t scale_x, shift_x[COORD_DIM];
         { // set scale_x, shift_x
           shift_x[0]=coord_setup.bbox[0];
           shift_x[1]=coord_setup.bbox[1];
@@ -700,12 +700,12 @@ void NearSingular<Real_t>::SetupCoordData(){
         size_t tree_depth=S_let.mid[0].GetDepth();
         #pragma omp parallel for
         for(size_t tid=0;tid<omp_p;tid++){
-          Real_t c[COORD_VES3D_DIM];
-          size_t a=((tid+0)*T.Dim()/COORD_VES3D_DIM)/omp_p;
-          size_t b=((tid+1)*T.Dim()/COORD_VES3D_DIM)/omp_p;
+          Real_t c[COORD_DIM];
+          size_t a=((tid+0)*T.Dim()/COORD_DIM)/omp_p;
+          size_t b=((tid+1)*T.Dim()/COORD_DIM)/omp_p;
           for(size_t i=a;i<b;i++){
-            for(size_t k=0;k<COORD_VES3D_DIM;k++){
-              c[k]=pt_coord[i*COORD_VES3D_DIM+k]*scale_x+shift_x[k];
+            for(size_t k=0;k<COORD_DIM;k++){
+              c[k]=pt_coord[i*COORD_DIM+k]*scale_x+shift_x[k];
               while(c[k]< 0.0) c[k]+=1.0;
               while(c[k]>=1.0) c[k]-=1.0;
             }
@@ -714,9 +714,9 @@ void NearSingular<Real_t>::SetupCoordData(){
         }
       }
 
-      pt_vesid.ReInit(pt_coord.Dim()/COORD_VES3D_DIM);
+      pt_vesid.ReInit(pt_coord.Dim()/COORD_DIM);
       if(trg_is_surf){ // Set pt_vesid
-        size_t N_ves = S->Dim()/(VES_STRIDE*COORD_VES3D_DIM); // Number of vesicles
+        size_t N_ves = S->Dim()/(VES_STRIDE*COORD_DIM); // Number of vesicles
         size_t M_ves = pt_vesid.Dim()/N_ves;
         size_t ves_id_offset;
         { // Get ves_id_offset
@@ -818,7 +818,7 @@ void NearSingular<Real_t>::SetupCoordData(){
           PVFMMVec_t tcoord;
           pvfmm::Vector<long long> tvesid;
           if(tcnt){ // Set t_coord
-            tcoord.ReInit(tcnt*COORD_VES3D_DIM,&pt_coord[tdsp*COORD_VES3D_DIM],false);
+            tcoord.ReInit(tcnt*COORD_DIM,&pt_coord[tdsp*COORD_DIM],false);
             tvesid.ReInit(tcnt          ,&pt_vesid[tdsp          ],false);
           }
 
@@ -831,14 +831,14 @@ void NearSingular<Real_t>::SetupCoordData(){
               spt_id[j].ReInit(0);
             }
             size_t indx=0;
-            Real_t coord[COORD_VES3D_DIM];
+            Real_t coord[COORD_DIM];
             tree_mid[i].GetCoord(coord);
             for(int j0=-1;j0<=1;j0++)
             for(int j1=-1;j1<=1;j1++)
             for(int j2=-1;j2<=1;j2++){
               Real_t c[3]={coord[0]+j0*s+0.5*s,coord[1]+j1*s+0.5*s,coord[2]+j2*s+0.5*s};
               if(box_size_>0){
-                for(size_t k=0;k<COORD_VES3D_DIM;k++){
+                for(size_t k=0;k<COORD_DIM;k++){
                   if(c[k]< 0.0) c[k]+=1.0;
                   if(c[k]>=1.0) c[k]-=1.0;
                 }
@@ -848,7 +848,7 @@ void NearSingular<Real_t>::SetupCoordData(){
                 pvfmm::Vector<pvfmm::MortonId>& mid=S_let.mid;
                 int k=std::lower_bound(&mid[0], &mid[0]+mid.Dim(), m)-&mid[0];
                 if(k<mid.Dim() && mid[k]==m){
-                  scoord[indx].ReInit(S_let.pt_cnt[k]*COORD_VES3D_DIM, &S_let.pt_coord[0]+S_let.pt_dsp[k]*COORD_VES3D_DIM, false);
+                  scoord[indx].ReInit(S_let.pt_cnt[k]*COORD_DIM, &S_let.pt_coord[0]+S_let.pt_dsp[k]*COORD_DIM, false);
                   spt_id[indx].ReInit(S_let.pt_cnt[k]          , &S_let.pt_id   [0]+S_let.pt_dsp[k]          , false);
                   svesid[indx].ReInit(S_let.pt_cnt[k]          , &S_let.pt_vesid[0]+S_let.pt_dsp[k]          , false);
                 }
@@ -864,9 +864,9 @@ void NearSingular<Real_t>::SetupCoordData(){
               pair_vec.clear();
               for(size_t k=0;k<27;k++)
               for(size_t s=0;s<spt_id[k].Dim();s++){
-                Real_t dx=fabs(scoord[k][s*COORD_VES3D_DIM+0]-tcoord[t*COORD_VES3D_DIM+0]);
-                Real_t dy=fabs(scoord[k][s*COORD_VES3D_DIM+1]-tcoord[t*COORD_VES3D_DIM+1]);
-                Real_t dz=fabs(scoord[k][s*COORD_VES3D_DIM+2]-tcoord[t*COORD_VES3D_DIM+2]);
+                Real_t dx=fabs(scoord[k][s*COORD_DIM+0]-tcoord[t*COORD_DIM+0]);
+                Real_t dy=fabs(scoord[k][s*COORD_DIM+1]-tcoord[t*COORD_DIM+1]);
+                Real_t dz=fabs(scoord[k][s*COORD_DIM+2]-tcoord[t*COORD_DIM+2]);
                 if(box_size_>0){
                   while(dx>box_size_*0.5) dx-=box_size_;
                   while(dy>box_size_*0.5) dy-=box_size_;
@@ -925,7 +925,7 @@ void NearSingular<Real_t>::SetupCoordData(){
         near_size   +=near_pair_[tid  ].size();
       }
 
-      near_trg_coord.ReInit(near_size*COORD_VES3D_DIM);
+      near_trg_coord.ReInit(near_size*COORD_DIM);
       near_trg_pt_id.ReInit(near_size          );
       near_ves_pt_id.ReInit(near_size          );
 
@@ -936,9 +936,9 @@ void NearSingular<Real_t>::SetupCoordData(){
         std::vector<std::pair<size_t, size_t> >& near_pair=near_pair_[tid];
         for(size_t i=0;i<cnt;i++){
           size_t loc_trg_id=near_pair[i].first;
-          near_trg_coord[(dsp+i)*COORD_VES3D_DIM+0]=pt_coord[loc_trg_id*COORD_VES3D_DIM+0];
-          near_trg_coord[(dsp+i)*COORD_VES3D_DIM+1]=pt_coord[loc_trg_id*COORD_VES3D_DIM+1];
-          near_trg_coord[(dsp+i)*COORD_VES3D_DIM+2]=pt_coord[loc_trg_id*COORD_VES3D_DIM+2];
+          near_trg_coord[(dsp+i)*COORD_DIM+0]=pt_coord[loc_trg_id*COORD_DIM+0];
+          near_trg_coord[(dsp+i)*COORD_DIM+1]=pt_coord[loc_trg_id*COORD_DIM+1];
+          near_trg_coord[(dsp+i)*COORD_DIM+2]=pt_coord[loc_trg_id*COORD_DIM+2];
           near_trg_pt_id[(dsp+i)            ]=pt_id[loc_trg_id];
           near_ves_pt_id[(dsp+i)            ]=near_pair[i].second;
         }
@@ -949,8 +949,8 @@ void NearSingular<Real_t>::SetupCoordData(){
     { // Scatter trg points to vesicles
       pvfmm::Profile::Tic("ScatterTrg",&comm,true);
       size_t M_ves = VES_STRIDE;                 // Points per vesicle
-      size_t N_ves = S->Dim()/(M_ves*COORD_VES3D_DIM); // Number of vesicles
-      assert(N_ves*(M_ves*COORD_VES3D_DIM) == S->Dim());
+      size_t N_ves = S->Dim()/(M_ves*COORD_DIM); // Number of vesicles
+      assert(N_ves*(M_ves*COORD_DIM) == S->Dim());
 
       size_t ves_pt_id_offset;
       { // Get ves_pt_id_offset
@@ -985,7 +985,7 @@ void NearSingular<Real_t>::SetupCoordData(){
           for(size_t i=a;i<b;i++) near_trg_cnt[near_ves_pt_id[i]/M_ves]++;
         }
         pvfmm::omp_par::scan(&near_trg_cnt[0], &near_trg_dsp[0], N_ves);
-        assert(near_trg_dsp[N_ves-1]+near_trg_cnt[N_ves-1]==near_trg_coord.Dim()/COORD_VES3D_DIM);
+        assert(near_trg_dsp[N_ves-1]+near_trg_cnt[N_ves-1]==near_trg_coord.Dim()/COORD_DIM);
       }
       pvfmm::Profile::Toc();
     }
@@ -1001,21 +1001,21 @@ void NearSingular<Real_t>::SetupCoordData(){
       pvfmm::Vector<size_t>&  trg_dsp=coord_setup.  near_trg_dsp;
 
       size_t M_ves = VES_STRIDE;                 // Points per vesicle
-      size_t N_ves = S->Dim()/(M_ves*COORD_VES3D_DIM); // Number of vesicles
-      assert(N_ves*(M_ves*COORD_VES3D_DIM) == S->Dim());
+      size_t N_ves = S->Dim()/(M_ves*COORD_DIM); // Number of vesicles
+      assert(N_ves*(M_ves*COORD_DIM) == S->Dim());
 
       for(size_t i=0;i<N_ves;i++){ // loop over all vesicles
         for(size_t j=0;j<trg_cnt[i];j++){ // loop over near tagets
           size_t trg_idx=trg_dsp[i]+j;
           size_t src_idx=coord_setup.near_ves_pt_id[trg_idx];
-          Real_t ves_c[COORD_VES3D_DIM]={S[0][src_idx*COORD_VES3D_DIM+0],
-                                   S[0][src_idx*COORD_VES3D_DIM+1],
-                                   S[0][src_idx*COORD_VES3D_DIM+2]};
-          for(size_t k=0;k<COORD_VES3D_DIM;k++){
-            Real_t c=trg_coord[trg_idx*COORD_VES3D_DIM+k];
+          Real_t ves_c[COORD_DIM]={S[0][src_idx*COORD_DIM+0],
+                                   S[0][src_idx*COORD_DIM+1],
+                                   S[0][src_idx*COORD_DIM+2]};
+          for(size_t k=0;k<COORD_DIM;k++){
+            Real_t c=trg_coord[trg_idx*COORD_DIM+k];
             while(c-ves_c[k]> box_size_*0.5) c-=box_size_;
             while(c-ves_c[k]<-box_size_*0.5) c+=box_size_;
-            trg_coord[trg_idx*COORD_VES3D_DIM+k]=c;
+            trg_coord[trg_idx*COORD_DIM+k]=c;
           }
         }
       }
@@ -1035,13 +1035,13 @@ void NearSingular<Real_t>::SetupCoordData(){
     PVFMMVec_t& repl_force      =coord_setup.repl_force      ;
 
     size_t M_ves = VES_STRIDE;                 // Points per vesicle
-    size_t N_ves = S->Dim()/(M_ves*COORD_VES3D_DIM); // Number of vesicles
-    assert(N_ves*(M_ves*COORD_VES3D_DIM) == S->Dim());
+    size_t N_ves = S->Dim()/(M_ves*COORD_DIM); // Number of vesicles
+    assert(N_ves*(M_ves*COORD_DIM) == S->Dim());
 
-    size_t N_trg=trg_coord.Dim()/COORD_VES3D_DIM;
+    size_t N_trg=trg_coord.Dim()/COORD_DIM;
     proj_patch_param.ReInit(N_trg*        2);
-    proj_coord      .ReInit(N_trg*COORD_VES3D_DIM);
-    repl_force      .ReInit(N_trg*COORD_VES3D_DIM);
+    proj_coord      .ReInit(N_trg*COORD_DIM);
+    repl_force      .ReInit(N_trg*COORD_DIM);
     is_extr_pt      .ReInit(N_trg          );
     Real_t r2repul_inv=(repul_dist_>0?std::pow(1.0/repul_dist_,2.0):0);
     Real_t& r_near=coord_setup.r_near;
@@ -1058,20 +1058,20 @@ void NearSingular<Real_t>::SetupCoordData(){
           size_t trg_idx=trg_dsp[i]+j;
           QuadraticPatch patch;
           { // create patch
-            Real_t mesh[3*3*COORD_VES3D_DIM];
+            Real_t mesh[3*3*COORD_DIM];
             size_t k_=coord_setup.near_ves_pt_id[trg_idx]-M_ves*i;
-            QuadraticPatch::patch_mesh(mesh, sh_order_, k_, &S[0][i*M_ves*COORD_VES3D_DIM]);
-            patch=QuadraticPatch(&mesh[0],COORD_VES3D_DIM);
+            QuadraticPatch::patch_mesh(mesh, sh_order_, k_, &S[0][i*M_ves*COORD_DIM]);
+            patch=QuadraticPatch(&mesh[0],COORD_DIM);
           }
           { // Find nearest point on patch (first interpolation point)
             Real_t& x=proj_patch_param[trg_idx*2+0];
             Real_t& y=proj_patch_param[trg_idx*2+1];
             is_extr_pt[trg_idx]=
-            patch.project(&  trg_coord[trg_idx*COORD_VES3D_DIM],x,y);
-            patch.eval(x,y,&proj_coord[trg_idx*COORD_VES3D_DIM]);
-            Real_t normal[COORD_VES3D_DIM];
+            patch.project(&  trg_coord[trg_idx*COORD_DIM],x,y);
+            patch.eval(x,y,&proj_coord[trg_idx*COORD_DIM]);
+            Real_t normal[COORD_DIM];
             { // Compute normal
-              Real_t sgrad[2*COORD_VES3D_DIM];
+              Real_t sgrad[2*COORD_DIM];
               patch.grad(x,y,sgrad);
               normal[0]=sgrad[1]*sgrad[5]-sgrad[2]*sgrad[4];
               normal[1]=sgrad[2]*sgrad[3]-sgrad[0]*sgrad[5];
@@ -1084,16 +1084,16 @@ void NearSingular<Real_t>::SetupCoordData(){
 
             { // repulsion
               Real_t r=0;
-              r+=(trg_coord[trg_idx*COORD_VES3D_DIM+0]-proj_coord[trg_idx*COORD_VES3D_DIM+0])*normal[0];
-              r+=(trg_coord[trg_idx*COORD_VES3D_DIM+1]-proj_coord[trg_idx*COORD_VES3D_DIM+1])*normal[1];
-              r+=(trg_coord[trg_idx*COORD_VES3D_DIM+2]-proj_coord[trg_idx*COORD_VES3D_DIM+2])*normal[2];
+              r+=(trg_coord[trg_idx*COORD_DIM+0]-proj_coord[trg_idx*COORD_DIM+0])*normal[0];
+              r+=(trg_coord[trg_idx*COORD_DIM+1]-proj_coord[trg_idx*COORD_DIM+1])*normal[1];
+              r+=(trg_coord[trg_idx*COORD_DIM+2]-proj_coord[trg_idx*COORD_DIM+2])*normal[2];
               min_dist_loc=std::min(min_dist_loc,r);
 
               Real_t f=0;
               if(r2repul_inv>0 && r<r_near) f=exp(-r*r*r2repul_inv)/r*(1.0-r/r_near);
-              repl_force[trg_idx*COORD_VES3D_DIM+0]=normal[0]*f;
-              repl_force[trg_idx*COORD_VES3D_DIM+1]=normal[1]*f;
-              repl_force[trg_idx*COORD_VES3D_DIM+2]=normal[2]*f;
+              repl_force[trg_idx*COORD_DIM+0]=normal[0]*f;
+              repl_force[trg_idx*COORD_DIM+1]=normal[1]*f;
+              repl_force[trg_idx*COORD_DIM+2]=normal[2]*f;
             }
           }
         }
@@ -1153,24 +1153,24 @@ void NearSingular<Real_t>::SubtractDirect(PVFMMVec_t& vel_fmm){
     vel_direct.ReInit(trg_coord.Dim()); vel_direct.SetZero();
 
     size_t M_ves = VES_STRIDE;                 // Points per vesicle
-    size_t N_ves = S->Dim()/(M_ves*COORD_VES3D_DIM); // Number of vesicles
-    assert(N_ves*(M_ves*COORD_VES3D_DIM) == S->Dim());
+    size_t N_ves = S->Dim()/(M_ves*COORD_DIM); // Number of vesicles
+    assert(N_ves*(M_ves*COORD_DIM) == S->Dim());
 
     #pragma omp parallel for
     for(size_t tid=0;tid<omp_p;tid++){ // Compute vel_direct for near points.
       size_t a=((tid+0)*N_ves)/omp_p;
       size_t b=((tid+1)*N_ves)/omp_p;
       for(size_t i=a;i<b;i++) if(trg_cnt[i]){ // loop over all vesicles
-        PVFMMVec_t s_coord(     M_ves*COORD_VES3D_DIM, &S[0]      [   i*M_ves*COORD_VES3D_DIM], false);
-        PVFMMVec_t t_coord(trg_cnt[i]*COORD_VES3D_DIM, &trg_coord [trg_dsp[i]*COORD_VES3D_DIM], false);
-        PVFMMVec_t t_veloc(trg_cnt[i]*COORD_VES3D_DIM, &vel_direct[trg_dsp[i]*COORD_VES3D_DIM], false);
+        PVFMMVec_t s_coord(     M_ves*COORD_DIM, &S[0]      [   i*M_ves*COORD_DIM], false);
+        PVFMMVec_t t_coord(trg_cnt[i]*COORD_DIM, &trg_coord [trg_dsp[i]*COORD_DIM], false);
+        PVFMMVec_t t_veloc(trg_cnt[i]*COORD_DIM, &vel_direct[trg_dsp[i]*COORD_DIM], false);
 
         if(qforce_single){ // Subtract wrong near potential
-          PVFMMVec_t qforce(M_ves*(COORD_VES3D_DIM*1), &qforce_single[0][0]+M_ves*(COORD_VES3D_DIM*1)*i, false);
+          PVFMMVec_t qforce(M_ves*(COORD_DIM*1), &qforce_single[0][0]+M_ves*(COORD_DIM*1)*i, false);
           StokesKernel<Real_t>::Kernel().k_s2t->      ker_poten(&s_coord[0], M_ves, &qforce[0], 1, &t_coord[0], trg_cnt[i], &t_veloc[0], NULL);
         }
         if(qforce_double){ // Subtract wrong near potential
-          PVFMMVec_t qforce(M_ves*(COORD_VES3D_DIM*2), &qforce_double[0][0]+M_ves*(COORD_VES3D_DIM*2)*i, false);
+          PVFMMVec_t qforce(M_ves*(COORD_DIM*2), &qforce_double[0][0]+M_ves*(COORD_DIM*2)*i, false);
           StokesKernel<Real_t>::Kernel().k_s2t->dbl_layer_poten(&s_coord[0], M_ves, &qforce[0], 1, &t_coord[0], trg_cnt[i], &t_veloc[0], NULL);
         }
       }
@@ -1182,19 +1182,19 @@ void NearSingular<Real_t>::SubtractDirect(PVFMMVec_t& vel_fmm){
       size_t a=((tid+0)*N_ves)/omp_p;
       size_t b=((tid+1)*N_ves)/omp_p;
       for(size_t i=a;i<b;i++){ // loop over all vesicles
-        size_t Ta=(vel_direct.Dim()/COORD_VES3D_DIM)*(i+0)/N_ves;
-        size_t Tb=(vel_direct.Dim()/COORD_VES3D_DIM)*(i+1)/N_ves;
+        size_t Ta=(vel_direct.Dim()/COORD_DIM)*(i+0)/N_ves;
+        size_t Tb=(vel_direct.Dim()/COORD_DIM)*(i+1)/N_ves;
 
-        PVFMMVec_t s_coord(  M_ves*COORD_VES3D_DIM, &S[0]      [i*M_ves*COORD_VES3D_DIM], false);
-        PVFMMVec_t t_coord((Tb-Ta)*COORD_VES3D_DIM, &T         [     Ta*COORD_VES3D_DIM], false);
-        PVFMMVec_t t_veloc((Tb-Ta)*COORD_VES3D_DIM, &vel_direct[     Ta*COORD_VES3D_DIM], false);
+        PVFMMVec_t s_coord(  M_ves*COORD_DIM, &S[0]      [i*M_ves*COORD_DIM], false);
+        PVFMMVec_t t_coord((Tb-Ta)*COORD_DIM, &T         [     Ta*COORD_DIM], false);
+        PVFMMVec_t t_veloc((Tb-Ta)*COORD_DIM, &vel_direct[     Ta*COORD_DIM], false);
 
         if(qforce_single){ // Subtract wrong near potential
-          PVFMMVec_t qforce(M_ves*(COORD_VES3D_DIM*1), &qforce_single[0][0]+M_ves*(COORD_VES3D_DIM*1)*i, false);
+          PVFMMVec_t qforce(M_ves*(COORD_DIM*1), &qforce_single[0][0]+M_ves*(COORD_DIM*1)*i, false);
           StokesKernel<Real_t>::Kernel().k_s2t->      ker_poten(&s_coord[0], M_ves, &qforce[0], 1, &t_coord[0], Tb-Ta, &t_veloc[0], NULL);
         }
         if(qforce_double){ // Subtract wrong near potential
-          PVFMMVec_t qforce(M_ves*(COORD_VES3D_DIM*2), &qforce_double[0][0]+M_ves*(COORD_VES3D_DIM*2)*i, false);
+          PVFMMVec_t qforce(M_ves*(COORD_DIM*2), &qforce_double[0][0]+M_ves*(COORD_DIM*2)*i, false);
           StokesKernel<Real_t>::Kernel().k_s2t->dbl_layer_poten(&s_coord[0], M_ves, &qforce[0], 1, &t_coord[0], Tb-Ta, &t_veloc[0], NULL);
         }
       }
@@ -1214,7 +1214,7 @@ void NearSingular<Real_t>::SubtractDirect(PVFMMVec_t& vel_fmm){
 template<typename Real_t>
 void NearSingular<Real_t>::VelocityScatter(PVFMMVec_t& trg_vel){
   PVFMMVec_t trg_vel_in;
-  { // Initialize trg_vel_in <-- trg_vel; trg_vel <-- Zeros(trg_count*COORD_VES3D_DIM);
+  { // Initialize trg_vel_in <-- trg_vel; trg_vel <-- Zeros(trg_count*COORD_DIM);
     trg_vel_in.Swap(trg_vel);
     trg_vel.ReInit(T.Dim());
     trg_vel.SetZero();
@@ -1228,7 +1228,7 @@ void NearSingular<Real_t>::VelocityScatter(PVFMMVec_t& trg_vel){
     size_t trg_id_offset;
     { // Get trg_id_offset
       long long disp=0;
-      long long size=trg_vel.Dim()/COORD_VES3D_DIM;
+      long long size=trg_vel.Dim()/COORD_DIM;
       MPI_Scan(&size, &disp, 1, MPI_LONG_LONG, MPI_SUM, comm);
       trg_id_offset=disp-size;
     }
@@ -1242,9 +1242,9 @@ void NearSingular<Real_t>::VelocityScatter(PVFMMVec_t& trg_vel){
       while(b>0 && b<trg_pt_id.Dim() && trg_pt_id[b-1]==trg_pt_id[b]) b++;
       for(size_t i=a;i<b;i++){
         size_t pt_id=trg_pt_id[i]-trg_id_offset;
-        trg_vel[pt_id*COORD_VES3D_DIM+0]+=trg_vel_in[i*COORD_VES3D_DIM+0];;
-        trg_vel[pt_id*COORD_VES3D_DIM+1]+=trg_vel_in[i*COORD_VES3D_DIM+1];;
-        trg_vel[pt_id*COORD_VES3D_DIM+2]+=trg_vel_in[i*COORD_VES3D_DIM+2];;
+        trg_vel[pt_id*COORD_DIM+0]+=trg_vel_in[i*COORD_DIM+0];;
+        trg_vel[pt_id*COORD_DIM+1]+=trg_vel_in[i*COORD_DIM+1];;
+        trg_vel[pt_id*COORD_DIM+2]+=trg_vel_in[i*COORD_DIM+2];;
       }
     }
     pvfmm::Profile::Toc();
@@ -1258,7 +1258,7 @@ void NearSingular<Real_t>::VelocityScatter(PVFMMVec_t& trg_vel){
 
     Tree_t pt_tree(comm);
     NodeData_t node_data;
-    node_data.dim=COORD_VES3D_DIM;
+    node_data.dim=COORD_DIM;
     node_data.max_depth=MAX_DEPTH;
     node_data.max_pts=coord_setup.near_trg_coord.Dim();
 
@@ -1266,7 +1266,7 @@ void NearSingular<Real_t>::VelocityScatter(PVFMMVec_t& trg_vel){
       PVFMMVec_t&           near_trg_coord=coord_setup.near_trg_coord;
       pvfmm::Vector<size_t>&  near_trg_cnt=coord_setup.  near_trg_cnt;
 
-      Real_t scale_x, shift_x[COORD_VES3D_DIM];
+      Real_t scale_x, shift_x[COORD_DIM];
       {
         shift_x[0]=coord_setup.bbox[0];
         shift_x[1]=coord_setup.bbox[1];
@@ -1275,13 +1275,13 @@ void NearSingular<Real_t>::VelocityScatter(PVFMMVec_t& trg_vel){
       }
 
       node_data.pt_coord=near_trg_coord;
-      for(size_t i=0;i<node_data.pt_coord.Dim()/COORD_VES3D_DIM;i++){
-        for(size_t k=0;k<COORD_VES3D_DIM;k++){
-          Real_t c=node_data.pt_coord[i*COORD_VES3D_DIM+k];
+      for(size_t i=0;i<node_data.pt_coord.Dim()/COORD_DIM;i++){
+        for(size_t k=0;k<COORD_DIM;k++){
+          Real_t c=node_data.pt_coord[i*COORD_DIM+k];
           c=c*scale_x+shift_x[k];
           while(c< 0.0) c+=1.0;
           while(c>=1.0) c-=1.0;
-          node_data.pt_coord[i*COORD_VES3D_DIM+k]=c;
+          node_data.pt_coord[i*COORD_DIM+k]=c;
         }
       }
 
@@ -1289,8 +1289,8 @@ void NearSingular<Real_t>::VelocityScatter(PVFMMVec_t& trg_vel){
       size_t ves_id_offset;
       { // Get ves_id_offset
         size_t M_ves = VES_STRIDE;                 // Points per vesicle
-        size_t N_ves = S->Dim()/(M_ves*COORD_VES3D_DIM); // Number of vesicles
-        assert(N_ves*(M_ves*COORD_VES3D_DIM) == S->Dim());
+        size_t N_ves = S->Dim()/(M_ves*COORD_DIM); // Number of vesicles
+        assert(N_ves*(M_ves*COORD_DIM) == S->Dim());
 
         { // Get ves_id_offset
           long long disp=0;
@@ -1319,12 +1319,12 @@ void NearSingular<Real_t>::VelocityScatter(PVFMMVec_t& trg_vel){
 
     Tree_t pt_tree(comm);
     NodeData_t node_data;
-    node_data.dim=COORD_VES3D_DIM;
+    node_data.dim=COORD_DIM;
     node_data.max_depth=MAX_DEPTH;
     node_data.max_pts=T.Dim();
 
     { // Set node_data.pt_coord, node_data.pt_value
-      Real_t scale_x, shift_x[COORD_VES3D_DIM];
+      Real_t scale_x, shift_x[COORD_DIM];
       {
         shift_x[0]=coord_setup.bbox[0];
         shift_x[1]=coord_setup.bbox[1];
@@ -1333,13 +1333,13 @@ void NearSingular<Real_t>::VelocityScatter(PVFMMVec_t& trg_vel){
       }
 
       node_data.pt_coord=T;
-      for(size_t i=0;i<node_data.pt_coord.Dim()/COORD_VES3D_DIM;i++){
-        for(size_t k=0;k<COORD_VES3D_DIM;k++){
-          Real_t c=node_data.pt_coord[i*COORD_VES3D_DIM+k];
+      for(size_t i=0;i<node_data.pt_coord.Dim()/COORD_DIM;i++){
+        for(size_t k=0;k<COORD_DIM;k++){
+          Real_t c=node_data.pt_coord[i*COORD_DIM+k];
           c=c*scale_x+shift_x[k];
           while(c< 0.0) c+=1.0;
           while(c>=1.0) c-=1.0;
-          node_data.pt_coord[i*COORD_VES3D_DIM+k]=c;
+          node_data.pt_coord[i*COORD_DIM+k]=c;
         }
       }
       node_data.pt_value=trg_vel;
@@ -1404,8 +1404,8 @@ const NearSingular<Real_t>::PVFMMVec_t& NearSingular<Real_t>::operator()(bool up
   PVFMMVec_t& proj_coord      =coord_setup.proj_coord      ;
 
   size_t M_ves = VES_STRIDE;                 // Points per vesicle
-  size_t N_ves = S->Dim()/(M_ves*COORD_VES3D_DIM); // Number of vesicles
-  assert(N_ves*(M_ves*COORD_VES3D_DIM) == S->Dim());
+  size_t N_ves = S->Dim()/(M_ves*COORD_DIM); // Number of vesicles
+  assert(N_ves*(M_ves*COORD_DIM) == S->Dim());
 
   vel_interp.ReInit(trg_coord.Dim());
   pvfmm::Profile::Tic("VelocInterp",&comm,true);
@@ -1419,23 +1419,23 @@ const NearSingular<Real_t>::PVFMMVec_t& NearSingular<Real_t>::operator()(bool up
     size_t a=((tid+0)*N_ves)/omp_p;
     size_t b=((tid+1)*N_ves)/omp_p;
     for(size_t i=a;i<b;i++) if(trg_cnt[i]){ // loop over all vesicles
-      PVFMMVec_t s_coord(M_ves*COORD_VES3D_DIM, &S[0][i*M_ves*COORD_VES3D_DIM], false);
+      PVFMMVec_t s_coord(M_ves*COORD_DIM, &S[0][i*M_ves*COORD_DIM], false);
       { // Resize interp_coord, interp_veloc, patch_veloc, interp_x; interp_veloc[:]=0
-        interp_coord.Resize(trg_cnt[i]*(INTERP_DEG-1)*COORD_VES3D_DIM);
-        interp_veloc.Resize(trg_cnt[i]*(INTERP_DEG-1)*COORD_VES3D_DIM);
-        patch_veloc .Resize(trg_cnt[i]               *COORD_VES3D_DIM);
+        interp_coord.Resize(trg_cnt[i]*(INTERP_DEG-1)*COORD_DIM);
+        interp_veloc.Resize(trg_cnt[i]*(INTERP_DEG-1)*COORD_DIM);
+        patch_veloc .Resize(trg_cnt[i]               *COORD_DIM);
         interp_x    .Resize(trg_cnt[i]                         );
         interp_veloc.SetZero();
       }
       { // Set interp_x, interp_coord
         for(size_t j=0;j<trg_cnt[i];j++){ // loop over target points
           size_t trg_idx=trg_dsp[i]+j;
-          Real_t interp_coord0[COORD_VES3D_DIM]={proj_coord[trg_idx*COORD_VES3D_DIM+0],
-                                           proj_coord[trg_idx*COORD_VES3D_DIM+1],
-                                           proj_coord[trg_idx*COORD_VES3D_DIM+2]};
-          Real_t dR[COORD_VES3D_DIM]={trg_coord[trg_idx*COORD_VES3D_DIM+0]-interp_coord0[0],
-                                trg_coord[trg_idx*COORD_VES3D_DIM+1]-interp_coord0[1],
-                                trg_coord[trg_idx*COORD_VES3D_DIM+2]-interp_coord0[2]};
+          Real_t interp_coord0[COORD_DIM]={proj_coord[trg_idx*COORD_DIM+0],
+                                           proj_coord[trg_idx*COORD_DIM+1],
+                                           proj_coord[trg_idx*COORD_DIM+2]};
+          Real_t dR[COORD_DIM]={trg_coord[trg_idx*COORD_DIM+0]-interp_coord0[0],
+                                trg_coord[trg_idx*COORD_DIM+1]-interp_coord0[1],
+                                trg_coord[trg_idx*COORD_DIM+2]-interp_coord0[2]};
           Real_t dR_norm=sqrt(dR[0]*dR[0]+dR[1]*dR[1]+dR[2]*dR[2]);
           if(!is_extr_pt[trg_idx] && trg_is_surf) dR_norm=-dR_norm; // always use exterior normal
           Real_t OOdR=1.0/dR_norm;
@@ -1447,18 +1447,18 @@ const NearSingular<Real_t>::PVFMMVec_t& NearSingular<Real_t>::operator()(bool up
           interp_x[j]=dR_norm/r_near;
           for(size_t l=0;l<INTERP_DEG-1;l++){
             Real_t x=InterPoints<Real_t>(l+1, INTERP_DEG);
-            interp_coord[(l+j*(INTERP_DEG-1))*COORD_VES3D_DIM+0]=interp_coord0[0]+dR[0]*OOdR*r_near*x;
-            interp_coord[(l+j*(INTERP_DEG-1))*COORD_VES3D_DIM+1]=interp_coord0[1]+dR[1]*OOdR*r_near*x;
-            interp_coord[(l+j*(INTERP_DEG-1))*COORD_VES3D_DIM+2]=interp_coord0[2]+dR[2]*OOdR*r_near*x;
+            interp_coord[(l+j*(INTERP_DEG-1))*COORD_DIM+0]=interp_coord0[0]+dR[0]*OOdR*r_near*x;
+            interp_coord[(l+j*(INTERP_DEG-1))*COORD_DIM+1]=interp_coord0[1]+dR[1]*OOdR*r_near*x;
+            interp_coord[(l+j*(INTERP_DEG-1))*COORD_DIM+2]=interp_coord0[2]+dR[2]*OOdR*r_near*x;
           }
         }
       }
       if(interp_veloc.Dim()){ // Set interp_veloc
         if(qforce_single){
-          StokesKernel<Real_t>::Kernel().k_s2t->ker_poten(&s_coord[0], M_ves, &qforce_single[0][0]+M_ves*(COORD_VES3D_DIM*1)*i, 1, &interp_coord[0], interp_coord.Dim()/COORD_VES3D_DIM, &interp_veloc[0], NULL);
+          StokesKernel<Real_t>::Kernel().k_s2t->ker_poten(&s_coord[0], M_ves, &qforce_single[0][0]+M_ves*(COORD_DIM*1)*i, 1, &interp_coord[0], interp_coord.Dim()/COORD_DIM, &interp_veloc[0], NULL);
         }
         if(qforce_double){
-          StokesKernel<Real_t>::Kernel().k_s2t->dbl_layer_poten(&s_coord[0], M_ves, &qforce_double[0][0]+M_ves*(COORD_VES3D_DIM*2)*i, 1, &interp_coord[0], interp_coord.Dim()/COORD_VES3D_DIM, &interp_veloc[0], NULL);
+          StokesKernel<Real_t>::Kernel().k_s2t->dbl_layer_poten(&s_coord[0], M_ves, &qforce_double[0][0]+M_ves*(COORD_DIM*2)*i, 1, &interp_coord[0], interp_coord.Dim()/COORD_DIM, &interp_veloc[0], NULL);
         }
       }
       { // Set patch_veloc
@@ -1466,24 +1466,24 @@ const NearSingular<Real_t>::PVFMMVec_t& NearSingular<Real_t>::operator()(bool up
           size_t trg_idx=trg_dsp[i]+j;
           QuadraticPatch patch;
           { // create patch
-            Real_t mesh[3*3*COORD_VES3D_DIM];
+            Real_t mesh[3*3*COORD_DIM];
             { // compute mesh
               size_t k_=coord_setup.near_ves_pt_id[trg_idx]-M_ves*i;
-              QuadraticPatch::patch_mesh(mesh   , sh_order_, k_, &S_vel       [0][i*M_ves*COORD_VES3D_DIM]);
+              QuadraticPatch::patch_mesh(mesh   , sh_order_, k_, &S_vel       [0][i*M_ves*COORD_DIM]);
             }
             if(force_double){ // add contribution from force_double to mesh
-              Real_t mesh_fd[3*3*COORD_VES3D_DIM];
+              Real_t mesh_fd[3*3*COORD_DIM];
               size_t k_=coord_setup.near_ves_pt_id[trg_idx]-M_ves*i;
-              QuadraticPatch::patch_mesh(mesh_fd, sh_order_, k_, &force_double[0][i*M_ves*COORD_VES3D_DIM]);
+              QuadraticPatch::patch_mesh(mesh_fd, sh_order_, k_, &force_double[0][i*M_ves*COORD_DIM]);
               Real_t scal=0.5; if(!is_extr_pt[trg_idx] && !trg_is_surf) scal=-0.5;
-              for(size_t k=0;k<3*3*COORD_VES3D_DIM;k++) mesh[k]+=scal*mesh_fd[k];
+              for(size_t k=0;k<3*3*COORD_DIM;k++) mesh[k]+=scal*mesh_fd[k];
             }
-            patch=QuadraticPatch(&mesh[0],COORD_VES3D_DIM);
+            patch=QuadraticPatch(&mesh[0],COORD_DIM);
           }
           { // compute first interpolation point
             Real_t& x=proj_patch_param[trg_idx*2+0];
             Real_t& y=proj_patch_param[trg_idx*2+1];
-            patch.eval(x,y,&patch_veloc[j*COORD_VES3D_DIM]);
+            patch.eval(x,y,&patch_veloc[j*COORD_DIM]);
           }
         }
       }
@@ -1491,10 +1491,10 @@ const NearSingular<Real_t>::PVFMMVec_t& NearSingular<Real_t>::operator()(bool up
       { // Interpolate
         for(size_t j=0;j<trg_cnt[i];j++){ // loop over target points
           size_t trg_idx=trg_dsp[i]+j;
-          Real_t* veloc_interp_=&vel_interp[trg_idx*COORD_VES3D_DIM];
+          Real_t* veloc_interp_=&vel_interp[trg_idx*COORD_DIM];
           if(interp_x[j]==0){
-            for(size_t k=0;k<COORD_VES3D_DIM;k++){
-              veloc_interp_[k]=patch_veloc[j*COORD_VES3D_DIM+k];
+            for(size_t k=0;k<COORD_DIM;k++){
+              veloc_interp_[k]=patch_veloc[j*COORD_DIM+k];
             }
           }else{ // Interpolate and find target velocity veloc_interp_
             pvfmm::Matrix<Real_t> y(INTERP_DEG,1);
@@ -1503,10 +1503,10 @@ const NearSingular<Real_t>::PVFMMVec_t& NearSingular<Real_t>::operator()(bool up
             for(size_t l=0;l<INTERP_DEG;l++){
               x[l][0]=InterPoly(x_,l,INTERP_DEG);
             }
-            for(size_t k=0;k<COORD_VES3D_DIM;k++){
-              y[0][0]=patch_veloc[j*COORD_VES3D_DIM+k];
+            for(size_t k=0;k<COORD_DIM;k++){
+              y[0][0]=patch_veloc[j*COORD_DIM+k];
               for(size_t l=0;l<INTERP_DEG-1;l++){
-                y[l+1][0]=interp_veloc[(l+j*(INTERP_DEG-1))*COORD_VES3D_DIM+k];
+                y[l+1][0]=interp_veloc[(l+j*(INTERP_DEG-1))*COORD_DIM+k];
               }
               #if 0
               static pvfmm::Matrix<Real_t> M;
@@ -1596,21 +1596,21 @@ int NearSingular<Real_t>::QuadraticPatch::project(Real_t* t_coord_j, Real_t& x, 
     }
   }
 
-  assert(dof==COORD_VES3D_DIM);
-  Real_t sc[COORD_VES3D_DIM];
+  assert(dof==COORD_DIM);
+  Real_t sc[COORD_DIM];
   x=0; y=0;
   eval(x,y,sc);
   while(1){
-    Real_t dR[COORD_VES3D_DIM]={t_coord_j[0]-sc[0],
+    Real_t dR[COORD_DIM]={t_coord_j[0]-sc[0],
                           t_coord_j[1]-sc[1],
                           t_coord_j[2]-sc[2]};
     Real_t dR2=dR[0]*dR[0]+dR[1]*dR[1]+dR[2]*dR[2];
 
-    Real_t sgrad[2*COORD_VES3D_DIM];
+    Real_t sgrad[2*COORD_DIM];
     grad(x,y,sgrad);
 
     { // Break when |dR-(dR.n)n| < 1e-8
-      Real_t n[COORD_VES3D_DIM];
+      Real_t n[COORD_DIM];
       n[0]=sgrad[1]*sgrad[3+2]-sgrad[2]*sgrad[3+1];
       n[1]=sgrad[2]*sgrad[3+0]-sgrad[0]*sgrad[3+2];
       n[2]=sgrad[0]*sgrad[3+1]-sgrad[1]*sgrad[3+0];
@@ -1669,17 +1669,17 @@ int NearSingular<Real_t>::QuadraticPatch::project(Real_t* t_coord_j, Real_t& x, 
       { // Account for curvature.
         Real_t dR2_[3]={dR2,0,0};
         { // x+dx*0.5,y+dy*0.5
-          Real_t sc[COORD_VES3D_DIM];
+          Real_t sc[COORD_DIM];
           eval(x+dx*0.5,y+dy*0.5,sc);
-          Real_t dR[COORD_VES3D_DIM]={t_coord_j[0]-sc[0],
+          Real_t dR[COORD_DIM]={t_coord_j[0]-sc[0],
                                 t_coord_j[1]-sc[1],
                                 t_coord_j[2]-sc[2]};
           dR2_[1]=dR[0]*dR[0]+dR[1]*dR[1]+dR[2]*dR[2];
         }
         { // x+dx*1.0,y+dy*1.0
-          Real_t sc[COORD_VES3D_DIM];
+          Real_t sc[COORD_DIM];
           eval(x+dx*1.0,y+dy*1.0,sc);
-          Real_t dR[COORD_VES3D_DIM]={t_coord_j[0]-sc[0],
+          Real_t dR[COORD_DIM]={t_coord_j[0]-sc[0],
                                 t_coord_j[1]-sc[1],
                                 t_coord_j[2]-sc[2]};
           dR2_[2]=dR[0]*dR[0]+dR[1]*dR[1]+dR[2]*dR[2];
@@ -1699,7 +1699,7 @@ int NearSingular<Real_t>::QuadraticPatch::project(Real_t* t_coord_j, Real_t& x, 
       { // check if dx, dy reduce dR2
         Real_t dR2_;
         eval(x+dx,y+dy,sc);
-        Real_t dR[COORD_VES3D_DIM]={t_coord_j[0]-sc[0],
+        Real_t dR[COORD_DIM]={t_coord_j[0]-sc[0],
                               t_coord_j[1]-sc[1],
                               t_coord_j[2]-sc[2]};
         dR2_=dR[0]*dR[0]+dR[1]*dR[1]+dR[2]*dR[2];
@@ -1713,10 +1713,10 @@ int NearSingular<Real_t>::QuadraticPatch::project(Real_t* t_coord_j, Real_t& x, 
   }
 
   { // Determine direction of point (exterior or interior)
-    Real_t dR[COORD_VES3D_DIM]={t_coord_j[0]-sc[0],
+    Real_t dR[COORD_DIM]={t_coord_j[0]-sc[0],
                           t_coord_j[1]-sc[1],
                           t_coord_j[2]-sc[2]};
-    Real_t sgrad[2*COORD_VES3D_DIM];
+    Real_t sgrad[2*COORD_DIM];
     grad(x,y,sgrad);
 
     Real_t direc=0;
@@ -1757,46 +1757,46 @@ void NearSingular<Real_t>::QuadraticPatch::patch_mesh(Real_t* patch_value_, size
   size_t k0_max=1+sh_order;
   size_t k1_max=2*sh_order;
   if(k_==0){ // Create patch
-    Real_t tmp[COORD_VES3D_DIM*8];
-    pvfmm::Matrix<Real_t> value(8,COORD_VES3D_DIM,tmp,false);
+    Real_t tmp[COORD_DIM*8];
+    pvfmm::Matrix<Real_t> value(8,COORD_DIM,tmp,false);
     { // Set value
       int k=2+0*k1_max;
-      pvfmm::Matrix<Real_t> X(k1_max,COORD_VES3D_DIM,(Real_t*)&s_value[k*COORD_VES3D_DIM],false);
+      pvfmm::Matrix<Real_t> X(k1_max,COORD_DIM,(Real_t*)&s_value[k*COORD_DIM],false);
       pvfmm::Matrix<Real_t>::GEMM(value,M_patch_interp[sh_order],X);
     }
 
-    for(size_t i=0;i<COORD_VES3D_DIM;i++) patch_value_[(0*3+0)*COORD_VES3D_DIM+i]=value[0][i];
-    for(size_t i=0;i<COORD_VES3D_DIM;i++) patch_value_[(0*3+1)*COORD_VES3D_DIM+i]=value[7][i];
-    for(size_t i=0;i<COORD_VES3D_DIM;i++) patch_value_[(0*3+2)*COORD_VES3D_DIM+i]=value[6][i];
+    for(size_t i=0;i<COORD_DIM;i++) patch_value_[(0*3+0)*COORD_DIM+i]=value[0][i];
+    for(size_t i=0;i<COORD_DIM;i++) patch_value_[(0*3+1)*COORD_DIM+i]=value[7][i];
+    for(size_t i=0;i<COORD_DIM;i++) patch_value_[(0*3+2)*COORD_DIM+i]=value[6][i];
 
-    for(size_t i=0;i<COORD_VES3D_DIM;i++) patch_value_[(1*3+0)*COORD_VES3D_DIM+i]=value[1][i];
-    for(size_t i=0;i<COORD_VES3D_DIM;i++) patch_value_[(1*3+1)*COORD_VES3D_DIM+i]=s_value[0*COORD_VES3D_DIM+i];
-    for(size_t i=0;i<COORD_VES3D_DIM;i++) patch_value_[(1*3+2)*COORD_VES3D_DIM+i]=value[5][i];
+    for(size_t i=0;i<COORD_DIM;i++) patch_value_[(1*3+0)*COORD_DIM+i]=value[1][i];
+    for(size_t i=0;i<COORD_DIM;i++) patch_value_[(1*3+1)*COORD_DIM+i]=s_value[0*COORD_DIM+i];
+    for(size_t i=0;i<COORD_DIM;i++) patch_value_[(1*3+2)*COORD_DIM+i]=value[5][i];
 
-    for(size_t i=0;i<COORD_VES3D_DIM;i++) patch_value_[(2*3+0)*COORD_VES3D_DIM+i]=value[2][i];
-    for(size_t i=0;i<COORD_VES3D_DIM;i++) patch_value_[(2*3+1)*COORD_VES3D_DIM+i]=value[3][i];
-    for(size_t i=0;i<COORD_VES3D_DIM;i++) patch_value_[(2*3+2)*COORD_VES3D_DIM+i]=value[4][i];
+    for(size_t i=0;i<COORD_DIM;i++) patch_value_[(2*3+0)*COORD_DIM+i]=value[2][i];
+    for(size_t i=0;i<COORD_DIM;i++) patch_value_[(2*3+1)*COORD_DIM+i]=value[3][i];
+    for(size_t i=0;i<COORD_DIM;i++) patch_value_[(2*3+2)*COORD_DIM+i]=value[4][i];
 
   }else if(k_==1){
-    Real_t tmp[COORD_VES3D_DIM*8];
-    pvfmm::Matrix<Real_t> value(8,COORD_VES3D_DIM,tmp,false);
+    Real_t tmp[COORD_DIM*8];
+    pvfmm::Matrix<Real_t> value(8,COORD_DIM,tmp,false);
     { // Set value
       int k=2+(k0_max-1)*k1_max;
-      pvfmm::Matrix<Real_t> X(k1_max,COORD_VES3D_DIM,(Real_t*)&s_value[k*COORD_VES3D_DIM],false);
+      pvfmm::Matrix<Real_t> X(k1_max,COORD_DIM,(Real_t*)&s_value[k*COORD_DIM],false);
       pvfmm::Matrix<Real_t>::GEMM(value,M_patch_interp[sh_order],X);
     }
 
-    for(size_t i=0;i<COORD_VES3D_DIM;i++) patch_value_[(0*3+0)*COORD_VES3D_DIM+i]=value[0][i];
-    for(size_t i=0;i<COORD_VES3D_DIM;i++) patch_value_[(0*3+1)*COORD_VES3D_DIM+i]=value[1][i];
-    for(size_t i=0;i<COORD_VES3D_DIM;i++) patch_value_[(0*3+2)*COORD_VES3D_DIM+i]=value[2][i];
+    for(size_t i=0;i<COORD_DIM;i++) patch_value_[(0*3+0)*COORD_DIM+i]=value[0][i];
+    for(size_t i=0;i<COORD_DIM;i++) patch_value_[(0*3+1)*COORD_DIM+i]=value[1][i];
+    for(size_t i=0;i<COORD_DIM;i++) patch_value_[(0*3+2)*COORD_DIM+i]=value[2][i];
 
-    for(size_t i=0;i<COORD_VES3D_DIM;i++) patch_value_[(1*3+0)*COORD_VES3D_DIM+i]=value[7][i];
-    for(size_t i=0;i<COORD_VES3D_DIM;i++) patch_value_[(1*3+1)*COORD_VES3D_DIM+i]=s_value[1*COORD_VES3D_DIM+i];
-    for(size_t i=0;i<COORD_VES3D_DIM;i++) patch_value_[(1*3+2)*COORD_VES3D_DIM+i]=value[3][i];
+    for(size_t i=0;i<COORD_DIM;i++) patch_value_[(1*3+0)*COORD_DIM+i]=value[7][i];
+    for(size_t i=0;i<COORD_DIM;i++) patch_value_[(1*3+1)*COORD_DIM+i]=s_value[1*COORD_DIM+i];
+    for(size_t i=0;i<COORD_DIM;i++) patch_value_[(1*3+2)*COORD_DIM+i]=value[3][i];
 
-    for(size_t i=0;i<COORD_VES3D_DIM;i++) patch_value_[(2*3+0)*COORD_VES3D_DIM+i]=value[6][i];
-    for(size_t i=0;i<COORD_VES3D_DIM;i++) patch_value_[(2*3+1)*COORD_VES3D_DIM+i]=value[5][i];
-    for(size_t i=0;i<COORD_VES3D_DIM;i++) patch_value_[(2*3+2)*COORD_VES3D_DIM+i]=value[4][i];
+    for(size_t i=0;i<COORD_DIM;i++) patch_value_[(2*3+0)*COORD_DIM+i]=value[6][i];
+    for(size_t i=0;i<COORD_DIM;i++) patch_value_[(2*3+1)*COORD_DIM+i]=value[5][i];
+    for(size_t i=0;i<COORD_DIM;i++) patch_value_[(2*3+2)*COORD_DIM+i]=value[4][i];
 
   }else{
     int k0_, k1_; // mesh coordinates for nearest point
@@ -1807,41 +1807,41 @@ void NearSingular<Real_t>::QuadraticPatch::patch_mesh(Real_t* patch_value_, size
 
     { // (0,0)
       int k=0; if(k0_>0) k=2+((k1_+k1_max-1)%k1_max)+(k0_-1)*k1_max;
-      for(size_t i=0;i<COORD_VES3D_DIM;i++) patch_value_[(0*3+0)*COORD_VES3D_DIM+i]=s_value[k*COORD_VES3D_DIM+i];
+      for(size_t i=0;i<COORD_DIM;i++) patch_value_[(0*3+0)*COORD_DIM+i]=s_value[k*COORD_DIM+i];
     }
     { // (0,1)
       int k=0; if(k0_>0) k=2+  k1_                  +(k0_-1)*k1_max;
-      for(size_t i=0;i<COORD_VES3D_DIM;i++) patch_value_[(0*3+1)*COORD_VES3D_DIM+i]=s_value[k*COORD_VES3D_DIM+i];
+      for(size_t i=0;i<COORD_DIM;i++) patch_value_[(0*3+1)*COORD_DIM+i]=s_value[k*COORD_DIM+i];
     }
     { // (0,2)
       int k=0; if(k0_>0) k=2+((k1_       +1)%k1_max)+(k0_-1)*k1_max;
-      for(size_t i=0;i<COORD_VES3D_DIM;i++) patch_value_[(0*3+2)*COORD_VES3D_DIM+i]=s_value[k*COORD_VES3D_DIM+i];
+      for(size_t i=0;i<COORD_DIM;i++) patch_value_[(0*3+2)*COORD_DIM+i]=s_value[k*COORD_DIM+i];
     }
 
     { // (1,0)
       int k=2+((k1_+k1_max-1)%k1_max)+k0_*k1_max;
-      for(size_t i=0;i<COORD_VES3D_DIM;i++) patch_value_[(1*3+0)*COORD_VES3D_DIM+i]=s_value[k*COORD_VES3D_DIM+i];
+      for(size_t i=0;i<COORD_DIM;i++) patch_value_[(1*3+0)*COORD_DIM+i]=s_value[k*COORD_DIM+i];
     }
     { // (1,1)
       int k=2+  k1_                  +k0_*k1_max;
-      for(size_t i=0;i<COORD_VES3D_DIM;i++) patch_value_[(1*3+1)*COORD_VES3D_DIM+i]=s_value[k*COORD_VES3D_DIM+i];
+      for(size_t i=0;i<COORD_DIM;i++) patch_value_[(1*3+1)*COORD_DIM+i]=s_value[k*COORD_DIM+i];
     }
     { // (1,2)
       int k=2+((k1_       +1)%k1_max)+k0_*k1_max;
-      for(size_t i=0;i<COORD_VES3D_DIM;i++) patch_value_[(1*3+2)*COORD_VES3D_DIM+i]=s_value[k*COORD_VES3D_DIM+i];
+      for(size_t i=0;i<COORD_DIM;i++) patch_value_[(1*3+2)*COORD_DIM+i]=s_value[k*COORD_DIM+i];
     }
 
     { // (2,0)
       int k=1; if(k0_<k0_max-1) k=2+((k1_+k1_max-1)%k1_max)+(k0_+1)*k1_max;
-      for(size_t i=0;i<COORD_VES3D_DIM;i++) patch_value_[(2*3+0)*COORD_VES3D_DIM+i]=s_value[k*COORD_VES3D_DIM+i];
+      for(size_t i=0;i<COORD_DIM;i++) patch_value_[(2*3+0)*COORD_DIM+i]=s_value[k*COORD_DIM+i];
     }
     { // (2,1)
       int k=1; if(k0_<k0_max-1) k=2+  k1_                  +(k0_+1)*k1_max;
-      for(size_t i=0;i<COORD_VES3D_DIM;i++) patch_value_[(2*3+1)*COORD_VES3D_DIM+i]=s_value[k*COORD_VES3D_DIM+i];
+      for(size_t i=0;i<COORD_DIM;i++) patch_value_[(2*3+1)*COORD_DIM+i]=s_value[k*COORD_DIM+i];
     }
     { // (2,2)
       int k=1; if(k0_<k0_max-1) k=2+((k1_       +1)%k1_max)+(k0_+1)*k1_max;
-      for(size_t i=0;i<COORD_VES3D_DIM;i++) patch_value_[(2*3+2)*COORD_VES3D_DIM+i]=s_value[k*COORD_VES3D_DIM+i];
+      for(size_t i=0;i<COORD_DIM;i++) patch_value_[(2*3+2)*COORD_DIM+i]=s_value[k*COORD_DIM+i];
     }
 
   }
@@ -1874,7 +1874,7 @@ void NearSingular<Real_t>::QuadraticPatch::patch_mesh(Real_t* patch_value_, size
       }
       #pragma omp flush(compute_M)
     }
-    pvfmm::Matrix<Real_t> v(3*3, COORD_VES3D_DIM, patch_value_, false);
+    pvfmm::Matrix<Real_t> v(3*3, COORD_DIM, patch_value_, false);
     v = M * v;
   }
 }

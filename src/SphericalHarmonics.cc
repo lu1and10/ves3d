@@ -793,7 +793,7 @@ std::vector<pvfmm::Matrix<Real> >& SphericalHarmonics<Real>::MatRotate(long p0){
     for(long l=0;l<p0+1;l++){ // For each rotation angle
       pvfmm::Matrix<Real> Mcoord1;
       { // Rotate coordinates
-        pvfmm::Matrix<Real> M(COORD_VES3D_DIM, COORD_VES3D_DIM);
+        pvfmm::Matrix<Real> M(COORD_DIM, COORD_DIM);
         Real cos_=-x[l];
         Real sin_=-sqrt(1.0-x[l]*x[l]);
         M[0][0]= cos_; M[0][1]=0; M[0][2]=-sin_;
@@ -863,9 +863,9 @@ template <class Real>
 void SphericalHarmonics<Real>::StokesSingularInteg(const pvfmm::Vector<Real>& S, long p0, long p1, pvfmm::Vector<Real>* SLMatrix, pvfmm::Vector<Real>* DLMatrix){
   long Ngrid=2*p0*(p0+1);
   long Ncoef=  p0*(p0+2);
-  long Nves=S.Dim()/(Ngrid*COORD_VES3D_DIM);
-  if(SLMatrix) SLMatrix->ReInit(Nves*(Ncoef*COORD_VES3D_DIM)*(Ncoef*COORD_VES3D_DIM));
-  if(DLMatrix) DLMatrix->ReInit(Nves*(Ncoef*COORD_VES3D_DIM)*(Ncoef*COORD_VES3D_DIM));
+  long Nves=S.Dim()/(Ngrid*COORD_DIM);
+  if(SLMatrix) SLMatrix->ReInit(Nves*(Ncoef*COORD_DIM)*(Ncoef*COORD_DIM));
+  if(DLMatrix) DLMatrix->ReInit(Nves*(Ncoef*COORD_DIM)*(Ncoef*COORD_DIM));
 
   long BLOCK_SIZE=6e9/((3*2*p1*(p1+1))*(3*2*p0*(p0+1))*2*8); // Limit memory usage to 6GB
   BLOCK_SIZE=std::min<long>(BLOCK_SIZE,omp_get_max_threads());
@@ -875,9 +875,9 @@ void SphericalHarmonics<Real>::StokesSingularInteg(const pvfmm::Vector<Real>& S,
     long b=std::min(a+BLOCK_SIZE, Nves);
 
     pvfmm::Vector<Real> _SLMatrix, _DLMatrix, _S;
-    if(SLMatrix) _SLMatrix.ReInit((b-a)*(Ncoef*COORD_VES3D_DIM)*(Ncoef*COORD_VES3D_DIM),&SLMatrix[0][a*(Ncoef*COORD_VES3D_DIM)*(Ncoef*COORD_VES3D_DIM)],false);
-    if(DLMatrix) _DLMatrix.ReInit((b-a)*(Ncoef*COORD_VES3D_DIM)*(Ncoef*COORD_VES3D_DIM),&DLMatrix[0][a*(Ncoef*COORD_VES3D_DIM)*(Ncoef*COORD_VES3D_DIM)],false);
-    _S                    .ReInit((b-a)*(Ngrid*COORD_VES3D_DIM)                  ,&S          [a*(Ngrid*COORD_VES3D_DIM)                  ],false);
+    if(SLMatrix) _SLMatrix.ReInit((b-a)*(Ncoef*COORD_DIM)*(Ncoef*COORD_DIM),&SLMatrix[0][a*(Ncoef*COORD_DIM)*(Ncoef*COORD_DIM)],false);
+    if(DLMatrix) _DLMatrix.ReInit((b-a)*(Ncoef*COORD_DIM)*(Ncoef*COORD_DIM),&DLMatrix[0][a*(Ncoef*COORD_DIM)*(Ncoef*COORD_DIM)],false);
+    _S                    .ReInit((b-a)*(Ngrid*COORD_DIM)                  ,&S          [a*(Ngrid*COORD_DIM)                  ],false);
 
     if(SLMatrix && DLMatrix) StokesSingularInteg_< true,  true>(_S, p0, p1, _SLMatrix, _DLMatrix);
     else        if(SLMatrix) StokesSingularInteg_< true, false>(_S, p0, p1, _SLMatrix, _DLMatrix);
@@ -956,7 +956,7 @@ void SphericalHarmonics<Real>::StokesSingularInteg_(const pvfmm::Vector<Real>& X
   pvfmm::Profile::Tic("Rotate");
   static pvfmm::Vector<Real> S0, S;
   SphericalHarmonics<Real>::Grid2SHC(X0, p0, p0, S0);
-  SphericalHarmonics<Real>::RotateAll(S0, p0, COORD_VES3D_DIM, S);
+  SphericalHarmonics<Real>::RotateAll(S0, p0, COORD_DIM, S);
   pvfmm::Profile::Toc();
 
 
@@ -972,8 +972,8 @@ void SphericalHarmonics<Real>::StokesSingularInteg_(const pvfmm::Vector<Real>& X
   { // Stokes kernel
     long M0=2*p0*(p0+1);
     long M1=2*p1*(p1+1);
-    long N=trg.Dim()/(2*COORD_VES3D_DIM);
-    assert(X.Dim()==M1*COORD_VES3D_DIM*N);
+    long N=trg.Dim()/(2*COORD_DIM);
+    assert(X.Dim()==M1*COORD_DIM*N);
     if(SLayer && SL0.Dim()!=N*2*6*M1) SL0.ReInit(2*N*6*M1);
     if(DLayer && DL0.Dim()!=N*2*6*M1) DL0.ReInit(2*N*6*M1);
     pvfmm::Vector<Real>& qw=SphericalHarmonics<Real>::SingularWeights(p1);
@@ -997,9 +997,9 @@ void SphericalHarmonics<Real>::StokesSingularInteg_(const pvfmm::Vector<Real>& X
         for(long t=0;t<2;t++){
           Real tx, ty, tz;
           { // Read target coordinates
-            tx=trg[i*2*COORD_VES3D_DIM+0*2+t];
-            ty=trg[i*2*COORD_VES3D_DIM+1*2+t];
-            tz=trg[i*2*COORD_VES3D_DIM+2*2+t];
+            tx=trg[i*2*COORD_DIM+0*2+t];
+            ty=trg[i*2*COORD_DIM+1*2+t];
+            tz=trg[i*2*COORD_DIM+2*2+t];
           }
 
           for(long j0=0;j0<p1+1;j0++){
@@ -1008,20 +1008,20 @@ void SphericalHarmonics<Real>::StokesSingularInteg_(const pvfmm::Vector<Real>& X
 
               Real dx, dy, dz;
               { // Compute dx, dy, dz
-                dx=tx-X[(i*COORD_VES3D_DIM+0)*M1+s];
-                dy=ty-X[(i*COORD_VES3D_DIM+1)*M1+s];
-                dz=tz-X[(i*COORD_VES3D_DIM+2)*M1+s];
+                dx=tx-X[(i*COORD_DIM+0)*M1+s];
+                dy=ty-X[(i*COORD_DIM+1)*M1+s];
+                dz=tz-X[(i*COORD_DIM+2)*M1+s];
               }
 
               Real nx, ny, nz;
               { // Compute source normal
-                Real x_theta=X_theta[(i*COORD_VES3D_DIM+0)*M1+s];
-                Real y_theta=X_theta[(i*COORD_VES3D_DIM+1)*M1+s];
-                Real z_theta=X_theta[(i*COORD_VES3D_DIM+2)*M1+s];
+                Real x_theta=X_theta[(i*COORD_DIM+0)*M1+s];
+                Real y_theta=X_theta[(i*COORD_DIM+1)*M1+s];
+                Real z_theta=X_theta[(i*COORD_DIM+2)*M1+s];
 
-                Real x_phi=X_phi[(i*COORD_VES3D_DIM+0)*M1+s];
-                Real y_phi=X_phi[(i*COORD_VES3D_DIM+1)*M1+s];
-                Real z_phi=X_phi[(i*COORD_VES3D_DIM+2)*M1+s];
+                Real x_phi=X_phi[(i*COORD_DIM+0)*M1+s];
+                Real y_phi=X_phi[(i*COORD_DIM+1)*M1+s];
+                Real z_phi=X_phi[(i*COORD_DIM+2)*M1+s];
 
                 nx=(y_theta*z_phi-z_theta*y_phi);
                 ny=(z_theta*x_phi-x_theta*z_phi);
@@ -1094,12 +1094,12 @@ void SphericalHarmonics<Real>::StokesSingularInteg_(const pvfmm::Vector<Real>& X
     long Ngrid=2*p0*(p0+1);
     { // Transpose SL2
       long N=SL2.Dim()/(6*Ncoef*Ngrid);
-      SL3.ReInit(N*COORD_VES3D_DIM*Ncoef*COORD_VES3D_DIM*Ngrid);
+      SL3.ReInit(N*COORD_DIM*Ncoef*COORD_DIM*Ngrid);
       #pragma omp parallel
       {
         long tid=omp_get_thread_num();
         long omp_p=omp_get_num_threads();
-        pvfmm::Matrix<Real> B(COORD_VES3D_DIM*Ncoef,Ngrid*COORD_VES3D_DIM);
+        pvfmm::Matrix<Real> B(COORD_DIM*Ncoef,Ngrid*COORD_DIM);
 
         long a=(tid+0)*N/omp_p;
         long b=(tid+1)*N/omp_p;
@@ -1107,23 +1107,23 @@ void SphericalHarmonics<Real>::StokesSingularInteg_(const pvfmm::Vector<Real>& X
           pvfmm::Matrix<Real> M0(Ngrid*6, Ncoef, &SL2[i*Ngrid*6*Ncoef], false);
           for(long k=0;k<Ncoef;k++){ // Transpose
             for(long j=0;j<Ngrid;j++){ // TODO: needs blocking
-              B[k+Ncoef*0][j*COORD_VES3D_DIM+0]=M0[j*6+0][k];
-              B[k+Ncoef*1][j*COORD_VES3D_DIM+0]=M0[j*6+1][k];
-              B[k+Ncoef*2][j*COORD_VES3D_DIM+0]=M0[j*6+2][k];
-              B[k+Ncoef*0][j*COORD_VES3D_DIM+1]=M0[j*6+1][k];
-              B[k+Ncoef*1][j*COORD_VES3D_DIM+1]=M0[j*6+3][k];
-              B[k+Ncoef*2][j*COORD_VES3D_DIM+1]=M0[j*6+4][k];
-              B[k+Ncoef*0][j*COORD_VES3D_DIM+2]=M0[j*6+2][k];
-              B[k+Ncoef*1][j*COORD_VES3D_DIM+2]=M0[j*6+4][k];
-              B[k+Ncoef*2][j*COORD_VES3D_DIM+2]=M0[j*6+5][k];
+              B[k+Ncoef*0][j*COORD_DIM+0]=M0[j*6+0][k];
+              B[k+Ncoef*1][j*COORD_DIM+0]=M0[j*6+1][k];
+              B[k+Ncoef*2][j*COORD_DIM+0]=M0[j*6+2][k];
+              B[k+Ncoef*0][j*COORD_DIM+1]=M0[j*6+1][k];
+              B[k+Ncoef*1][j*COORD_DIM+1]=M0[j*6+3][k];
+              B[k+Ncoef*2][j*COORD_DIM+1]=M0[j*6+4][k];
+              B[k+Ncoef*0][j*COORD_DIM+2]=M0[j*6+2][k];
+              B[k+Ncoef*1][j*COORD_DIM+2]=M0[j*6+4][k];
+              B[k+Ncoef*2][j*COORD_DIM+2]=M0[j*6+5][k];
             }
           }
-          pvfmm::Matrix<Real> M1(Ncoef*COORD_VES3D_DIM, COORD_VES3D_DIM*Ngrid, &SL3[i*COORD_VES3D_DIM*Ncoef*COORD_VES3D_DIM*Ngrid], false);
+          pvfmm::Matrix<Real> M1(Ncoef*COORD_DIM, COORD_DIM*Ngrid, &SL3[i*COORD_DIM*Ncoef*COORD_DIM*Ngrid], false);
           for(long k=0;k<B.Dim(0);k++){ // Rearrange
-            for(long j0=0;j0<COORD_VES3D_DIM;j0++){
+            for(long j0=0;j0<COORD_DIM;j0++){
               for(long j1=0;j1<p0+1;j1++){
-                for(long j2=0;j2<p0;j2++) M1[k][((j0*(p0+1)+   j1)*2+0)*p0+j2]=B[k][((j1*p0+j2)*2+0)*COORD_VES3D_DIM+j0];
-                for(long j2=0;j2<p0;j2++) M1[k][((j0*(p0+1)+p0-j1)*2+1)*p0+j2]=B[k][((j1*p0+j2)*2+1)*COORD_VES3D_DIM+j0];
+                for(long j2=0;j2<p0;j2++) M1[k][((j0*(p0+1)+   j1)*2+0)*p0+j2]=B[k][((j1*p0+j2)*2+0)*COORD_DIM+j0];
+                for(long j2=0;j2<p0;j2++) M1[k][((j0*(p0+1)+p0-j1)*2+1)*p0+j2]=B[k][((j1*p0+j2)*2+1)*COORD_DIM+j0];
               }
             }
           }
@@ -1132,12 +1132,12 @@ void SphericalHarmonics<Real>::StokesSingularInteg_(const pvfmm::Vector<Real>& X
     }
     { // Transpose DL2
       long N=DL2.Dim()/(6*Ncoef*Ngrid);
-      DL3.ReInit(N*COORD_VES3D_DIM*Ncoef*COORD_VES3D_DIM*Ngrid);
+      DL3.ReInit(N*COORD_DIM*Ncoef*COORD_DIM*Ngrid);
       #pragma omp parallel
       {
         long tid=omp_get_thread_num();
         long omp_p=omp_get_num_threads();
-        pvfmm::Matrix<Real> B(COORD_VES3D_DIM*Ncoef,Ngrid*COORD_VES3D_DIM);
+        pvfmm::Matrix<Real> B(COORD_DIM*Ncoef,Ngrid*COORD_DIM);
 
         long a=(tid+0)*N/omp_p;
         long b=(tid+1)*N/omp_p;
@@ -1145,23 +1145,23 @@ void SphericalHarmonics<Real>::StokesSingularInteg_(const pvfmm::Vector<Real>& X
           pvfmm::Matrix<Real> M0(Ngrid*6, Ncoef, &DL2[i*Ngrid*6*Ncoef], false);
           for(long k=0;k<Ncoef;k++){ // Transpose
             for(long j=0;j<Ngrid;j++){ // TODO: needs blocking
-              B[k+Ncoef*0][j*COORD_VES3D_DIM+0]=M0[j*6+0][k];
-              B[k+Ncoef*1][j*COORD_VES3D_DIM+0]=M0[j*6+1][k];
-              B[k+Ncoef*2][j*COORD_VES3D_DIM+0]=M0[j*6+2][k];
-              B[k+Ncoef*0][j*COORD_VES3D_DIM+1]=M0[j*6+1][k];
-              B[k+Ncoef*1][j*COORD_VES3D_DIM+1]=M0[j*6+3][k];
-              B[k+Ncoef*2][j*COORD_VES3D_DIM+1]=M0[j*6+4][k];
-              B[k+Ncoef*0][j*COORD_VES3D_DIM+2]=M0[j*6+2][k];
-              B[k+Ncoef*1][j*COORD_VES3D_DIM+2]=M0[j*6+4][k];
-              B[k+Ncoef*2][j*COORD_VES3D_DIM+2]=M0[j*6+5][k];
+              B[k+Ncoef*0][j*COORD_DIM+0]=M0[j*6+0][k];
+              B[k+Ncoef*1][j*COORD_DIM+0]=M0[j*6+1][k];
+              B[k+Ncoef*2][j*COORD_DIM+0]=M0[j*6+2][k];
+              B[k+Ncoef*0][j*COORD_DIM+1]=M0[j*6+1][k];
+              B[k+Ncoef*1][j*COORD_DIM+1]=M0[j*6+3][k];
+              B[k+Ncoef*2][j*COORD_DIM+1]=M0[j*6+4][k];
+              B[k+Ncoef*0][j*COORD_DIM+2]=M0[j*6+2][k];
+              B[k+Ncoef*1][j*COORD_DIM+2]=M0[j*6+4][k];
+              B[k+Ncoef*2][j*COORD_DIM+2]=M0[j*6+5][k];
             }
           }
-          pvfmm::Matrix<Real> M1(Ncoef*COORD_VES3D_DIM, COORD_VES3D_DIM*Ngrid, &DL3[i*COORD_VES3D_DIM*Ncoef*COORD_VES3D_DIM*Ngrid], false);
+          pvfmm::Matrix<Real> M1(Ncoef*COORD_DIM, COORD_DIM*Ngrid, &DL3[i*COORD_DIM*Ncoef*COORD_DIM*Ngrid], false);
           for(long k=0;k<B.Dim(0);k++){ // Rearrange
-            for(long j0=0;j0<COORD_VES3D_DIM;j0++){
+            for(long j0=0;j0<COORD_DIM;j0++){
               for(long j1=0;j1<p0+1;j1++){
-                for(long j2=0;j2<p0;j2++) M1[k][((j0*(p0+1)+   j1)*2+0)*p0+j2]=B[k][((j1*p0+j2)*2+0)*COORD_VES3D_DIM+j0];
-                for(long j2=0;j2<p0;j2++) M1[k][((j0*(p0+1)+p0-j1)*2+1)*p0+j2]=B[k][((j1*p0+j2)*2+1)*COORD_VES3D_DIM+j0];
+                for(long j2=0;j2<p0;j2++) M1[k][((j0*(p0+1)+   j1)*2+0)*p0+j2]=B[k][((j1*p0+j2)*2+0)*COORD_DIM+j0];
+                for(long j2=0;j2<p0;j2++) M1[k][((j0*(p0+1)+p0-j1)*2+1)*p0+j2]=B[k][((j1*p0+j2)*2+1)*COORD_DIM+j0];
               }
             }
           }

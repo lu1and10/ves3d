@@ -147,7 +147,7 @@ void StokesVelocity<Real>::SetTrgCoord(const PVFMMVec* T){
   if(T){
     trg_is_surf=false;
     tcoord.ReInit(T->Dim(),&T[0][0]);
-    near_singular1.SetTrgCoord(&tcoord[0],tcoord.Dim()/COORD_VES3D_DIM,false);
+    near_singular1.SetTrgCoord(&tcoord[0],tcoord.Dim()/COORD_DIM,false);
   }else{
     trg_is_surf=true;
     tcoord.ReInit(0);
@@ -204,18 +204,18 @@ const StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::operator()(){
       SphericalHarmonics<Real>::SHC2Grid(scoord_shc, sh_order, sh_order_up, scoord_up, &X_theta, &X_phi);
       SphericalHarmonics<Real>::SHC2Pole(scoord_shc, sh_order, scoord_pole);
       { // Set scoord_far
-        long Nves=scoord_pole.Dim()/COORD_VES3D_DIM/2;
+        long Nves=scoord_pole.Dim()/COORD_DIM/2;
         long Mves=2*sh_order_up*(1+sh_order_up);
-        scoord_far.ReInit(Nves*(Mves+2)*COORD_VES3D_DIM);
+        scoord_far.ReInit(Nves*(Mves+2)*COORD_DIM);
         #pragma omp parallel for
         for(long i=0;i<Nves;i++){
-          for(long k=0;k<COORD_VES3D_DIM;k++){
-            scoord_far[(i*(Mves+2)+0)*COORD_VES3D_DIM+k]=scoord_pole[(i*COORD_VES3D_DIM+k)*2+0];
-            scoord_far[(i*(Mves+2)+1)*COORD_VES3D_DIM+k]=scoord_pole[(i*COORD_VES3D_DIM+k)*2+1];
+          for(long k=0;k<COORD_DIM;k++){
+            scoord_far[(i*(Mves+2)+0)*COORD_DIM+k]=scoord_pole[(i*COORD_DIM+k)*2+0];
+            scoord_far[(i*(Mves+2)+1)*COORD_DIM+k]=scoord_pole[(i*COORD_DIM+k)*2+1];
           }
           for(long j=0;j<Mves;j++){
-            for(long k=0;k<COORD_VES3D_DIM;k++){
-              scoord_far[(i*(Mves+2)+(j+2))*COORD_VES3D_DIM+k]=scoord_up[(i*COORD_VES3D_DIM+k)*Mves+j];
+            for(long k=0;k<COORD_DIM;k++){
+              scoord_far[(i*(Mves+2)+(j+2))*COORD_DIM+k]=scoord_up[(i*COORD_DIM+k)*Mves+j];
             }
           }
         }
@@ -225,19 +225,19 @@ const StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::operator()(){
       pvfmm::Profile::Tic("SCoordNear",&comm, true);
       { // Set tcoord_repl
         SphericalHarmonics<Real>::SHC2Grid(scoord_shc, sh_order, sh_order, scoord); // Use filtered surface for tcoord_repl
-        long Nves=scoord_pole.Dim()/COORD_VES3D_DIM/2;
+        long Nves=scoord_pole.Dim()/COORD_DIM/2;
         long Mves=2*sh_order*(1+sh_order);
-        tcoord_repl.ReInit(Nves*Mves*COORD_VES3D_DIM);
+        tcoord_repl.ReInit(Nves*Mves*COORD_DIM);
         #pragma omp parallel for
         for(long i=0;i<Nves;i++){
           for(long j=0;j<Mves;j++){
-            for(long k=0;k<COORD_VES3D_DIM;k++){
-              tcoord_repl[(i*Mves+j)*COORD_VES3D_DIM+k]=scoord[(i*COORD_VES3D_DIM+k)*Mves+j];
+            for(long k=0;k<COORD_DIM;k++){
+              tcoord_repl[(i*Mves+j)*COORD_DIM+k]=scoord[(i*COORD_DIM+k)*Mves+j];
             }
           }
         }
       }
-      near_singular0.SetTrgCoord(&tcoord_repl[0],tcoord_repl.Dim()/COORD_VES3D_DIM,true);
+      near_singular0.SetTrgCoord(&tcoord_repl[0],tcoord_repl.Dim()/COORD_DIM,true);
       near_singular0.SetSrcCoord(scoord_far,sh_order_up);
       near_singular1.SetSrcCoord(scoord_far,sh_order_up);
       pvfmm::Profile::Toc();
@@ -245,21 +245,21 @@ const StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::operator()(){
       pvfmm::Profile::Tic("AreaNormal",&comm, true);
       { // Set scoord_norm, scoord_area
         long Mves=2*sh_order_up*(sh_order_up+1);
-        long N=X_theta.Dim()/Mves/COORD_VES3D_DIM;
-        scoord_norm.ReInit(N*COORD_VES3D_DIM*Mves);
+        long N=X_theta.Dim()/Mves/COORD_DIM;
+        scoord_norm.ReInit(N*COORD_DIM*Mves);
         scoord_area.ReInit(N*Mves);
         #pragma omp parallel for
         for(long i=0;i<N;i++){
           for(long j=0;j<Mves;j++){
             Real nx, ny, nz;
             { // Compute source normal
-              Real x_theta=X_theta[(i*COORD_VES3D_DIM+0)*Mves+j];
-              Real y_theta=X_theta[(i*COORD_VES3D_DIM+1)*Mves+j];
-              Real z_theta=X_theta[(i*COORD_VES3D_DIM+2)*Mves+j];
+              Real x_theta=X_theta[(i*COORD_DIM+0)*Mves+j];
+              Real y_theta=X_theta[(i*COORD_DIM+1)*Mves+j];
+              Real z_theta=X_theta[(i*COORD_DIM+2)*Mves+j];
 
-              Real x_phi=X_phi[(i*COORD_VES3D_DIM+0)*Mves+j];
-              Real y_phi=X_phi[(i*COORD_VES3D_DIM+1)*Mves+j];
-              Real z_phi=X_phi[(i*COORD_VES3D_DIM+2)*Mves+j];
+              Real x_phi=X_phi[(i*COORD_DIM+0)*Mves+j];
+              Real y_phi=X_phi[(i*COORD_DIM+1)*Mves+j];
+              Real z_phi=X_phi[(i*COORD_DIM+2)*Mves+j];
 
               nx=(y_theta*z_phi-z_theta*y_phi);
               ny=(z_theta*x_phi-x_theta*z_phi);
@@ -268,9 +268,9 @@ const StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::operator()(){
             Real area=sqrt(nx*nx+ny*ny+nz*nz);
             scoord_area[i*Mves+j]=area;
             Real inv_area=1.0/area;
-            scoord_norm[(i*COORD_VES3D_DIM+0)*Mves+j]=nx*inv_area;
-            scoord_norm[(i*COORD_VES3D_DIM+1)*Mves+j]=ny*inv_area;
-            scoord_norm[(i*COORD_VES3D_DIM+2)*Mves+j]=nz*inv_area;
+            scoord_norm[(i*COORD_DIM+0)*Mves+j]=nx*inv_area;
+            scoord_norm[(i*COORD_DIM+1)*Mves+j]=ny*inv_area;
+            scoord_norm[(i*COORD_DIM+2)*Mves+j]=nz*inv_area;
           }
         }
       }
@@ -281,22 +281,22 @@ const StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::operator()(){
       pvfmm::Profile::Tic("Repulsion",&comm);
       const PVFMMVec& f_repl=near_singular0.ForceRepul();
       long Mves=2*sh_order*(sh_order+1);
-      long Nves=f_repl.Dim()/Mves/COORD_VES3D_DIM;
-      assert(f_repl.Dim()==Nves*Mves*COORD_VES3D_DIM);
-      rforce_single.ReInit(Nves*Mves*COORD_VES3D_DIM);
+      long Nves=f_repl.Dim()/Mves/COORD_DIM;
+      assert(f_repl.Dim()==Nves*Mves*COORD_DIM);
+      rforce_single.ReInit(Nves*Mves*COORD_DIM);
       #pragma omp parallel for
       for(long i=0;i<Nves;i++){
-        for(long j=0;j<COORD_VES3D_DIM;j++){
+        for(long j=0;j<COORD_DIM;j++){
           for(long k=0;k<Mves;k++){
-            rforce_single[(i*COORD_VES3D_DIM+j)*Mves+k]=f_repl[(i*Mves+k)*COORD_VES3D_DIM+j];
+            rforce_single[(i*COORD_DIM+j)*Mves+k]=f_repl[(i*Mves+k)*COORD_DIM+j];
           }
         }
       }
       pvfmm::Profile::Toc();
       if(force_single.Dim()){
-        assert(force_single.Dim()==Nves*Mves*COORD_VES3D_DIM);
+        assert(force_single.Dim()==Nves*Mves*COORD_DIM);
         #pragma omp parallel for
-        for(long i=0;i<Nves*COORD_VES3D_DIM*Mves;i++){
+        for(long i=0;i<Nves*COORD_DIM*Mves;i++){
           rforce_single[i]+=force_single[i];
         }
       }
@@ -312,22 +312,22 @@ const StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::operator()(){
         SphericalHarmonics<Real>::SHC2Grid(shc, sh_order, sh_order_up, grid);
 
         long Mves=2*sh_order_up*(sh_order_up+1);
-        long Nves=grid.Dim()/Mves/COORD_VES3D_DIM;
+        long Nves=grid.Dim()/Mves/COORD_DIM;
         assert(scoord_area.Dim()==Nves*Mves);
 
-        qforce_single.ReInit(Nves*(Mves+2)*COORD_VES3D_DIM);
+        qforce_single.ReInit(Nves*(Mves+2)*COORD_DIM);
         #pragma omp parallel for
         for(long i=0;i<Nves;i++){
-          for(long k=0;k<COORD_VES3D_DIM;k++){
-            qforce_single[(i*(Mves+2)+0)*COORD_VES3D_DIM+k]=0;
-            qforce_single[(i*(Mves+2)+1)*COORD_VES3D_DIM+k]=0;
+          for(long k=0;k<COORD_DIM;k++){
+            qforce_single[(i*(Mves+2)+0)*COORD_DIM+k]=0;
+            qforce_single[(i*(Mves+2)+1)*COORD_DIM+k]=0;
           }
           for(long j0=0;j0<sh_order_up+1;j0++){
             for(long j1=0;j1<sh_order_up*2;j1++){
               long j=j0*sh_order_up*2+j1;
               Real w=scoord_area[i*Mves+j]*qw[j0];
-              for(long k=0;k<COORD_VES3D_DIM;k++){
-                qforce_single[(i*(Mves+2)+(j+2))*COORD_VES3D_DIM+k]=grid[(i*COORD_VES3D_DIM+k)*Mves+j]*w;
+              for(long k=0;k<COORD_DIM;k++){
+                qforce_single[(i*(Mves+2)+(j+2))*COORD_DIM+k]=grid[(i*COORD_DIM+k)*Mves+j]*w;
               }
             }
           }
@@ -344,31 +344,31 @@ const StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::operator()(){
         SphericalHarmonics<Real>::SHC2Pole(shc, sh_order, pole);
 
         long Mves=2*sh_order_up*(sh_order_up+1);
-        long Nves=grid.Dim()/Mves/COORD_VES3D_DIM;
-        assert(scoord_norm.Dim()==Nves*Mves*COORD_VES3D_DIM);
+        long Nves=grid.Dim()/Mves/COORD_DIM;
+        assert(scoord_norm.Dim()==Nves*Mves*COORD_DIM);
         assert(scoord_area.Dim()==Nves*Mves);
 
-        uforce_double.ReInit(Nves*(Mves+2)*(1*COORD_VES3D_DIM));
-        qforce_double.ReInit(Nves*(Mves+2)*(2*COORD_VES3D_DIM));
+        uforce_double.ReInit(Nves*(Mves+2)*(1*COORD_DIM));
+        qforce_double.ReInit(Nves*(Mves+2)*(2*COORD_DIM));
         #pragma omp parallel for
         for(long i=0;i<Nves;i++){
-          for(long k=0;k<COORD_VES3D_DIM;k++){
-            uforce_double[(i*(Mves+2)+0)*COORD_VES3D_DIM+k]=pole[(i*COORD_VES3D_DIM+k)*2+0];
-            uforce_double[(i*(Mves+2)+1)*COORD_VES3D_DIM+k]=pole[(i*COORD_VES3D_DIM+k)*2+1];
+          for(long k=0;k<COORD_DIM;k++){
+            uforce_double[(i*(Mves+2)+0)*COORD_DIM+k]=pole[(i*COORD_DIM+k)*2+0];
+            uforce_double[(i*(Mves+2)+1)*COORD_DIM+k]=pole[(i*COORD_DIM+k)*2+1];
 
-            qforce_double[(i*(Mves+2)+0)*2*COORD_VES3D_DIM+0*COORD_VES3D_DIM+k]=0;
-            qforce_double[(i*(Mves+2)+0)*2*COORD_VES3D_DIM+1*COORD_VES3D_DIM+k]=0;
-            qforce_double[(i*(Mves+2)+1)*2*COORD_VES3D_DIM+0*COORD_VES3D_DIM+k]=0;
-            qforce_double[(i*(Mves+2)+1)*2*COORD_VES3D_DIM+1*COORD_VES3D_DIM+k]=0;
+            qforce_double[(i*(Mves+2)+0)*2*COORD_DIM+0*COORD_DIM+k]=0;
+            qforce_double[(i*(Mves+2)+0)*2*COORD_DIM+1*COORD_DIM+k]=0;
+            qforce_double[(i*(Mves+2)+1)*2*COORD_DIM+0*COORD_DIM+k]=0;
+            qforce_double[(i*(Mves+2)+1)*2*COORD_DIM+1*COORD_DIM+k]=0;
           }
           for(long j0=0;j0<sh_order_up+1;j0++){
             for(long j1=0;j1<sh_order_up*2;j1++){
               long j=j0*sh_order_up*2+j1;
               Real w=scoord_area[i*Mves+j]*qw[j0];
-              for(long k=0;k<COORD_VES3D_DIM;k++){
-                uforce_double[(i*(Mves+2)+(j+2))*1*COORD_VES3D_DIM+0*COORD_VES3D_DIM+k]=       grid[(i*COORD_VES3D_DIM+k)*Mves+j];
-                qforce_double[(i*(Mves+2)+(j+2))*2*COORD_VES3D_DIM+0*COORD_VES3D_DIM+k]=       grid[(i*COORD_VES3D_DIM+k)*Mves+j]*w;
-                qforce_double[(i*(Mves+2)+(j+2))*2*COORD_VES3D_DIM+1*COORD_VES3D_DIM+k]=scoord_norm[(i*COORD_VES3D_DIM+k)*Mves+j];
+              for(long k=0;k<COORD_DIM;k++){
+                uforce_double[(i*(Mves+2)+(j+2))*1*COORD_DIM+0*COORD_DIM+k]=       grid[(i*COORD_DIM+k)*Mves+j];
+                qforce_double[(i*(Mves+2)+(j+2))*2*COORD_DIM+0*COORD_DIM+k]=       grid[(i*COORD_DIM+k)*Mves+j]*w;
+                qforce_double[(i*(Mves+2)+(j+2))*2*COORD_DIM+1*COORD_DIM+k]=scoord_norm[(i*COORD_DIM+k)*Mves+j];
               }
             }
           }
@@ -398,8 +398,8 @@ const StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::operator()(){
         static pvfmm::Vector<Real> F;
         SphericalHarmonics<Real>::Grid2SHC(rforce_single,sh_order,sh_order,F);
 
-        long nv = rforce_single.Dim()/Ngrid/COORD_VES3D_DIM;
-        SL_vel.ReInit(nv*COORD_VES3D_DIM*Ncoef);
+        long nv = rforce_single.Dim()/Ngrid/COORD_DIM;
+        SL_vel.ReInit(nv*COORD_DIM*Ncoef);
         #pragma omp parallel
         { // mat-vec
           long tid=omp_get_thread_num();
@@ -408,9 +408,9 @@ const StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::operator()(){
           long a=(tid+0)*nv/omp_p;
           long b=(tid+1)*nv/omp_p;
           for(long i=a;i<b;i++){
-            pvfmm::Matrix<Real> Mv(1,COORD_VES3D_DIM*Ncoef,&SL_vel[i*COORD_VES3D_DIM*Ncoef],false);
-            pvfmm::Matrix<Real> Mf(1,COORD_VES3D_DIM*Ncoef,&F     [i*COORD_VES3D_DIM*Ncoef],false);
-            pvfmm::Matrix<Real> M(COORD_VES3D_DIM*Ncoef,COORD_VES3D_DIM*Ncoef,&SLMatrix[i*COORD_VES3D_DIM*Ncoef*COORD_VES3D_DIM*Ncoef],false);
+            pvfmm::Matrix<Real> Mv(1,COORD_DIM*Ncoef,&SL_vel[i*COORD_DIM*Ncoef],false);
+            pvfmm::Matrix<Real> Mf(1,COORD_DIM*Ncoef,&F     [i*COORD_DIM*Ncoef],false);
+            pvfmm::Matrix<Real> M(COORD_DIM*Ncoef,COORD_DIM*Ncoef,&SLMatrix[i*COORD_DIM*Ncoef*COORD_DIM*Ncoef],false);
             pvfmm::Matrix<Real>::GEMM(Mv,Mf,M);
           }
         }
@@ -419,8 +419,8 @@ const StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::operator()(){
         static pvfmm::Vector<Real> F;
         SphericalHarmonics<Real>::Grid2SHC(force_double,sh_order,sh_order,F);
 
-        long nv = force_double.Dim()/Ngrid/COORD_VES3D_DIM;
-        DL_vel.ReInit(nv*COORD_VES3D_DIM*Ncoef);
+        long nv = force_double.Dim()/Ngrid/COORD_DIM;
+        DL_vel.ReInit(nv*COORD_DIM*Ncoef);
         #pragma omp parallel
         { // mat-vec
           long tid=omp_get_thread_num();
@@ -429,9 +429,9 @@ const StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::operator()(){
           long a=(tid+0)*nv/omp_p;
           long b=(tid+1)*nv/omp_p;
           for(long i=a;i<b;i++){
-            pvfmm::Matrix<Real> Mv(1,COORD_VES3D_DIM*Ncoef,&DL_vel[i*COORD_VES3D_DIM*Ncoef],false);
-            pvfmm::Matrix<Real> Mf(1,COORD_VES3D_DIM*Ncoef,&F     [i*COORD_VES3D_DIM*Ncoef],false);
-            pvfmm::Matrix<Real> M(COORD_VES3D_DIM*Ncoef,COORD_VES3D_DIM*Ncoef,&DLMatrix[i*COORD_VES3D_DIM*Ncoef*COORD_VES3D_DIM*Ncoef],false);
+            pvfmm::Matrix<Real> Mv(1,COORD_DIM*Ncoef,&DL_vel[i*COORD_DIM*Ncoef],false);
+            pvfmm::Matrix<Real> Mf(1,COORD_DIM*Ncoef,&F     [i*COORD_DIM*Ncoef],false);
+            pvfmm::Matrix<Real> M(COORD_DIM*Ncoef,COORD_DIM*Ncoef,&DLMatrix[i*COORD_DIM*Ncoef*COORD_DIM*Ncoef],false);
             pvfmm::Matrix<Real>::GEMM(Mv,Mf,M);
           }
         }
@@ -450,18 +450,18 @@ const StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::operator()(){
     SphericalHarmonics<Real>::SHC2Grid(Vcoef, sh_order, sh_order_up, vel_up);
     SphericalHarmonics<Real>::SHC2Pole(Vcoef, sh_order, vel_pole);
     { // Set S_vel_up
-      long Nves=vel_pole.Dim()/COORD_VES3D_DIM/2;
+      long Nves=vel_pole.Dim()/COORD_DIM/2;
       long Mves=2*sh_order_up*(1+sh_order_up);
-      S_vel_up.ReInit(Nves*(Mves+2)*COORD_VES3D_DIM);
+      S_vel_up.ReInit(Nves*(Mves+2)*COORD_DIM);
       #pragma omp parallel for
       for(long i=0;i<Nves;i++){
-        for(long k=0;k<COORD_VES3D_DIM;k++){
-          S_vel_up[(i*(Mves+2)+0)*COORD_VES3D_DIM+k]=vel_pole[(i*COORD_VES3D_DIM+k)*2+0];
-          S_vel_up[(i*(Mves+2)+1)*COORD_VES3D_DIM+k]=vel_pole[(i*COORD_VES3D_DIM+k)*2+1];
+        for(long k=0;k<COORD_DIM;k++){
+          S_vel_up[(i*(Mves+2)+0)*COORD_DIM+k]=vel_pole[(i*COORD_DIM+k)*2+0];
+          S_vel_up[(i*(Mves+2)+1)*COORD_DIM+k]=vel_pole[(i*COORD_DIM+k)*2+1];
         }
         for(long j=0;j<Mves;j++){
-          for(long k=0;k<COORD_VES3D_DIM;k++){
-            S_vel_up[(i*(Mves+2)+(j+2))*COORD_VES3D_DIM+k]=vel_up[(i*COORD_VES3D_DIM+k)*Mves+j];
+          for(long k=0;k<COORD_DIM;k++){
+            S_vel_up[(i*(Mves+2)+(j+2))*COORD_DIM+k]=vel_up[(i*COORD_DIM+k)*Mves+j];
           }
         }
       }
@@ -481,8 +481,8 @@ const StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::operator()(){
     PVFMMEval(&scoord_far[0],
               (qforce_single.Dim()?&qforce_single[0]:NULL),
               (qforce_double.Dim()?&qforce_double[0]:NULL),
-              scoord_far.Dim()/COORD_VES3D_DIM,
-              &trg_coord[0], &fmm_vel[0], trg_coord.Dim()/COORD_VES3D_DIM, &pvfmm_ctx, fmm_setup);
+              scoord_far.Dim()/COORD_DIM,
+              &trg_coord[0], &fmm_vel[0], trg_coord.Dim()/COORD_DIM, &pvfmm_ctx, fmm_setup);
     fmm_setup=false;
     near_singular.SubtractDirect(fmm_vel);
     pvfmm::Profile::Enable(prof_state);
@@ -504,15 +504,15 @@ const StokesVelocity<Real>::PVFMMVec& StokesVelocity<Real>::operator()(){
     }
     if(trg_is_surf){ // trg_vel+=S_vel
       long Ngrid = 2*sh_order*(sh_order+1);
-      long Nves = S_vel.Dim()/Ngrid/COORD_VES3D_DIM;
+      long Nves = S_vel.Dim()/Ngrid/COORD_DIM;
 
       static PVFMMVec tmp;
-      tmp.ReInit(Nves*COORD_VES3D_DIM*Ngrid);
+      tmp.ReInit(Nves*COORD_DIM*Ngrid);
       #pragma omp parallel for
       for(long i=0;i<Nves;i++){
-        for(long j=0;j<COORD_VES3D_DIM;j++){
+        for(long j=0;j<COORD_DIM;j++){
           for(long k=0;k<Ngrid;k++){
-            tmp[(i*COORD_VES3D_DIM+j)*Ngrid+k]=S_vel[(i*COORD_VES3D_DIM+j)*Ngrid+k]+trg_vel[(i*Ngrid+k)*COORD_VES3D_DIM+j];
+            tmp[(i*COORD_DIM+j)*Ngrid+k]=S_vel[(i*COORD_DIM+j)*Ngrid+k]+trg_vel[(i*Ngrid+k)*COORD_DIM+j];
           }
         }
       }
@@ -564,11 +564,11 @@ Real StokesVelocity<Real>::MonitorError(Real tol){
   static PVFMMVec force;
   force.ReInit(scoord.Dim());
   long Ngrid = 2*sh_order*(sh_order+1);
-  long N_ves = scoord.Dim()/COORD_VES3D_DIM/Ngrid;
+  long N_ves = scoord.Dim()/COORD_DIM/Ngrid;
   for(size_t i=0;i<N_ves;i++){ // Set force
-    for(size_t j=0;j<COORD_VES3D_DIM;j++){
+    for(size_t j=0;j<COORD_DIM;j++){
       for(size_t k=0;k<Ngrid;k++){
-        force[(i*COORD_VES3D_DIM+j)*Ngrid+k]=1.0;
+        force[(i*COORD_DIM+j)*Ngrid+k]=1.0;
       }
     }
   }
@@ -583,20 +583,20 @@ Real StokesVelocity<Real>::MonitorError(Real tol){
   const PVFMMVec& velocity_self=S_vel;
 
   if(box_size>0){ // Subtract average from velocity_fmm
-    long long N_loc=velocity_fmm.Dim()/COORD_VES3D_DIM, N_glb;
-    Real sum_loc[COORD_VES3D_DIM], sum_glb[COORD_VES3D_DIM];
-    for(long i=0;i<COORD_VES3D_DIM;i++) sum_loc[i]=0;
+    long long N_loc=velocity_fmm.Dim()/COORD_DIM, N_glb;
+    Real sum_loc[COORD_DIM], sum_glb[COORD_DIM];
+    for(long i=0;i<COORD_DIM;i++) sum_loc[i]=0;
     for(long i=0;i<N_loc;i++){
-      for(long j=0;j<COORD_VES3D_DIM;j++){
-        sum_loc[j]+=velocity_fmm[i*COORD_VES3D_DIM+j];
+      for(long j=0;j<COORD_DIM;j++){
+        sum_loc[j]+=velocity_fmm[i*COORD_DIM+j];
       }
     }
     MPI_Allreduce(sum_loc, sum_glb, 3, pvfmm::par::Mpi_datatype<     Real>::value(), pvfmm::par::Mpi_datatype<     Real>::sum(), comm);
     MPI_Allreduce(& N_loc, & N_glb, 1, pvfmm::par::Mpi_datatype<long long>::value(), pvfmm::par::Mpi_datatype<long long>::sum(), comm);
-    for(long i=0;i<COORD_VES3D_DIM;i++) sum_glb[i]/=N_glb;
+    for(long i=0;i<COORD_DIM;i++) sum_glb[i]/=N_glb;
     for(long i=0;i<N_loc;i++){
-      for(long j=0;j<COORD_VES3D_DIM;j++){
-        velocity_fmm[i*COORD_VES3D_DIM+j]-=sum_glb[j];
+      for(long j=0;j<COORD_DIM;j++){
+        velocity_fmm[i*COORD_DIM+j]-=sum_glb[j];
       }
     }
   }
@@ -616,7 +616,7 @@ Real StokesVelocity<Real>::MonitorError(Real tol){
   double norm_glb[3]={0,0,0};
   { // Compute error norm
     double norm_local[3]={0,0,0};
-    for(size_t i=0;i<N_ves*Ngrid*COORD_VES3D_DIM;i++){
+    for(size_t i=0;i<N_ves*Ngrid*COORD_DIM;i++){
       norm_local[0]=std::max(norm_local[0],fabs(velocity_self[i]+0.5));
       norm_local[1]=std::max(norm_local[1],fabs(velocity_near[i]    ));
       norm_local[2]=std::max(norm_local[2],fabs(velocity_fmm [i]    ));
@@ -691,10 +691,10 @@ void StokesVelocity<Real>::Test(){
   long Nves=2;
 
   StokesVelocity<Real> S(p0,2*p0);
-  pvfmm::Vector<Real> X (Nves*Ngrid*COORD_VES3D_DIM);
-  pvfmm::Vector<Real> FS(Nves*Ngrid*COORD_VES3D_DIM);
-  pvfmm::Vector<Real> FD(Nves*Ngrid*COORD_VES3D_DIM);
-  pvfmm::Vector<Real> V (Nves*Ngrid*COORD_VES3D_DIM);
+  pvfmm::Vector<Real> X (Nves*Ngrid*COORD_DIM);
+  pvfmm::Vector<Real> FS(Nves*Ngrid*COORD_DIM);
+  pvfmm::Vector<Real> FD(Nves*Ngrid*COORD_DIM);
+  pvfmm::Vector<Real> V (Nves*Ngrid*COORD_DIM);
 
   { // Set coordinate values
     std::vector<Real> qx;
@@ -708,17 +708,17 @@ void StokesVelocity<Real>::Test(){
         Real cos_t=qx[i];
         Real sin_t=sqrt(1.0-cos_t*cos_t);
         for(size_t j=0;j<p0*2;j++){
-          X [(k*COORD_VES3D_DIM+0)*Ngrid+i*p0*2+j]=-(1+0.05*(k-0.5))*cos_t;
-          X [(k*COORD_VES3D_DIM+1)*Ngrid+i*p0*2+j]= (1+0.05*(k-0.5))*sin_t*sin(j*M_PI/p0);
-          X [(k*COORD_VES3D_DIM+2)*Ngrid+i*p0*2+j]= (1+0.05*(k-0.5))*sin_t*cos(j*M_PI/p0);
+          X [(k*COORD_DIM+0)*Ngrid+i*p0*2+j]=-(1+0.05*(k-0.5))*cos_t;
+          X [(k*COORD_DIM+1)*Ngrid+i*p0*2+j]= (1+0.05*(k-0.5))*sin_t*sin(j*M_PI/p0);
+          X [(k*COORD_DIM+2)*Ngrid+i*p0*2+j]= (1+0.05*(k-0.5))*sin_t*cos(j*M_PI/p0);
 
-          FS[(k*COORD_VES3D_DIM+0)*Ngrid+i*p0*2+j]=0;
-          FS[(k*COORD_VES3D_DIM+1)*Ngrid+i*p0*2+j]=0;
-          FS[(k*COORD_VES3D_DIM+2)*Ngrid+i*p0*2+j]=0;
+          FS[(k*COORD_DIM+0)*Ngrid+i*p0*2+j]=0;
+          FS[(k*COORD_DIM+1)*Ngrid+i*p0*2+j]=0;
+          FS[(k*COORD_DIM+2)*Ngrid+i*p0*2+j]=0;
 
-          FD[(k*COORD_VES3D_DIM+0)*Ngrid+i*p0*2+j]=1;
-          FD[(k*COORD_VES3D_DIM+1)*Ngrid+i*p0*2+j]=1;
-          FD[(k*COORD_VES3D_DIM+2)*Ngrid+i*p0*2+j]=1;
+          FD[(k*COORD_DIM+0)*Ngrid+i*p0*2+j]=1;
+          FD[(k*COORD_DIM+1)*Ngrid+i*p0*2+j]=1;
+          FD[(k*COORD_DIM+2)*Ngrid+i*p0*2+j]=1;
         }
       }
     }
@@ -743,14 +743,14 @@ void StokesVelocity<Real>::Test(){
         std::vector<Real> qw(p0+1);
         cgqf(p0+1, 1, 0.0, 0.0, -1.0, 1.0, &qx[0], &qw[0]);
       }
-      T.ReInit(Ngrid*COORD_VES3D_DIM);
+      T.ReInit(Ngrid*COORD_DIM);
       for(size_t i=0;i<p0+1;i++){
         Real cos_t=qx[i];
         Real sin_t=sqrt(1.0-cos_t*cos_t);
         for(size_t j=0;j<p0*2;j++){
-          T[(i*p0*2+j)*COORD_VES3D_DIM+0]=-1.01*cos_t;
-          T[(i*p0*2+j)*COORD_VES3D_DIM+1]= 1.01*sin_t*sin(j*M_PI/p0);
-          T[(i*p0*2+j)*COORD_VES3D_DIM+2]= 1.01*sin_t*cos(j*M_PI/p0);
+          T[(i*p0*2+j)*COORD_DIM+0]=-1.01*cos_t;
+          T[(i*p0*2+j)*COORD_DIM+1]= 1.01*sin_t*sin(j*M_PI/p0);
+          T[(i*p0*2+j)*COORD_DIM+2]= 1.01*sin_t*cos(j*M_PI/p0);
         }
       }
     }
@@ -762,8 +762,8 @@ void StokesVelocity<Real>::Test(){
     pvfmm::Vector<Real> vel=S();
 
     pvfmm::Matrix<Real> M;
-    M.ReInit(  T.Dim()/COORD_VES3D_DIM,COORD_VES3D_DIM,&  T[0],false); M=M.Transpose();
-    M.ReInit(vel.Dim()/COORD_VES3D_DIM,COORD_VES3D_DIM,&vel[0],false); M=M.Transpose();
+    M.ReInit(  T.Dim()/COORD_DIM,COORD_DIM,&  T[0],false); M=M.Transpose();
+    M.ReInit(vel.Dim()/COORD_DIM,COORD_DIM,&vel[0],false); M=M.Transpose();
     WriteVTK(T, 64, 64, "test", 0.0, &vel);
   }
 }
@@ -772,7 +772,7 @@ void StokesVelocity<Real>::Test(){
 template <class Real>
 void WriteVTK(const pvfmm::Vector<Real>& S, long p0, long p1, const char* fname, Real period=0, const pvfmm::Vector<Real>* v_ptr=NULL, MPI_Comm comm=MPI_COMM_WORLD){
   typedef double VTKReal;
-  int data__dof=COORD_VES3D_DIM;
+  int data__dof=COORD_DIM;
 
   pvfmm::Vector<Real> X, Xp, V, Vp;
   { // Upsample X
@@ -795,34 +795,34 @@ void WriteVTK(const pvfmm::Vector<Real>& S, long p0, long p1, const char* fname,
   std::vector< int32_t> poly_connect;
   std::vector< int32_t> poly_offset;
   { // Set point_coord, point_value, poly_connect
-    size_t N_ves = X.Dim()/(2*p1*(p1+1)*COORD_VES3D_DIM); // Number of vesicles
-    assert(Xp.Dim() == N_ves*2*COORD_VES3D_DIM);
+    size_t N_ves = X.Dim()/(2*p1*(p1+1)*COORD_DIM); // Number of vesicles
+    assert(Xp.Dim() == N_ves*2*COORD_DIM);
     for(size_t k=0;k<N_ves;k++){ // Set point_coord
-      Real C[COORD_VES3D_DIM]={0,0,0};
+      Real C[COORD_DIM]={0,0,0};
       if(period>0){
-        for(long l=0;l<COORD_VES3D_DIM;l++) C[l]=0;
+        for(long l=0;l<COORD_DIM;l++) C[l]=0;
         for(size_t i=0;i<p1+1;i++){
           for(size_t j=0;j<2*p1;j++){
-            for(size_t l=0;l<COORD_VES3D_DIM;l++){
-              C[l]+=X[j+2*p1*(i+(p1+1)*(l+k*COORD_VES3D_DIM))];
+            for(size_t l=0;l<COORD_DIM;l++){
+              C[l]+=X[j+2*p1*(i+(p1+1)*(l+k*COORD_DIM))];
             }
           }
         }
-        for(size_t l=0;l<COORD_VES3D_DIM;l++) C[l]+=Xp[0+2*(l+k*COORD_VES3D_DIM)];
-        for(size_t l=0;l<COORD_VES3D_DIM;l++) C[l]+=Xp[1+2*(l+k*COORD_VES3D_DIM)];
-        for(long l=0;l<COORD_VES3D_DIM;l++) C[l]/=2*p1*(p1+1)+2;
-        for(long l=0;l<COORD_VES3D_DIM;l++) C[l]=(round(C[l]/period))*period;
+        for(size_t l=0;l<COORD_DIM;l++) C[l]+=Xp[0+2*(l+k*COORD_DIM)];
+        for(size_t l=0;l<COORD_DIM;l++) C[l]+=Xp[1+2*(l+k*COORD_DIM)];
+        for(long l=0;l<COORD_DIM;l++) C[l]/=2*p1*(p1+1)+2;
+        for(long l=0;l<COORD_DIM;l++) C[l]=(round(C[l]/period))*period;
       }
 
       for(size_t i=0;i<p1+1;i++){
         for(size_t j=0;j<2*p1;j++){
-          for(size_t l=0;l<COORD_VES3D_DIM;l++){
-            point_coord.push_back(X[j+2*p1*(i+(p1+1)*(l+k*COORD_VES3D_DIM))]-C[l]);
+          for(size_t l=0;l<COORD_DIM;l++){
+            point_coord.push_back(X[j+2*p1*(i+(p1+1)*(l+k*COORD_DIM))]-C[l]);
           }
         }
       }
-      for(size_t l=0;l<COORD_VES3D_DIM;l++) point_coord.push_back(Xp[0+2*(l+k*COORD_VES3D_DIM)]-C[l]);
-      for(size_t l=0;l<COORD_VES3D_DIM;l++) point_coord.push_back(Xp[1+2*(l+k*COORD_VES3D_DIM)]-C[l]);
+      for(size_t l=0;l<COORD_DIM;l++) point_coord.push_back(Xp[0+2*(l+k*COORD_DIM)]-C[l]);
+      for(size_t l=0;l<COORD_DIM;l++) point_coord.push_back(Xp[1+2*(l+k*COORD_DIM)]-C[l]);
     }
 
     if(v_ptr)
@@ -880,7 +880,7 @@ void WriteVTK(const pvfmm::Vector<Real>& S, long p0, long p1, const char* fname,
   std::vector<int32_t> connect=poly_connect;
   std::vector<int32_t> offset=poly_offset;
 
-  int pt_cnt=coord.size()/COORD_VES3D_DIM;
+  int pt_cnt=coord.size()/COORD_DIM;
   int poly_cnt=poly_offset.size();
 
   //Open file for writing.
@@ -908,7 +908,7 @@ void WriteVTK(const pvfmm::Vector<Real>& S, long p0, long p1, const char* fname,
 
   //---------------------------------------------------------------------------
   vtufile<<"      <Points>\n";
-  vtufile<<"        <DataArray type=\"Float"<<sizeof(VTKReal)*8<<"\" NumberOfComponents=\""<<COORD_VES3D_DIM<<"\" Name=\"Position\" format=\"appended\" offset=\""<<data_size<<"\" />\n";
+  vtufile<<"        <DataArray type=\"Float"<<sizeof(VTKReal)*8<<"\" NumberOfComponents=\""<<COORD_DIM<<"\" Name=\"Position\" format=\"appended\" offset=\""<<data_size<<"\" />\n";
   data_size+=sizeof(uint32_t)+coord.size()*sizeof(VTKReal);
   vtufile<<"      </Points>\n";
   //---------------------------------------------------------------------------
@@ -958,7 +958,7 @@ void WriteVTK(const pvfmm::Vector<Real>& S, long p0, long p1, const char* fname,
   pvtufile<<"<VTKFile type=\"PPolyData\">\n";
   pvtufile<<"  <PPolyData GhostLevel=\"0\">\n";
   pvtufile<<"      <PPoints>\n";
-  pvtufile<<"        <PDataArray type=\"Float"<<sizeof(VTKReal)*8<<"\" NumberOfComponents=\""<<COORD_VES3D_DIM<<"\" Name=\"Position\"/>\n";
+  pvtufile<<"        <PDataArray type=\"Float"<<sizeof(VTKReal)*8<<"\" NumberOfComponents=\""<<COORD_DIM<<"\" Name=\"Position\"/>\n";
   pvtufile<<"      </PPoints>\n";
   if(value.size()){ // value
     pvtufile<<"      <PPointData>\n";

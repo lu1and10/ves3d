@@ -378,7 +378,7 @@ updateImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
             stokes_.SetTrgCoord(&coord);
             value=stokes_();
             { // Add BgVel
-              long ntrg=coord.Dim()/COORD_VES3D_DIM;
+              long ntrg=coord.Dim()/COORD_DIM;
               long nv=(ntrg+4-1)/4;
               long mv=4;
 
@@ -388,9 +388,9 @@ updateImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
                 for(long i1=0;i1<mv;i1++){
                   long i=i0*mv+i1;
                   if(i<ntrg){
-                    c_[(i0*COORD_VES3D_DIM+0)*mv+i1]=coord[i*COORD_VES3D_DIM+0];
-                    c_[(i0*COORD_VES3D_DIM+1)*mv+i1]=coord[i*COORD_VES3D_DIM+1];
-                    c_[(i0*COORD_VES3D_DIM+2)*mv+i1]=coord[i*COORD_VES3D_DIM+2];
+                    c_[(i0*COORD_DIM+0)*mv+i1]=coord[i*COORD_DIM+0];
+                    c_[(i0*COORD_DIM+1)*mv+i1]=coord[i*COORD_DIM+1];
+                    c_[(i0*COORD_DIM+2)*mv+i1]=coord[i*COORD_DIM+2];
                   }
                 }
               }
@@ -401,9 +401,9 @@ updateImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
                 for(long i1=0;i1<mv;i1++){
                   long i=i0*mv+i1;
                   if(i<ntrg){
-                    value[i*COORD_VES3D_DIM+0]+=bgvel_[(i0*COORD_VES3D_DIM+0)*mv+i1];
-                    value[i*COORD_VES3D_DIM+1]+=bgvel_[(i0*COORD_VES3D_DIM+1)*mv+i1];
-                    value[i*COORD_VES3D_DIM+2]+=bgvel_[(i0*COORD_VES3D_DIM+2)*mv+i1];
+                    value[i*COORD_DIM+0]+=bgvel_[(i0*COORD_DIM+0)*mv+i1];
+                    value[i*COORD_DIM+1]+=bgvel_[(i0*COORD_DIM+1)*mv+i1];
+                    value[i*COORD_DIM+2]+=bgvel_[(i0*COORD_DIM+2)*mv+i1];
                   }
                 }
               }
@@ -1565,7 +1565,7 @@ static std::vector<typename Vec_t::value_type> inner_prod(const Vec_t& v1, const
     }
   }
 
-  std::vector<value_type> E(ns_x/COORD_VES3D_DIM,0);
+  std::vector<value_type> E(ns_x/COORD_DIM,0);
   for(int ii=0; ii<= p; ++ii){
     value_type* inPtr_v1 = v1_.begin() + ii;
     value_type* inPtr_v2 = v2_.begin() + ii;
@@ -1573,7 +1573,7 @@ static std::vector<typename Vec_t::value_type> inner_prod(const Vec_t& v1, const
     for(int jj=0; jj< len; ++jj){
       int dist = (p + 1 - (jj + 1)/2);
       for(int ss=0; ss<ns_x; ++ss){
-        E[ss/COORD_VES3D_DIM] += A[ii]*(*inPtr_v1)*(*inPtr_v2);
+        E[ss/COORD_DIM] += A[ii]*(*inPtr_v1)*(*inPtr_v2);
         inPtr_v1 += dist;
         inPtr_v2 += dist;
       }
@@ -1705,18 +1705,18 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
             long N = u1->getNumSubFuncs();
             long M=u1->size()/N;
             value_type* u=u1->begin();
-            for(long i=0;i<N/COORD_VES3D_DIM;i++){
+            for(long i=0;i<N/COORD_DIM;i++){
                 value_type max_v=0;
                 for(long j=0;j<M;j++){
-                    value_type x=u[j+M*(0+i*COORD_VES3D_DIM)];
-                    value_type y=u[j+M*(1+i*COORD_VES3D_DIM)];
-                    value_type z=u[j+M*(2+i*COORD_VES3D_DIM)];
+                    value_type x=u[j+M*(0+i*COORD_DIM)];
+                    value_type y=u[j+M*(1+i*COORD_DIM)];
+                    value_type z=u[j+M*(2+i*COORD_DIM)];
                     max_v=std::max(max_v, sqrt(x*x+y*y+z*z));
                 }
                 for(long j=0;j<M;j++){
-                    u[j+M*(0+i*COORD_VES3D_DIM)]/=max_v;
-                    u[j+M*(1+i*COORD_VES3D_DIM)]/=max_v;
-                    u[j+M*(2+i*COORD_VES3D_DIM)]/=max_v;
+                    u[j+M*(0+i*COORD_DIM)]/=max_v;
+                    u[j+M*(1+i*COORD_DIM)]/=max_v;
+                    u[j+M*(2+i*COORD_DIM)]/=max_v;
                 }
             }
         }
