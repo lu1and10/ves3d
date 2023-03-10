@@ -10,7 +10,7 @@ CXXFLAGS += -fopenmp -fPIC -fno-exceptions -w
 ifeq ($(strip ${VES3D_DEBUG}),yes)
   CXXFLAGS += -O0 -g -pedantic #-gstabs+
 else
-  CXXFLAGS += -O3 -std=c++14 -finline-functions -funroll-loops -w	\
+  CXXFLAGS += -O3 -std=c++14 -finline-functions -w	\
 	      -funsafe-loop-optimizations -march=native -malign-double
 endif
 

@@ -146,7 +146,7 @@ void stokes_sl_m2l(T* r_src, int src_cnt, T* v_src, int dof, T* r_trg, int trg_c
 template <class T>
 void stokes_m2l_vol_poten(const T* coord, int n, T* out){
   for(int i=0;i<n;i++){
-    const T* c=&coord[i*COORD_DIM];
+    const T* c=&coord[i*COORD_VES3D_DIM];
     T rx_2=c[1]*c[1]+c[2]*c[2];
     T ry_2=c[0]*c[0]+c[2]*c[2];
     T rz_2=c[0]*c[0]+c[1]*c[1];
@@ -415,7 +415,7 @@ void stokes_dl(T* r_src, int src_cnt, T* v_src, int dof, T* r_trg, int trg_cnt, 
 template <class T>
 void stokes_vol_poten(const T* coord, int n, T* out){
   for(int i=0;i<n;i++){
-    const T* c=&coord[i*COORD_DIM];
+    const T* c=&coord[i*COORD_VES3D_DIM];
     T rx_2=c[1]*c[1]+c[2]*c[2];
     T ry_2=c[0]*c[0]+c[2]*c[2];
     T rz_2=c[0]*c[0]+c[1]*c[1];
@@ -448,34 +448,34 @@ void PVFMMBoundingBox(size_t n_src, const T* x, T* scale_xr, T* shift_xr, MPI_Co
   T* shift_x= shift_xr;
 
   if(n_src>0){ // Compute bounding box
-    double loc_min_x[COORD_DIM];
-    double loc_max_x[COORD_DIM];
+    double loc_min_x[COORD_VES3D_DIM];
+    double loc_max_x[COORD_VES3D_DIM];
     assert(n_src>0);
-    for(size_t k=0;k<COORD_DIM;k++){
+    for(size_t k=0;k<COORD_VES3D_DIM;k++){
       loc_min_x[k]=loc_max_x[k]=x[k];
     }
 
     for(size_t i=0;i<n_src;i++){
-      const T* x_=&x[i*COORD_DIM];
-      for(size_t k=0;k<COORD_DIM;k++){
+      const T* x_=&x[i*COORD_VES3D_DIM];
+      for(size_t k=0;k<COORD_VES3D_DIM;k++){
         if(loc_min_x[k]>x_[0]) loc_min_x[k]=x_[0];
         if(loc_max_x[k]<x_[0]) loc_max_x[k]=x_[0];
         ++x_;
       }
     }
 
-    double min_x[COORD_DIM];
-    double max_x[COORD_DIM];
-    MPI_Allreduce(loc_min_x, min_x, COORD_DIM, MPI_DOUBLE, MPI_MIN, comm);
-    MPI_Allreduce(loc_max_x, max_x, COORD_DIM, MPI_DOUBLE, MPI_MAX, comm);
+    double min_x[COORD_VES3D_DIM];
+    double max_x[COORD_VES3D_DIM];
+    MPI_Allreduce(loc_min_x, min_x, COORD_VES3D_DIM, MPI_DOUBLE, MPI_MIN, comm);
+    MPI_Allreduce(loc_max_x, max_x, COORD_VES3D_DIM, MPI_DOUBLE, MPI_MAX, comm);
 
     static T eps=machine_eps<T>()*64; // Points should be well within the box.
     scale_x=1.0/(max_x[0]-min_x[0]+2*eps);
-    for(size_t k=0;k<COORD_DIM;k++){
+    for(size_t k=0;k<COORD_VES3D_DIM;k++){
       scale_x=std::min(scale_x,(T)(1.0/(max_x[k]-min_x[k]+2*eps)));
     }
     if(scale_x*0.0!=0.0) scale_x=1.0; // fix for scal_x=inf
-    for(size_t k=0;k<COORD_DIM;k++){
+    for(size_t k=0;k<COORD_VES3D_DIM;k++){
       shift_x[k]=-min_x[k]*scale_x+eps;
     }
   }
@@ -524,7 +524,7 @@ void* PVFMMCreateContext(T box_size, int n, int m, int max_d,
   ctx->mat->Initialize(ctx->mult_order, ctx->comm, ctx->ker);
 
   // Set tree_data
-  ctx->tree_data.dim=COORD_DIM;
+  ctx->tree_data.dim=COORD_VES3D_DIM;
   ctx->tree_data.max_depth=ctx->max_depth;
   ctx->tree_data.max_pts=ctx->max_pts;
   { // ctx->tree_data.pt_coord=... //Set points for initial tree.
@@ -596,15 +596,15 @@ void PVFMMEval(const T* src_pos, const T* sl_den, const T* dl_den, size_t n_src,
   const int* ker_dim=ctx->ker->ker_dim;
 
   pvfmm::Profile::Tic("FMM",&ctx->comm);
-  T scale_x, shift_x[COORD_DIM];
+  T scale_x, shift_x[COORD_VES3D_DIM];
   if(ctx->box_size<=0){ // determine bounding box
-    T s0, x0[COORD_DIM];
-    T s1, x1[COORD_DIM];
+    T s0, x0[COORD_VES3D_DIM];
+    T s1, x1[COORD_VES3D_DIM];
     PVFMMBoundingBox(n_src, src_pos, &s0, x0, ctx->comm);
     PVFMMBoundingBox(n_trg, trg_pos, &s1, x1, ctx->comm);
 
-    T c0[COORD_DIM]={(0.5-x0[0])/s0, (0.5-x0[1])/s0, (0.5-x0[2])/s0};
-    T c1[COORD_DIM]={(0.5-x1[0])/s1, (0.5-x1[1])/s1, (0.5-x1[2])/s1};
+    T c0[COORD_VES3D_DIM]={(0.5-x0[0])/s0, (0.5-x0[1])/s0, (0.5-x0[2])/s0};
+    T c1[COORD_VES3D_DIM]={(0.5-x1[0])/s1, (0.5-x1[1])/s1, (0.5-x1[2])/s1};
 
     scale_x=0;
     scale_x=std::max(scale_x, fabs(c0[0]-c1[0]));
@@ -630,7 +630,7 @@ void PVFMMEval(const T* src_pos, const T* sl_den, const T* dl_den, size_t n_src,
     pvfmm::Vector<T>& trg_scal_exp=ctx->ker->trg_scal;
     src_scal .ReInit(ctx->ker->src_scal.Dim());
     trg_scal .ReInit(ctx->ker->trg_scal.Dim());
-    surf_scal.ReInit(COORD_DIM+src_scal.Dim());
+    surf_scal.ReInit(COORD_VES3D_DIM+src_scal.Dim());
     for(size_t i=0;i<src_scal.Dim();i++){
       src_scal [i]=pow(scale_x, src_scal_exp[i]);
       surf_scal[i]=scale_x*src_scal[i];
@@ -675,21 +675,21 @@ void PVFMMEval(const T* src_pos, const T* sl_den, const T* dl_den, size_t n_src,
     { // Set src tree_data
       { // Scatter src data
         // Compute MortonId and copy coordinates and values.
-        src_coord .ReInit(       n_src            *COORD_DIM);
+        src_coord .ReInit(       n_src            *COORD_VES3D_DIM);
         src_value .ReInit(sl_den?n_src*(ker_dim[0]          ):0);
-        surf_value.ReInit(dl_den?n_src*(ker_dim[0]+COORD_DIM):0);
+        surf_value.ReInit(dl_den?n_src*(ker_dim[0]+COORD_VES3D_DIM):0);
         pt_mid    .ReInit(n_src);
         #pragma omp parallel for
         for(size_t tid=0;tid<omp_p;tid++){
           size_t a=((tid+0)*n_src)/omp_p;
           size_t b=((tid+1)*n_src)/omp_p;
           for(size_t i=a;i<b;i++){
-            for(size_t j=0;j<COORD_DIM;j++){
-              src_coord[i*COORD_DIM+j]=src_pos[i*COORD_DIM+j]*scale_x+shift_x[j];
-              while(src_coord[i*COORD_DIM+j]< 0.0) src_coord[i*COORD_DIM+j]+=1.0;
-              while(src_coord[i*COORD_DIM+j]>=1.0) src_coord[i*COORD_DIM+j]-=1.0;
+            for(size_t j=0;j<COORD_VES3D_DIM;j++){
+              src_coord[i*COORD_VES3D_DIM+j]=src_pos[i*COORD_VES3D_DIM+j]*scale_x+shift_x[j];
+              while(src_coord[i*COORD_VES3D_DIM+j]< 0.0) src_coord[i*COORD_VES3D_DIM+j]+=1.0;
+              while(src_coord[i*COORD_VES3D_DIM+j]>=1.0) src_coord[i*COORD_VES3D_DIM+j]-=1.0;
             }
-            pt_mid[i]=pvfmm::MortonId(&src_coord[i*COORD_DIM]);
+            pt_mid[i]=pvfmm::MortonId(&src_coord[i*COORD_VES3D_DIM]);
           }
           if(src_value.Dim()) for(size_t i=a;i<b;i++){
             for(size_t j=0;j<ker_dim[0];j++){
@@ -697,8 +697,8 @@ void PVFMMEval(const T* src_pos, const T* sl_den, const T* dl_den, size_t n_src,
             }
           }
           if(surf_value.Dim()) for(size_t i=a;i<b;i++){
-            for(size_t j=0;j<ker_dim[0]+COORD_DIM;j++){
-              surf_value[i*(ker_dim[0]+COORD_DIM)+j]=dl_den[i*(ker_dim[0]+COORD_DIM)+j]*surf_scal[j];
+            for(size_t j=0;j<ker_dim[0]+COORD_VES3D_DIM;j++){
+              surf_value[i*(ker_dim[0]+COORD_VES3D_DIM)+j]=dl_den[i*(ker_dim[0]+COORD_VES3D_DIM)+j]*surf_scal[j];
             }
           }
         }
@@ -723,15 +723,15 @@ void PVFMMEval(const T* src_pos, const T* sl_den, const T* dl_den, size_t n_src,
           for(size_t j=0;j<nodes.size();j++){
             size_t n_pts=part_indx[j+1]-part_indx[j];
             if(src_value.Dim()){
-              nodes[j]-> src_coord.ReInit(n_pts*( COORD_DIM),& src_coord[0]+part_indx[j]*( COORD_DIM),false);
+              nodes[j]-> src_coord.ReInit(n_pts*( COORD_VES3D_DIM),& src_coord[0]+part_indx[j]*( COORD_VES3D_DIM),false);
               nodes[j]-> src_value.ReInit(n_pts*(ker_dim[0]),& src_value[0]+part_indx[j]*(ker_dim[0]),false);
             }else{
               nodes[j]-> src_coord.ReInit(0,NULL,false);
               nodes[j]-> src_value.ReInit(0,NULL,false);
             }
             if(surf_value.Dim()){
-              nodes[j]->surf_coord.ReInit(n_pts*(           COORD_DIM),& src_coord[0]+part_indx[j]*(           COORD_DIM),false);
-              nodes[j]->surf_value.ReInit(n_pts*(ker_dim[0]+COORD_DIM),&surf_value[0]+part_indx[j]*(ker_dim[0]+COORD_DIM),false);
+              nodes[j]->surf_coord.ReInit(n_pts*(           COORD_VES3D_DIM),& src_coord[0]+part_indx[j]*(           COORD_VES3D_DIM),false);
+              nodes[j]->surf_value.ReInit(n_pts*(ker_dim[0]+COORD_VES3D_DIM),&surf_value[0]+part_indx[j]*(ker_dim[0]+COORD_VES3D_DIM),false);
             }else{
               nodes[j]->surf_coord.ReInit(0,NULL,false);
               nodes[j]->surf_value.ReInit(0,NULL,false);
@@ -742,16 +742,16 @@ void PVFMMEval(const T* src_pos, const T* sl_den, const T* dl_den, size_t n_src,
           for(size_t j=0;j<nodes.size();j++){
             size_t n_pts=part_indx[j+1]-part_indx[j];
             if(src_value.Dim()){
-              assert(nodes[j]->src_coord.Dim()==n_pts*( COORD_DIM));
+              assert(nodes[j]->src_coord.Dim()==n_pts*( COORD_VES3D_DIM));
               assert(nodes[j]->src_value.Dim()==n_pts*(ker_dim[0]));
-              //memcpy(&nodes[j]->src_coord[0],&src_coord[0]+part_indx[j]*( COORD_DIM),n_pts*( COORD_DIM)*sizeof(T));
+              //memcpy(&nodes[j]->src_coord[0],&src_coord[0]+part_indx[j]*( COORD_VES3D_DIM),n_pts*( COORD_VES3D_DIM)*sizeof(T));
               memcpy(&nodes[j]->src_value[0],&src_value[0]+part_indx[j]*(ker_dim[0]),n_pts*(ker_dim[0])*sizeof(T));
             }
             if(surf_value.Dim()){
-              assert(nodes[j]->surf_coord.Dim()==n_pts*(           COORD_DIM));
-              assert(nodes[j]->surf_value.Dim()==n_pts*(ker_dim[0]+COORD_DIM));
-              //memcpy(&nodes[j]->surf_coord[0],& src_coord[0]+part_indx[j]*(           COORD_DIM),n_pts*(           COORD_DIM)*sizeof(T));
-              memcpy(&nodes[j]->surf_value[0],&surf_value[0]+part_indx[j]*(ker_dim[0]+COORD_DIM),n_pts*(ker_dim[0]+COORD_DIM)*sizeof(T));
+              assert(nodes[j]->surf_coord.Dim()==n_pts*(           COORD_VES3D_DIM));
+              assert(nodes[j]->surf_value.Dim()==n_pts*(ker_dim[0]+COORD_VES3D_DIM));
+              //memcpy(&nodes[j]->surf_coord[0],& src_coord[0]+part_indx[j]*(           COORD_VES3D_DIM),n_pts*(           COORD_VES3D_DIM)*sizeof(T));
+              memcpy(&nodes[j]->surf_value[0],&surf_value[0]+part_indx[j]*(ker_dim[0]+COORD_VES3D_DIM),n_pts*(ker_dim[0]+COORD_VES3D_DIM)*sizeof(T));
             }
           }
         }
@@ -762,19 +762,19 @@ void PVFMMEval(const T* src_pos, const T* sl_den, const T* dl_den, size_t n_src,
         trg_coord.ReInit(src_coord.Dim(),&src_coord[0],false);
       }else{
         // Compute MortonId and copy coordinates.
-        trg_coord.Resize(n_trg*COORD_DIM);
+        trg_coord.Resize(n_trg*COORD_VES3D_DIM);
         pt_mid    .ReInit(n_trg);
         #pragma omp parallel for
         for(size_t tid=0;tid<omp_p;tid++){
           size_t a=((tid+0)*n_trg)/omp_p;
           size_t b=((tid+1)*n_trg)/omp_p;
           for(size_t i=a;i<b;i++){
-            for(size_t j=0;j<COORD_DIM;j++){
-              trg_coord[i*COORD_DIM+j]=trg_pos[i*COORD_DIM+j]*scale_x+shift_x[j];
-              while(trg_coord[i*COORD_DIM+j]< 0.0) trg_coord[i*COORD_DIM+j]+=1.0;
-              while(trg_coord[i*COORD_DIM+j]>=1.0) trg_coord[i*COORD_DIM+j]-=1.0;
+            for(size_t j=0;j<COORD_VES3D_DIM;j++){
+              trg_coord[i*COORD_VES3D_DIM+j]=trg_pos[i*COORD_VES3D_DIM+j]*scale_x+shift_x[j];
+              while(trg_coord[i*COORD_VES3D_DIM+j]< 0.0) trg_coord[i*COORD_VES3D_DIM+j]+=1.0;
+              while(trg_coord[i*COORD_VES3D_DIM+j]>=1.0) trg_coord[i*COORD_VES3D_DIM+j]-=1.0;
             }
-            pt_mid[i]=pvfmm::MortonId(&trg_coord[i*COORD_DIM]);
+            pt_mid[i]=pvfmm::MortonId(&trg_coord[i*COORD_VES3D_DIM]);
           }
         }
 
@@ -796,7 +796,7 @@ void PVFMMEval(const T* src_pos, const T* sl_den, const T* dl_den, size_t n_src,
           for(size_t j=0;j<nodes.size();j++){
             size_t n_pts=part_indx[j+1]-part_indx[j];
             {
-              nodes[j]-> trg_coord.ReInit(n_pts*(COORD_DIM),& trg_coord[0]+part_indx[j]*(COORD_DIM),false);
+              nodes[j]-> trg_coord.ReInit(n_pts*(COORD_VES3D_DIM),& trg_coord[0]+part_indx[j]*(COORD_VES3D_DIM),false);
             }
           }
         }else{
@@ -804,8 +804,8 @@ void PVFMMEval(const T* src_pos, const T* sl_den, const T* dl_den, size_t n_src,
           for(size_t j=0;j<nodes.size();j++){
             size_t n_pts=part_indx[j+1]-part_indx[j];
             {
-              assert(nodes[j]->trg_coord.Dim()==n_pts*(COORD_DIM));
-              //memcpy(&nodes[j]->trg_coord[0],&trg_coord[0]+part_indx[j]*(COORD_DIM),n_pts*(COORD_DIM)*sizeof(T));
+              assert(nodes[j]->trg_coord.Dim()==n_pts*(COORD_VES3D_DIM));
+              //memcpy(&nodes[j]->trg_coord[0],&trg_coord[0]+part_indx[j]*(COORD_VES3D_DIM),n_pts*(COORD_VES3D_DIM)*sizeof(T));
             }
           }
         }
@@ -952,23 +952,23 @@ void PVFMMEval(const T* src_pos, const T* sl_den, const T* dl_den, size_t n_src,
     }
 
     if(ctx->bndry==pvfmm::Periodic){ // Set average velocity to zero
-      T avg_v[COORD_DIM]={0,0,0};
+      T avg_v[COORD_VES3D_DIM]={0,0,0};
       for(long i=0;i<n_trg;i++){
-        for(long k=0;k<COORD_DIM;k++) avg_v[k]+=trg_vel[i*COORD_DIM+k];
+        for(long k=0;k<COORD_VES3D_DIM;k++) avg_v[k]+=trg_vel[i*COORD_VES3D_DIM+k];
       }
 
       size_t N_glb=0;
-      T glb_avg_v[COORD_DIM]={0,0,0};
+      T glb_avg_v[COORD_VES3D_DIM]={0,0,0};
       MPI_Allreduce(avg_v, glb_avg_v, 3, pvfmm::par::Mpi_datatype<T>::value(), pvfmm::par::Mpi_datatype<T>::sum(), ctx->comm);
       MPI_Allreduce(&N_glb, &n_trg, 1, pvfmm::par::Mpi_datatype<size_t>::value(), pvfmm::par::Mpi_datatype<size_t>::sum(), ctx->comm);
-      for(long j=0;j<COORD_DIM;j++) glb_avg_v[j]/=N_glb;
+      for(long j=0;j<COORD_VES3D_DIM;j++) glb_avg_v[j]/=N_glb;
 
       #pragma omp parallel for
       for(size_t tid=0;tid<omp_p;tid++){
         size_t a=((tid+0)*n_trg)/omp_p;
         size_t b=((tid+1)*n_trg)/omp_p;
         for(size_t i=a;i<b;i++){
-          for(size_t k=0;k<COORD_DIM;k++) trg_vel[i*COORD_DIM+k]-=glb_avg_v[k];
+          for(size_t k=0;k<COORD_VES3D_DIM;k++) trg_vel[i*COORD_VES3D_DIM+k]-=glb_avg_v[k];
         }
       }
     }
@@ -991,7 +991,7 @@ void PVFMM_GlobalRepart(size_t nv, size_t stride,
   MPI_Comm comm=MPI_COMM_WORLD;
 
   // Get bounding box.
-  T scale_x, shift_x[COORD_DIM];
+  T scale_x, shift_x[COORD_VES3D_DIM];
   PVFMMBoundingBox(nv*stride, x, &scale_x, shift_x, comm);
 
   pvfmm::Vector<pvfmm::MortonId> ves_mid(nv);
@@ -1000,14 +1000,14 @@ void PVFMM_GlobalRepart(size_t nv, size_t stride,
     #pragma omp parallel for
     for(size_t i=0;i<nv;i++){
       T  x_ves[3]={0,0,0};
-      const T* x_=&x[i*COORD_DIM*stride];
+      const T* x_=&x[i*COORD_VES3D_DIM*stride];
       for(size_t j=0;j<stride;j++){
-        for(size_t k=0;k<COORD_DIM;k++){
+        for(size_t k=0;k<COORD_VES3D_DIM;k++){
           x_ves[k]+=x_[0];
           ++x_;
         }
       }
-      for(size_t k=0;k<COORD_DIM;k++){
+      for(size_t k=0;k<COORD_VES3D_DIM;k++){
         x_ves[k]=x_ves[k]*scale_x+shift_x[k];
         assert(x_ves[k]>0.0);
         assert(x_ves[k]<1.0);
@@ -1022,14 +1022,14 @@ void PVFMM_GlobalRepart(size_t nv, size_t stride,
 
   // Allocate memory for output.
   nvr[0]=scatter_index.Dim();
-  xr      [0]=new T[nvr[0]*stride*COORD_DIM];
+  xr      [0]=new T[nvr[0]*stride*COORD_VES3D_DIM];
   tensionr[0]=new T[nvr[0]*stride          ];
 
   { // Scatter x
-    pvfmm::Vector<T> data(nv*stride*COORD_DIM,(T*)x);
+    pvfmm::Vector<T> data(nv*stride*COORD_VES3D_DIM,(T*)x);
     pvfmm::par::ScatterForward(data, scatter_index, comm);
 
-    assert(data.Dim()==nvr[0]*stride*COORD_DIM);
+    assert(data.Dim()==nvr[0]*stride*COORD_VES3D_DIM);
     memcpy(xr[0],&data[0],data.Dim()*sizeof(T));
   }
 

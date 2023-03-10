@@ -6,8 +6,7 @@
 #include "Surface.h"
 #include "Parameters.h"
 #include "vtu_writer.h"
-
-#define DIM 3
+#include "sctl.hpp"
 
 typedef Device<CPU> DevCPU;
 extern const DevCPU the_cpu_device(0);
@@ -184,7 +183,7 @@ int main(int argc, char **argv)
     char fname[400];
     COUT("Loading initial shape");
     sprintf(fname, "/precomputed/ellipse_%d.txt",sim_par.sh_order);
-    myIO.ReadData(FullPath(fname), x0, DataIO::ASCII, 0, fLen * DIM);
+    myIO.ReadData(FullPath(fname), x0, DataIO::ASCII, 0, fLen * 3);
 
     //Reading operators from file
     COUT("Loading matrices");
@@ -265,5 +264,6 @@ int main(int argc, char **argv)
     // write to matlab or paraview?  (need nodes x, scalar and/or vector field on surf).
 
     // conservation w/ diffusion term too?
+    sctl::VecTest<double,1>::test();
     return 0;
 }
