@@ -5,7 +5,14 @@ VES3D_MKDIR ?= ${VES3D_DIR}/makefile.in.files
 include ${VES3D_MKDIR}/makefile.in
 
 CXXFLAGS += -I./SCTL/include
-CXXFLAGS += -Wall -Wfloat-conversion  -O3 -march=native -DNDEBUG -g -rdynamic -Wl,-no_pie  -DSCTL_GLOBAL_MEM_BUFF=0  -DSCTL_PROFILE=5 -DSCTL_VERBOSE  -DSCTL_QUAD_T=__float128  -lblas -DSCTL_HAVE_BLAS  -llapack -DSCTL_HAVE_LAPACK
+
+ifeq ($(shell uname -s),Darwin)
+	CXXFLAGS += -g -rdynamic -Wl,-no_pie # for stack trace (on Mac)
+else
+	CXXFLAGS += -g -rdynamic # for stack trace
+endif
+
+CXXFLAGS += -Wall -Wfloat-conversion  -O3 -march=native -DNDEBUG -DSCTL_GLOBAL_MEM_BUFF=0  -DSCTL_PROFILE=5 -DSCTL_VERBOSE  -DSCTL_QUAD_T=__float128  -lblas -DSCTL_HAVE_BLAS  -llapack -DSCTL_HAVE_LAPACK
 
 # targets of install
 VES3D_BINS = surftest
