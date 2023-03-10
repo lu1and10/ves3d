@@ -115,10 +115,13 @@ void timestep(const real &dt, const int &n_step, const Surf_t &S, const VectorCo
       std::string filename;
       filename.append(filename_prefix);
       filename.append(std::string(suffix));
-      filename.append(".vtu");
-      test_vtu_point_cloud_writer(S.getPosition(), force, v_tmp, density, filename);
+
+
       // scalar field times vector field point wise
       xv(density, v_tmp, v_tmp2);      // v_tmp2 = density.v_tmp   (pointwise)
+      test_vtu_surface_writer(S.getPosition(), v_tmp2, density, filename);
+      filename.append(".vtu");
+      test_vtu_point_cloud_writer(S.getPosition(), force, v_tmp, density, filename);
       // surface div
       S.div(v_tmp2, s_tmp);           // s_tmp = div_Gamma (density force_tang)
       // diffusion
@@ -162,6 +165,24 @@ void test_vtu_point_cloud_writer(const VectorContainer &X, const VectorContainer
 
 template<typename ScalarContainer, typename VectorContainer>
 void test_vtu_surface_writer(const VectorContainer &X, const VectorContainer &v, const ScalarContainer &s, const std::string &filename){
+    // test write vector field
+
+    char* cstr = const_cast<char*>(filename.c_str());
+
+    // sh order
+    int p0 = X.getShOrder();
+    typedef sctl::Vector<typename VectorContainer::value_type> SCTL_Vec;
+
+    SCTL_Vec Xgrid(X.size(), (real*)X.begin(), false);
+    SCTL_Vec Xgrid_shc;
+    sctl::SphericalHarmonics<real>::Grid2SHC(Xgrid, p0+1, 2*p0, p0, Xgrid_shc, sctl::SHCArrange::ROW_MAJOR);
+
+    SCTL_Vec V(v.size(), (real*)v.begin(), false);
+    SCTL_Vec V_shc;
+    sctl::SphericalHarmonics<real>::Grid2SHC(V, p0+1, 2*p0, p0, V_shc, sctl::SHCArrange::ROW_MAJOR);
+
+    sctl::SphericalHarmonics<real>::WriteVTK(cstr, &Xgrid_shc, &V_shc, sctl::SHCArrange::ROW_MAJOR, p0, 2*p0);
+
 }
 
 
@@ -264,6 +285,6 @@ int main(int argc, char **argv)
     // write to matlab or paraview?  (need nodes x, scalar and/or vector field on surf).
 
     // conservation w/ diffusion term too?
-    sctl::VecTest<double,1>::test();
+
     return 0;
 }
