@@ -21,16 +21,21 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
     dt_(params_.ts),
     sht_(mats.p_, mats.mats_p_),
     sht_upsample_(mats.p_up_, mats.mats_p_up_),
+    move_pole(mats),
     checked_out_work_sca_(0),
     checked_out_work_vec_(0),
-    stokes_(params_.sh_order,params_.upsample_freq,params_.periodic_length,params_.repul_dist),
+    //stokes_(params_.sh_order,params_.upsample_freq,params_.periodic_length,params_.repul_dist),
     S_up_(NULL)
 {
     pos_vel_.replicate(S_.getPosition());
     tension_.replicate(S_.getPosition());
+    density_.replicate(S_.getPosition());
+    density_vec_.replicate(S_.getPosition());
 
     pos_vel_.getDevice().Memset(pos_vel_.begin(), 0, sizeof(value_type)*pos_vel_.size());
     tension_.getDevice().Memset(tension_.begin(), 0, sizeof(value_type)*tension_.size());
+    density_.getDevice().Memset(density_.begin(), 0, sizeof(value_type)*density_.size());
+    density_vec_.getDevice().Memset(density_vec_.begin(), 0, sizeof(value_type)*density_vec_.size());
 
     //Setting initial tension to zero
     tension_.getDevice().Memset(tension_.begin(), 0,
@@ -108,6 +113,7 @@ updateJacobiExplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
 
     std::auto_ptr<Vec_t> u1 = checkoutVec();
     std::auto_ptr<Vec_t> u2 = checkoutVec();
+    std::auto_ptr<Sca_t> wrk = checkoutSca();
 
     // puts u_inf and interaction in pos_vel_
     this->updateFarField();
@@ -129,8 +135,17 @@ updateJacobiExplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     dx.replicate(S_.getPosition());
     axpy(dt_, pos_vel_, dx);
 
+    // advect density on surface
+    axpy(0.0, *u1, dx, *u1);
+    S_.mapToTangentSpace(*u1, false /* upsample */);
+    S_.grad(density_, *u2);
+    GeometricDot(*u2, *u1, *wrk);
+    axpy(1.0, *wrk, density_, density_);
+    xv(density_, S_.getNormal(), density_vec_);      // density_vec_ = density_.S_.getNormal()   (pointwise)
+
     recycle(u1);
     recycle(u2);
+    recycle(wrk);
 
     return ErrorEvent::Success;
 }
@@ -204,6 +219,8 @@ template<typename SurfContainer, typename Interaction>
 Error_t InterfacialVelocity<SurfContainer, Interaction>::
 updateImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
 {
+    Error_t err=ErrorEvent::Success;
+    /*
     PROFILESTART();
     this->dt_ = dt;
     SolverScheme scheme(GloballyImplicit);
@@ -268,22 +285,22 @@ updateImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
               recycle(Du);
               recycle(fi);
           }
-          stokes_.SetDensitySL(f.get());
+          //stokes_.SetDensitySL(f.get());
           recycle(f);
       }
 
       if( ves_props_.has_contrast ){ // Set DensityDL
           std::auto_ptr<Vec_t> lcoeff_vel  = checkoutVec();
           av(ves_props_.dl_coeff, *vel_, *lcoeff_vel);
-          stokes_.SetDensityDL(lcoeff_vel.get());
+          //stokes_.SetDensityDL(lcoeff_vel.get());
           recycle(lcoeff_vel);
       } else {
-          stokes_.SetDensityDL(NULL);
+          //stokes_.SetDensityDL(NULL);
       }
 
       if(0){ // Print error
         std::auto_ptr<Vec_t> Sf = checkoutVec();
-        stokes_(*Sf);
+        //stokes_(*Sf);
 
         { // Add bg_vel
           std::auto_ptr<Vec_t> bg_vel = checkoutVec();
@@ -374,11 +391,11 @@ updateImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
           { // Set vtk_data.value
             pvfmm::Vector<value_type> coord(vtk_data.coord.size()), value(vtk_data.value.size());
             for(long i=0;i<coord.Dim();i++) coord[i]=vtk_data.coord[i];
-            stokes_.SetSrcCoord(S_.getPosition(),100,100);
-            stokes_.SetTrgCoord(&coord);
-            value=stokes_();
+            //stokes_.SetSrcCoord(S_.getPosition(),100,100);
+            //stokes_.SetTrgCoord(&coord);
+            //value=stokes_();
             { // Add BgVel
-              long ntrg=coord.Dim()/COORD_DIM;
+              long ntrg=coord.Dim()/VES3D_DIM;
               long nv=(ntrg+4-1)/4;
               long mv=4;
 
@@ -388,9 +405,9 @@ updateImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
                 for(long i1=0;i1<mv;i1++){
                   long i=i0*mv+i1;
                   if(i<ntrg){
-                    c_[(i0*COORD_DIM+0)*mv+i1]=coord[i*COORD_DIM+0];
-                    c_[(i0*COORD_DIM+1)*mv+i1]=coord[i*COORD_DIM+1];
-                    c_[(i0*COORD_DIM+2)*mv+i1]=coord[i*COORD_DIM+2];
+                    c_[(i0*VES3D_DIM+0)*mv+i1]=coord[i*VES3D_DIM+0];
+                    c_[(i0*VES3D_DIM+1)*mv+i1]=coord[i*VES3D_DIM+1];
+                    c_[(i0*VES3D_DIM+2)*mv+i1]=coord[i*VES3D_DIM+2];
                   }
                 }
               }
@@ -401,14 +418,14 @@ updateImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
                 for(long i1=0;i1<mv;i1++){
                   long i=i0*mv+i1;
                   if(i<ntrg){
-                    value[i*COORD_DIM+0]+=bgvel_[(i0*COORD_DIM+0)*mv+i1];
-                    value[i*COORD_DIM+1]+=bgvel_[(i0*COORD_DIM+1)*mv+i1];
-                    value[i*COORD_DIM+2]+=bgvel_[(i0*COORD_DIM+2)*mv+i1];
+                    value[i*VES3D_DIM+0]+=bgvel_[(i0*VES3D_DIM+0)*mv+i1];
+                    value[i*VES3D_DIM+1]+=bgvel_[(i0*VES3D_DIM+1)*mv+i1];
+                    value[i*VES3D_DIM+2]+=bgvel_[(i0*VES3D_DIM+2)*mv+i1];
                   }
                 }
               }
             }
-            stokes_.SetTrgCoord(NULL);
+            //stokes_.SetTrgCoord(NULL);
             for(long i=0;i<value.Dim();i++) vtk_data.value[i]=value[i];
           }
         }
@@ -557,6 +574,7 @@ updateImplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
 
     PROFILEEND("",0);
     return err;
+    */
 }
 
 template<typename SurfContainer, typename Interaction>
@@ -595,7 +613,7 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::Prepare(const SolverSch
     ASSERT(ves_props_.bending_modulus.size() == S_.getPosition().getNumSubs(), "inccorrect size");
 
     INFO("Setting interaction source and target");
-    stokes_.SetSrcCoord(S_.getPosition());
+    //stokes_.SetSrcCoord(S_.getPosition());
 
     if (!precond_configured_ && params_.time_precond!=NoPrecond)
         ConfigurePrecond(params_.time_precond);
@@ -730,9 +748,9 @@ AssembleRhsVel(PVec_t *rhs, const value_type &dt, const SolverScheme &scheme) co
     std::auto_ptr<Vec_t> f  = checkoutVec();
     std::auto_ptr<Vec_t> Sf = checkoutVec();
     Intfcl_force_.explicitTractionJump(S_, *f);
-    stokes_.SetDensitySL(f.get(),true);
-    stokes_.SetDensityDL(NULL);
-    stokes_(*Sf);
+    //stokes_.SetDensitySL(f.get(),true);
+    //stokes_.SetDensityDL(NULL);
+    //stokes_(*Sf);
     axpy(static_cast<value_type>(1.0), *Sf, *vRhs, *vRhs);
 
     COUTDEBUG("Computing rhs for div(u)");
@@ -806,9 +824,9 @@ AssembleRhsPos(PVec_t *rhs, const value_type &dt, const SolverScheme &scheme) co
         std::auto_ptr<Vec_t> x  = checkoutVec();
         std::auto_ptr<Vec_t> Dx = checkoutVec();
         av(ves_props_.dl_coeff, S_.getPosition(), *x);
-        stokes_.SetDensitySL(NULL, true);
-        stokes_.SetDensityDL(x.get());
-        stokes_(*Dx);
+        //stokes_.SetDensitySL(NULL, true);
+        //stokes_.SetDensityDL(x.get());
+        //stokes_(*Dx);
         axpy(-dt, *pRhs, *Dx, *pRhs);
         axpy(static_cast<value_type>(-1.0), *pRhs, *pRhs);
 
@@ -940,18 +958,18 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::ImplicitMatvecPhysical(
         Intfcl_force_.implicitTractionJump(S_, vox, ten, *f);
         axpy(dt_, *f, *f);
     }
-    stokes_.SetDensitySL(f.get());
+    //stokes_.SetDensitySL(f.get());
 
     if( ves_props_.has_contrast ){
         COUTDEBUG("Setting the double-layer density");
         av(ves_props_.dl_coeff, vox, *Du);
-        stokes_.SetDensityDL(Du.get());
+        //stokes_.SetDensityDL(Du.get());
     } else {
-        stokes_.SetDensityDL(NULL);
+        //stokes_.SetDensityDL(NULL);
     }
 
     COUTDEBUG("Calling stokes");
-    stokes_(*Sf);
+    //stokes_(*Sf);
 
     COUTDEBUG("Computing the div term");
     //! @note For some reason, doing the linear algebraic manipulation
@@ -1413,12 +1431,13 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::stokes(
     int numinputs = 3;
     const Sca_t* inputs[] = {&S_.getPosition(), &force, t1.get()};
     Sca_t* outputs[] = {v1.get(), v2.get(), t2.get()};
+    move_pole.setOperands(inputs, numinputs, params_.singular_stokes);
 
     for(int ii=0;ii < imax; ++ii)
         for(int jj=0;jj < jmax; ++jj)
         {
-            //move_pole(ii, jj, outputs);
-            assert(false); exit(1); //@bug: move_pole deprecated
+            move_pole(ii, jj, outputs);
+            //assert(false); exit(1); //@bug: move_pole deprecated
 
             ax(w_sph_, *t2, *t2);
             xv(*t2, *v2, *v2);
@@ -1459,12 +1478,13 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::stokes_double_layer(
     int numinputs = 4;
     const Sca_t* inputs[] = {&S_.getPosition(), &S_.getNormal(),   &force, t1.get()};
     Sca_t*      outputs[] = { v1.get()        ,  v3.get()      , v2.get(), t2.get()};
+    move_pole.setOperands(inputs, numinputs, params_.singular_stokes);
 
     for(int ii=0;ii < imax; ++ii)
         for(int jj=0;jj < jmax; ++jj)
         {
-            //move_pole(ii, jj, outputs);
-            assert(false); exit(1); //@bug: move_pole deprecated
+            move_pole(ii, jj, outputs);
+            //assert(false); exit(1); //@bug: move_pole deprecated
 
             ax(w_sph_, *t2, *t2);
             xv(*t2, *v2, *v2);
@@ -1520,16 +1540,17 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::operator()(
 }
 
 template<typename SurfContainer, typename Interaction>
-InterfacialVelocity<SurfContainer, Interaction>::value_type InterfacialVelocity<SurfContainer, Interaction>::
+typename InterfacialVelocity<SurfContainer, Interaction>::value_type InterfacialVelocity<SurfContainer, Interaction>::
 StokesError(const Vec_t &x) const
 {
     PROFILESTART();
-    stokes_.SetDensitySL(NULL);
-    stokes_.SetDensityDL(NULL);
-    stokes_.SetSrcCoord(x);
-    value_type stokes_error=stokes_.MonitorError(params_.time_tol*0.1);
+    //stokes_.SetDensitySL(NULL);
+    //stokes_.SetDensityDL(NULL);
+    //stokes_.SetSrcCoord(x);
+    //value_type stokes_error=stokes_.MonitorError(params_.time_tol*0.1);
     PROFILEEND("",0);
 
+    value_type stokes_error=0;
     return stokes_error;
 }
 
@@ -1565,7 +1586,7 @@ static std::vector<typename Vec_t::value_type> inner_prod(const Vec_t& v1, const
     }
   }
 
-  std::vector<value_type> E(ns_x/COORD_DIM,0);
+  std::vector<value_type> E(ns_x/VES3D_DIM,0);
   for(int ii=0; ii<= p; ++ii){
     value_type* inPtr_v1 = v1_.begin() + ii;
     value_type* inPtr_v2 = v2_.begin() + ii;
@@ -1573,7 +1594,7 @@ static std::vector<typename Vec_t::value_type> inner_prod(const Vec_t& v1, const
     for(int jj=0; jj< len; ++jj){
       int dist = (p + 1 - (jj + 1)/2);
       for(int ss=0; ss<ns_x; ++ss){
-        E[ss/COORD_DIM] += A[ii]*(*inPtr_v1)*(*inPtr_v2);
+        E[ss/VES3D_DIM] += A[ii]*(*inPtr_v1)*(*inPtr_v2);
         inPtr_v1 += dist;
         inPtr_v2 += dist;
       }
@@ -1705,18 +1726,18 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
             long N = u1->getNumSubFuncs();
             long M=u1->size()/N;
             value_type* u=u1->begin();
-            for(long i=0;i<N/COORD_DIM;i++){
+            for(long i=0;i<N/VES3D_DIM;i++){
                 value_type max_v=0;
                 for(long j=0;j<M;j++){
-                    value_type x=u[j+M*(0+i*COORD_DIM)];
-                    value_type y=u[j+M*(1+i*COORD_DIM)];
-                    value_type z=u[j+M*(2+i*COORD_DIM)];
+                    value_type x=u[j+M*(0+i*VES3D_DIM)];
+                    value_type y=u[j+M*(1+i*VES3D_DIM)];
+                    value_type z=u[j+M*(2+i*VES3D_DIM)];
                     max_v=std::max(max_v, sqrt(x*x+y*y+z*z));
                 }
                 for(long j=0;j<M;j++){
-                    u[j+M*(0+i*COORD_DIM)]/=max_v;
-                    u[j+M*(1+i*COORD_DIM)]/=max_v;
-                    u[j+M*(2+i*COORD_DIM)]/=max_v;
+                    u[j+M*(0+i*VES3D_DIM)]/=max_v;
+                    u[j+M*(1+i*VES3D_DIM)]/=max_v;
+                    u[j+M*(2+i*VES3D_DIM)]/=max_v;
                 }
             }
         }
@@ -1750,6 +1771,10 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
                 Surf->grad(tension_, *u2);
                 GeometricDot(*u2, *u1, *wrk);
                 axpy(1.0, *wrk, tension_, tension_);
+
+                Surf->grad(density_, *u2);
+                GeometricDot(*u2, *u1, *wrk);
+                axpy(1.0, *wrk, density_, density_);
             }
         }
 

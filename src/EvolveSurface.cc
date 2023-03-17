@@ -45,6 +45,8 @@ EvolveSurface<T, DT, DEVICE, Interact, Repart>::EvolveSurface(Params_t *params,
         ownedObjs_[3] = true;
     }
 
+    ReinitInterfacialVelocity();
+
     set_name("evolve_surface");
     INFO("Created a new object");
 }
@@ -84,7 +86,7 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
 
     INFO("The vesicles' material properties:\n"<<ves_props_);
 
-    ReinitInterfacialVelocity();
+    //ReinitInterfacialVelocity();
     //Deciding on the updater type
     Scheme_t updater(NULL);
     switch ( params_->scheme )
@@ -140,9 +142,9 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
             value_type loc;
 
             loc=max_y0;
-            MPI_Allreduce(&loc, &max_y0, 1, MPI_DOUBLE, MPI_MAX, VES3D_COMM_WORLD);
+            //MPI_Allreduce(&loc, &max_y0, 1, MPI_DOUBLE, MPI_MAX, VES3D_COMM_WORLD);
             loc=max_err;
-            MPI_Allreduce(&loc, &max_err, 1, MPI_DOUBLE, MPI_MAX, VES3D_COMM_WORLD);
+            //MPI_Allreduce(&loc, &max_err, 1, MPI_DOUBLE, MPI_MAX, VES3D_COMM_WORLD);
         }
         //@bug I (ABT) think tolerance is true when solving for
         //velocity, not for position
@@ -158,11 +160,11 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
     CHK( (*monitor_)( this, 0, dt) );
     INFO("Stepping with "<<params_->scheme);
 
-    MPI_Comm comm=MPI_COMM_WORLD;
-    pvfmm::Profile::Enable(true);
+    //MPI_Comm comm=MPI_COMM_WORLD;
+    //pvfmm::Profile::Enable(true);
     while ( ERRORSTATUS() && t < time_horizon && dt>1e-10 )
     {
-        pvfmm::Profile::Tic("TimeStep",&comm,true);
+        //pvfmm::Profile::Tic("TimeStep",&comm,true);
 
         if(time_adap==TimeAdapErr){ // Adaptive using 2*dt time-step for error
             dt=std::min((time_horizon-t)/2, dt);
@@ -173,36 +175,36 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
             axpy(static_cast<value_type>(0.0), S_->getPosition(), S_->getPosition(), x0);
 
             // dt time-step
-            pvfmm::Profile::Tic("GMRES1",&comm,true);
+            //pvfmm::Profile::Tic("GMRES1",&comm,true);
             x_dt.replicate(S_->getPosition());
             if(err==ErrorEvent::Success) err=(F_->*updater)(*S_, dt, dx);
             axpy(static_cast<value_type>(1.0), dx, S_->getPosition(), x_dt);
-            pvfmm::Profile::Toc();
+            //pvfmm::Profile::Toc();
 
             // Check integration error
             value_type stokes_error=F_->StokesError(x_dt);
 
             // 2*dt time-step
-            pvfmm::Profile::Tic("GMRES2",&comm,true);
+            //pvfmm::Profile::Tic("GMRES2",&comm,true);
             x_2dt.replicate(S_->getPosition());
             axpy(static_cast<value_type>(0.0), x0, x0, S_->getPositionModifiable());
             if(err==ErrorEvent::Success) err=(F_->*updater)(*S_, 2*dt, dx);
             axpy(static_cast<value_type>(1.0), dx, S_->getPosition(), x_2dt);
-            pvfmm::Profile::Toc();
+            //pvfmm::Profile::Toc();
 
             // dt time-step
-            pvfmm::Profile::Tic("GMRES3",&comm,true);
+            //pvfmm::Profile::Tic("GMRES3",&comm,true);
             axpy(static_cast<value_type>(0.0), x_dt, x_dt, S_->getPositionModifiable());
             if(err==ErrorEvent::Success) err=(F_->*updater)(*S_, dt, dx);
             axpy(static_cast<value_type>(1.0), dx, S_->getPosition(), S_->getPositionModifiable());
-            pvfmm::Profile::Toc();
+            //pvfmm::Profile::Toc();
 
             // Check integration error
             stokes_error=std::max(stokes_error, F_->StokesError(S_->getPosition()));
             { // stokes_error = MPI_MAX(stokes_error)
               assert(typeid(T)==typeid(double)); // @bug this only works for T==double
               value_type error_loc=stokes_error;
-              MPI_Allreduce(&error_loc, &stokes_error, 1, MPI_DOUBLE, MPI_MAX, VES3D_COMM_WORLD);
+              //MPI_Allreduce(&error_loc, &stokes_error, 1, MPI_DOUBLE, MPI_MAX, VES3D_COMM_WORLD);
             }
 
             // Compute error
@@ -211,7 +213,7 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
             { // error = MPI_MAX(error)
               assert(typeid(T)==typeid(double)); // @bug this only works for T==double
               value_type error_loc=error;
-              MPI_Allreduce(&error_loc, &error, 1, MPI_DOUBLE, MPI_MAX, VES3D_COMM_WORLD);
+              //MPI_Allreduce(&error_loc, &error, 1, MPI_DOUBLE, MPI_MAX, VES3D_COMM_WORLD);
             }
 
             int accept=1;
@@ -260,10 +262,10 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
             V0=Sca_t::getDevice().MaxAbs( vol0.begin(), N_ves);
 
             // dt time-step
-            pvfmm::Profile::Tic("GMRES",&comm,true);
+            //pvfmm::Profile::Tic("GMRES",&comm,true);
             err=(F_->*updater)(*S_, dt, dx);
             axpy(static_cast<value_type>(1.0), dx, S_->getPosition(), S_->getPositionModifiable());
-            pvfmm::Profile::Toc();
+            //pvfmm::Profile::Toc();
 
             // Compute area/volume error
             value_type A_err, V_err;
@@ -280,10 +282,10 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
               value_type error_loc;
 
               error_loc=A_err;
-              MPI_Allreduce(&error_loc, &A_err, 1, MPI_DOUBLE, MPI_MAX, VES3D_COMM_WORLD);
+              //MPI_Allreduce(&error_loc, &A_err, 1, MPI_DOUBLE, MPI_MAX, VES3D_COMM_WORLD);
 
               error_loc=V_err;
-              MPI_Allreduce(&error_loc, &V_err, 1, MPI_DOUBLE, MPI_MAX, VES3D_COMM_WORLD);
+              //MPI_Allreduce(&error_loc, &V_err, 1, MPI_DOUBLE, MPI_MAX, VES3D_COMM_WORLD);
             }
 
             int accept=1;
@@ -319,29 +321,29 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
             INFO("Time-adaptive: A_err/dt = "<<(A_err/A0)/dt<<", V_err/dt = "<<(V_err/V0)/dt<<", dt_new = "<<dt_new);
             dt=dt_new;
         }else if(time_adap==TimeAdapNone){ // No adaptive
-            pvfmm::Profile::Tic("GMRES",&comm,true);
+            //pvfmm::Profile::Tic("GMRES",&comm,true);
             CHK( (F_->*updater)(*S_, dt, dx) );
             axpy(static_cast<value_type>(1.0), dx, S_->getPosition(), S_->getPositionModifiable());
-            pvfmm::Profile::Toc();
+            //pvfmm::Profile::Toc();
 
             t += dt;
         }
 
-        pvfmm::Profile::Tic("Reparam",&comm,true);
+        //pvfmm::Profile::Tic("Reparam",&comm,true);
         F_->reparam();
-        pvfmm::Profile::Toc();
-        pvfmm::Profile::Tic("AreaVolume",&comm,true);
+        //pvfmm::Profile::Toc();
+        //pvfmm::Profile::Tic("AreaVolume",&comm,true);
         AreaVolumeCorrection(area, vol);
-        pvfmm::Profile::Toc();
-        pvfmm::Profile::Tic("Repartition",&comm,true);
+        //pvfmm::Profile::Toc();
+        //pvfmm::Profile::Tic("Repartition",&comm,true);
         (*repartition_)(S_->getPositionModifiable(), F_->tension());
-        pvfmm::Profile::Toc();
-        pvfmm::Profile::Tic("Monitor",&comm,true);
+        //pvfmm::Profile::Toc();
+        //pvfmm::Profile::Tic("Monitor",&comm,true);
         CHK( (*monitor_)( this, t, dt) );
-        pvfmm::Profile::Toc();
+        //pvfmm::Profile::Toc();
 
-        pvfmm::Profile::Toc();
-        pvfmm::Profile::print(&comm);
+        //pvfmm::Profile::Toc();
+        //pvfmm::Profile::print(&comm);
     }
     PROFILEEND("",0);
     return ErrorEvent::Success;
@@ -386,8 +388,8 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::AreaVolumeCorrection(con
                 device.axpy(-1.0, area_err.begin(), area.begin(), N_ves, area_err.begin());
                 device.axpy(-1.0,  vol_err.begin(),  vol.begin(), N_ves,  vol_err.begin());
 
-                value_type area_max_err=device.MaxAbs<value_type>(area_err.begin(),N_ves)/device.MaxAbs<value_type>(area.begin(),N_ves);
-                value_type  vol_max_err=device.MaxAbs<value_type>( vol_err.begin(),N_ves)/device.MaxAbs<value_type>( vol.begin(),N_ves);
+                value_type area_max_err=device.MaxAbs(area_err.begin(),N_ves)/device.MaxAbs(area.begin(),N_ves);
+                value_type  vol_max_err=device.MaxAbs( vol_err.begin(),N_ves)/device.MaxAbs( vol.begin(),N_ves);
                 COUTDEBUG("Iteration = "<<iter<<", area error="<<area_max_err<<", vol error="<<vol_max_err);
                 if(std::max(area_max_err, vol_max_err)<tol) break;
             }
@@ -418,7 +420,7 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::AreaVolumeCorrection(con
                 device.xy(dAdX.begin(), dVdY.begin(), N_ves, dX.begin());
                 device.xy(dAdY.begin(), dVdX.begin(), N_ves, dY.begin());
                 device.axpy(-1.0, dY.begin(), dX.begin(), N_ves, DetInv.begin());
-                device.xyInv<value_type>(NULL, DetInv.begin(), N_ves, DetInv.begin());
+                device.xyInv((const T*)NULL, DetInv.begin(), N_ves, DetInv.begin());
             }
 
             Sca_t dXdA(N_ves,1);
@@ -430,11 +432,11 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::AreaVolumeCorrection(con
             }
             { // dX/dV = -dAdY * DetInv
                 device.xy(dAdY.begin(), DetInv.begin(), N_ves, dXdV.begin());
-                device.axpy<value_type>(-1.0, dXdV.begin(), NULL, N_ves, dXdV.begin());
+                device.axpy(-1.0, dXdV.begin(), (const T*)NULL, N_ves, dXdV.begin());
             }
             { // dY/dA = -dVdX * DetInv
                 device.xy(dVdX.begin(), DetInv.begin(), N_ves, dYdA.begin());
-                device.axpy<value_type>(-1.0, dYdA.begin(), NULL, N_ves, dYdA.begin());
+                device.axpy(-1.0, dYdA.begin(), (const T*)NULL, N_ves, dYdA.begin());
             }
             { // dY/dV =  dAdX * DetInv
                 device.xy(dAdX.begin(), DetInv.begin(), N_ves, dYdV.begin());
@@ -455,13 +457,13 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::AreaVolumeCorrection(con
         Vec_t dS; dS.replicate(Normal);
         Vec_t& position=S_up_->getPositionModifiable();
         { // position += dX*X.*Normal
-            device.xvpw<value_type>( X.begin(), Normal.begin(), NULL, Normal.getStride(), Normal.getNumSubs(), dS.begin());
-            device.avpw<value_type>(dX.begin(),     dS.begin(), NULL, Normal.getStride(), Normal.getNumSubs(), dS.begin());
+            device.xvpw( X.begin(), Normal.begin(), (const T*)NULL, Normal.getStride(), Normal.getNumSubs(), dS.begin());
+            device.avpw(dX.begin(),     dS.begin(), (const T*)NULL, Normal.getStride(), Normal.getNumSubs(), dS.begin());
             axpy(1, dS, position, position);
         }
         { // position += dY*Y.*Normal
-            device.xvpw<value_type>( Y.begin(), Normal.begin(), NULL, Normal.getStride(), Normal.getNumSubs(), dS.begin());
-            device.avpw<value_type>(dY.begin(),     dS.begin(), NULL, Normal.getStride(), Normal.getNumSubs(), dS.begin());
+            device.xvpw( Y.begin(), Normal.begin(), (const T*)NULL, Normal.getStride(), Normal.getNumSubs(), dS.begin());
+            device.avpw(dY.begin(),     dS.begin(), (const T*)NULL, Normal.getStride(), Normal.getNumSubs(), dS.begin());
             axpy(1, dS, position, position);
         }
 

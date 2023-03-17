@@ -181,7 +181,7 @@ std::ostream& emph(std::ostream& os);
 #endif
 
 #ifdef QUIET
-#define INFO(str)
+#define INFO(str) COUT(str)
 #define WHENQUIET(expr) expr
 #define WHENCHATTY(expr)
 #else

@@ -39,8 +39,8 @@ Error_t VesicleProperties<T>::update(){
         dl_coeff.begin(), nves, dl_coeff.begin());
 
     // bending coefficient
-    bending_modulus.getDevice().axpy<value_type>(-1.0,bending_modulus.begin(),
-        NULL, nves, bending_coeff.begin());
+    bending_modulus.getDevice().axpy(-1.0,bending_modulus.begin(),
+        (const value_type*)NULL, nves, bending_coeff.begin());
 
     // check contrast and excess density to set flags
     has_contrast=false;

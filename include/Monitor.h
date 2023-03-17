@@ -4,6 +4,7 @@
 #include "Logger.h"
 #include "Spharm.h"
 #include "Enums.h"
+#include "sctl.hpp"
 
 template<typename EvolveSurface>
 class MonitorBase{

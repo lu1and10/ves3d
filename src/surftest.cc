@@ -7,6 +7,7 @@
 #include "Parameters.h"
 #include "vtu_writer.h"
 #include "sctl.hpp"
+#include "EvolveSurface.h"
 
 typedef Device<CPU> DevCPU;
 extern const DevCPU the_cpu_device(0);
@@ -17,6 +18,8 @@ typedef Vectors<real, DevCPU, the_cpu_device> VecCPU_t;
 typedef Surface<ScaCPU_t, VecCPU_t> Surf_t;
 typedef typename ScaCPU_t::array_type Arr_t;
 typedef OperatorsMats<Arr_t> Mats_t;   // object that stores various spharm/quadr matrices for 1 vesicle
+typedef EvolveSurface<real, DevCPU, the_cpu_device> Evolve_t;
+
 
 template<typename Container>
 void set_zero(Container &x){
@@ -185,10 +188,61 @@ void test_vtu_surface_writer(const VectorContainer &X, const VectorContainer &v,
 
 }
 
+void test_evolve_surface(){
+    Parameters<real> sim_par;
+    sim_par.sh_order = 16;        // sph harm
+    sim_par.upsample_freq = 32;   // used in various geom calcs
+    sim_par.filter_freq     = 24;
+    sim_par.rep_filter_freq = 6;
+    sim_par.n_surfs              = 1;
+    sim_par.ts                   = 0.2;
+    sim_par.time_horizon         = 80;
+    sim_par.scheme               = JacobiBlockExplicit;
+    sim_par.singular_stokes      = Direct;
+    sim_par.bg_flow_param        = 0.1;
+    sim_par.bg_flow              = ShearFlow;
+    sim_par.interaction_upsample = true;
+    sim_par.rep_maxit            = 20;
+    sim_par.checkpoint           = true;
+    sim_par.checkpoint_stride    = 0.4;
+    sim_par.checkpoint_file_name = "EvolveSurf.chk";
+    sim_par.write_vtk = "EvolveSurftest";
 
-int main(int argc, char **argv)
-{
-  int const nv(1);    // # vesicles or particles
+    //IO
+    DataIO myIO;
+    VecCPU_t x0(sim_par.n_surfs, sim_par.sh_order);    // quadr nodes defining shapes, vector (x,y,z) on (th,ph)-mesh
+    int fLen = x0.getStride();          // SpharmGridDim is pair order+1, 2*order. fLen is their prod.
+    // this is because x00,x01,...    y00,y01,...  z...   and use ptr to conriguous RAM for eg x0.
+    char fname[400];
+    COUT("Loading initial shape");
+    sprintf(fname, "/precomputed/ellipse_%d.txt",sim_par.sh_order);
+    myIO.ReadData(FullPath(fname), x0, DataIO::ASCII, 0, fLen * 3);
+
+    //Reading operators from file
+    COUT("Loading matrices");
+    bool readFromFile = true;
+    Mats_t mats(readFromFile, sim_par);       // reads relevant sized mats from precomputed/
+
+    //Setting the background flow
+    BgFlowBase<VecCPU_t> *vInf(NULL);
+    CHK(BgFlowFactory(sim_par, &vInf));
+
+    typename Evolve_t::Interaction_t interaction(&StokesAlltoAll);
+
+    //Finally, Evolve surface
+    COUT("Making EvolveSurface object");
+    Evolve_t Es(&sim_par, mats, vInf, NULL, &interaction, NULL, NULL, &x0);
+
+    // how set up density = exp(-||x-x0||) :
+    real point0[3] = {0.0, 0.0, 2.16};
+    set_zero(Es.F_->density_);
+    set_exp(Es.S_->getPosition(), point0, Es.F_->density_);   // custom routine for this particular func
+
+    Es.Evolve();
+}
+
+void test_utils(){
+    int const nv(1);    // # vesicles or particles
 
     //IO
     DataIO myIO;
@@ -279,12 +333,11 @@ int main(int argc, char **argv)
     // print out content of int_density
     std::cout << "mass integral after: " << std::setprecision(8) << int_density.begin()[0] << "\n";
     std::cout << "mass error: " << std::setprecision(8) << std::abs(mass_before-int_density.begin()[0]) << "\n";
-    //COUT(density);
-    // --------------------------------------------
 
-    // write to matlab or paraview?  (need nodes x, scalar and/or vector field on surf).
+}
 
-    // conservation w/ diffusion term too?
-
+int main(int argc, char **argv)
+{
+    test_evolve_surface();
     return 0;
 }

@@ -1,3 +1,27 @@
+template<typename ScalarContainer, typename VectorContainer>
+void write_vtk(const VectorContainer &X, const VectorContainer &v, const ScalarContainer &s, const std::string &filename){
+    // test write vector field
+
+    char* cstr = const_cast<char*>(filename.c_str());
+
+    // sh order
+    int p0 = X.getShOrder();
+    typedef sctl::Vector<typename VectorContainer::value_type> SCTL_Vec;
+
+    SCTL_Vec Xgrid(X.size(), (typename VectorContainer::value_type*)X.begin(), false);
+    SCTL_Vec Xgrid_shc;
+    sctl::SphericalHarmonics<typename VectorContainer::value_type>::Grid2SHC(Xgrid, p0+1, 2*p0, p0, Xgrid_shc, sctl::SHCArrange::ROW_MAJOR);
+
+    SCTL_Vec V(v.size(), (typename VectorContainer::value_type*)v.begin(), false);
+    SCTL_Vec V_shc;
+    sctl::SphericalHarmonics<typename VectorContainer::value_type>::Grid2SHC(V, p0+1, 2*p0, p0, V_shc, sctl::SHCArrange::ROW_MAJOR);
+
+    sctl::SphericalHarmonics<typename VectorContainer::value_type>::WriteVTK(cstr, &Xgrid_shc, &V_shc, sctl::SHCArrange::ROW_MAJOR, p0, 2*p0);
+
+}
+
+
+
 template<typename EvolveSurface>
 MonitorBase<EvolveSurface>::~MonitorBase()
 {}
@@ -76,6 +100,13 @@ Error_t Monitor<EvolveSurface>::operator()(const EvolveSurface *state,
             INFO("Writing data to file "<<fname);
             IO_.DumpFile(fname.c_str(), ss);
             ++last_checkpoint_;
+
+            if(params_->write_vtk.size()){
+                std::string vtkfbase(params_->write_vtk);
+                vtkfbase += suffix;
+                INFO("Writing VTK file "<<vtkfbase);
+                write_vtk(state->S_->getPosition(), state->F_->density_vec_, state->F_->density_, vtkfbase);
+            }
 
 #if HAVE_PVFMM
             if(params_->write_vtk.size()){
