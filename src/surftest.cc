@@ -196,7 +196,7 @@ void test_evolve_surface(){
     sim_par.rep_filter_freq = 6;
     sim_par.n_surfs              = 1;
     sim_par.ts                   = 0.2;
-    sim_par.time_horizon         = 80;
+    sim_par.time_horizon         = 1.2;
     sim_par.scheme               = JacobiBlockExplicit;
     sim_par.singular_stokes      = Direct;
     sim_par.bg_flow_param        = 0.1;
@@ -238,7 +238,21 @@ void test_evolve_surface(){
     set_zero(Es.F_->density_);
     set_exp(Es.S_->getPosition(), point0, Es.F_->density_);   // custom routine for this particular func
 
+    GaussLegendreIntegrator<ScaCPU_t> integrator;
+    ScaCPU_t int_density;
+    // set size
+    int_density.replicate(Es.S_->getPosition());
+    // init to int_density to zero
+    set_zero(int_density);
+    integrator(Es.F_->density_, Es.S_->getAreaElement(), int_density);
+    // print out content of int_density
+    COUT(int_density);
+
+
     Es.Evolve();
+    set_zero(int_density);
+    integrator(Es.F_->density_, Es.S_->getAreaElement(), int_density);
+    COUT(int_density);
 }
 
 void test_utils(){
