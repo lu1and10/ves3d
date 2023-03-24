@@ -142,17 +142,22 @@ updateJacobiExplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     // advect density on surface
     // Stone, H. A. (1990). A simple derivation of the time‐dependent convective‐diffusion equation for surfactant transport along a deforming interface. Physics of Fluids A: Fluid Dynamics, 2(1), 111–112. doi:10.1063/1.857686
     // (d/dt) c + (u.n) (Div_s.n) c = 0
-    S_.div(S_.getNormal(), *wrk);
-    GeometricDot(pos_vel_, S_.getNormal(), *wrk2);
-    xy(*wrk,*wrk2,*wrk2);
-    axpy(dt_,*wrk2,*wrk2);
+    S_.div(S_.getNormal(), *wrk);                   // wrk = Div_s.n
+    // instead wrk = -2*meancurv!    Libin checked Div_s.n = -2*meancurv
+    // BUT check sign with sphere!
+    GeometricDot(pos_vel_, S_.getNormal(), *wrk2);  // wrk2 = u.n
+    xy(*wrk,*wrk2,*wrk2);                           // ptwise dot
+    axpy(dt_,*wrk2,*wrk2);                        // wrk2 now dt.(u.n)(Div_s.n)
     #pragma omp parallel for
     for(int ii=0; ii<wrk->size(); ii++){
         wrk->begin()[ii] = 1.0;
     }
-    axpy(1.0,*wrk,*wrk2,*wrk);
-    xyInv(density_, *wrk, density_);
-    // hack to store vector field of length density
+    axpy(1.0,*wrk,*wrk2,*wrk);   // wrk = 1+wrk2
+    // do implicit bkw Euler   c <- c / (1+wrk2)
+    // vs explicit fwd Euler  c <- c - wrk2
+    xyInv(density_, *wrk, density_);  // ptwise division
+    
+    // hack to store vector field whose length is "density"
     xv(density_, S_.getNormal(), density_vec_);      // density_vec_ = density_.S_.getNormal()   (pointwise)
 
     recycle(u1);

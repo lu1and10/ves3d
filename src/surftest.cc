@@ -188,6 +188,7 @@ void test_vtu_surface_writer(const VectorContainer &X, const VectorContainer &v,
 
 }
 
+//////////////////////////////////////////// LIBIN's deforming surf test
 void test_evolve_surface(){
     Parameters<real> sim_par;
     sim_par.sh_order = 16;        // sph harm
@@ -195,8 +196,8 @@ void test_evolve_surface(){
     sim_par.filter_freq     = 24;
     sim_par.rep_filter_freq = 6;
     sim_par.n_surfs              = 1;
-    sim_par.ts                   = 0.005;
-    sim_par.time_horizon         = 1.;
+    sim_par.ts                   = 0.1; // 0.005;
+    sim_par.time_horizon         = 30;
     sim_par.scheme               = JacobiBlockExplicit;
     sim_par.singular_stokes      = Direct;
     sim_par.bg_flow_param        = 0.1;
@@ -204,7 +205,7 @@ void test_evolve_surface(){
     sim_par.interaction_upsample = true;
     sim_par.rep_maxit            = 20;
     sim_par.checkpoint           = true;
-    sim_par.checkpoint_stride    = 0.1;
+    sim_par.checkpoint_stride    = 0.5;
     sim_par.checkpoint_file_name = "EvolveSurf.chk";
     sim_par.write_vtk = "EvolveSurftest";
 
