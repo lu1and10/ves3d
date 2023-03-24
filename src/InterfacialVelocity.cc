@@ -24,7 +24,7 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
     move_pole(mats),
     checked_out_work_sca_(0),
     checked_out_work_vec_(0),
-    //stokes_(params_.sh_order,params_.upsample_freq,params_.periodic_length,params_.repul_dist),
+    stokes_(params_.sh_order,params_.upsample_freq,params_.periodic_length),
     S_up_(NULL)
 {
     pos_vel_.replicate(S_.getPosition());
@@ -111,9 +111,13 @@ updateJacobiExplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
 {
     this->dt_ = dt;
 
+    stokes_.SetSrcCoord(S_.getPosition());
+    stokes_.SetTrgCoord(NULL);
+
     std::auto_ptr<Vec_t> u1 = checkoutVec();
     std::auto_ptr<Vec_t> u2 = checkoutVec();
     std::auto_ptr<Sca_t> wrk = checkoutSca();
+    std::auto_ptr<Sca_t> wrk2 = checkoutSca();
 
     // puts u_inf and interaction in pos_vel_
     this->updateFarField();
@@ -136,16 +140,25 @@ updateJacobiExplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     axpy(dt_, pos_vel_, dx);
 
     // advect density on surface
-    axpy(0.0, *u1, dx, *u1);
-    S_.mapToTangentSpace(*u1, false /* upsample */);
-    S_.grad(density_, *u2);
-    GeometricDot(*u2, *u1, *wrk);
-    axpy(1.0, *wrk, density_, density_);
+    // Stone, H. A. (1990). A simple derivation of the time‐dependent convective‐diffusion equation for surfactant transport along a deforming interface. Physics of Fluids A: Fluid Dynamics, 2(1), 111–112. doi:10.1063/1.857686
+    // (d/dt) c + (u.n) (Div_s.n) c = 0
+    S_.div(S_.getNormal(), *wrk);
+    GeometricDot(pos_vel_, S_.getNormal(), *wrk2);
+    xy(*wrk,*wrk2,*wrk2);
+    axpy(dt_,*wrk2,*wrk2);
+    #pragma omp parallel for
+    for(int ii=0; ii<wrk->size(); ii++){
+        wrk->begin()[ii] = 1.0;
+    }
+    axpy(1.0,*wrk,*wrk2,*wrk);
+    xyInv(density_, *wrk, density_);
+    // hack to store vector field of length density
     xv(density_, S_.getNormal(), density_vec_);      // density_vec_ = density_.S_.getNormal()   (pointwise)
 
     recycle(u1);
     recycle(u2);
     recycle(wrk);
+    recycle(wrk2);
 
     return ErrorEvent::Success;
 }
@@ -1416,6 +1429,7 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::stokes(
 {
     PROFILESTART();
 
+    /*
     int imax(S_.getPosition().getGridDim().first);
     int jmax(S_.getPosition().getGridDim().second);
     int np = S_.getPosition().getStride();
@@ -1451,6 +1465,13 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::stokes(
     recycle(t2);
     recycle(v1);
     recycle(v2);
+    */
+
+    velocity.replicate(force);
+    stokes_.SetDensitySL(&force);
+    stokes_.SetDensityDL(NULL);
+    stokes_.SelfInteraction(velocity);
+
 
     PROFILEEND("SelfInteraction_",0);
     return ErrorEvent::Success;

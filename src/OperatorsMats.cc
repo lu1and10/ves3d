@@ -61,6 +61,7 @@ OperatorsMats<Container>::OperatorsMats(bool readFromFile,
         sprintf(buffer,"precomputed/w_sph_%u_%s.txt", p_,tname.c_str());
         fileIO.ReadData(FullPath(buffer), data_, DataIO::ASCII, w_sph_- data_.begin(), np);
 
+        /*
         if (rot_mat_size != 0)
         {
             sprintf(buffer,"precomputed/all_rot_mats_%u_%s.txt", p_,tname.c_str());
@@ -71,6 +72,7 @@ OperatorsMats<Container>::OperatorsMats(bool readFromFile,
             fileIO.ReadData(FullPath(buffer), data_, DataIO::ASCII, sh_rot_mats_- data_.begin(),
                 spharm_rot_size);
         }
+        */
 
         //p
         sprintf(buffer,"precomputed/legTrans%u_%s.txt", p_,tname.c_str());

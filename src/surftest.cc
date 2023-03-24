@@ -195,8 +195,8 @@ void test_evolve_surface(){
     sim_par.filter_freq     = 24;
     sim_par.rep_filter_freq = 6;
     sim_par.n_surfs              = 1;
-    sim_par.ts                   = 0.2;
-    sim_par.time_horizon         = 1.2;
+    sim_par.ts                   = 0.005;
+    sim_par.time_horizon         = 1.;
     sim_par.scheme               = JacobiBlockExplicit;
     sim_par.singular_stokes      = Direct;
     sim_par.bg_flow_param        = 0.1;
@@ -204,7 +204,7 @@ void test_evolve_surface(){
     sim_par.interaction_upsample = true;
     sim_par.rep_maxit            = 20;
     sim_par.checkpoint           = true;
-    sim_par.checkpoint_stride    = 0.4;
+    sim_par.checkpoint_stride    = 0.1;
     sim_par.checkpoint_file_name = "EvolveSurf.chk";
     sim_par.write_vtk = "EvolveSurftest";
 
@@ -235,8 +235,9 @@ void test_evolve_surface(){
 
     // how set up density = exp(-||x-x0||) :
     real point0[3] = {0.0, 0.0, 2.16};
-    set_zero(Es.F_->density_);
-    set_exp(Es.S_->getPosition(), point0, Es.F_->density_);   // custom routine for this particular func
+    //set_zero(Es.F_->density_);
+    //set_exp(Es.S_->getPosition(), point0, Es.F_->density_);   // custom routine for this particular func
+    set_one(Es.F_->density_);
 
     GaussLegendreIntegrator<ScaCPU_t> integrator;
     ScaCPU_t int_density;

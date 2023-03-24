@@ -17,7 +17,7 @@
 #include "ParallelLinSolverInterface.h"
 #include "VesicleProps.h"
 #include "MovePole.h"
-//#include "StokesVelocity.h"
+#include "StokesVelocity.h"
 
 template<typename SurfContainer, typename Interaction>
 class InterfacialVelocity
@@ -33,7 +33,7 @@ class InterfacialVelocity
     typedef ParallelLinSolver<value_type> PSolver_t;
     typedef typename PSolver_t::matvec_type POp_t;
     typedef typename PSolver_t::vec_type PVec_t;
-    //typedef StokesVelocity<value_type> Stokes_t;
+    typedef StokesVelocity<value_type> Stokes_t;
     typedef SHTrans<Sca_t, SHTMats<value_type, device_type> > SHtrans_t;
     typedef VesicleProperties<Arr_t> VProp_t;
 
@@ -120,7 +120,7 @@ class InterfacialVelocity
     SHtrans_t sht_;
     SHtrans_t sht_upsample_;
 
-    //mutable Stokes_t stokes_;
+    mutable Stokes_t stokes_;
     mutable MovePole<Sca_t, Mats_t> move_pole;
     mutable Vec_t pos_vel_;
     mutable Sca_t tension_;

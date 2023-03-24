@@ -1,7 +1,8 @@
 #ifndef _SPHERICAL_HARMONICS_H_
 #define _SPHERICAL_HARMONICS_H_
 
-#include <matrix.hpp>
+//#include <matrix.hpp>
+#include "sctl.hpp"
 #define SHMAXDEG 256
 
 template <class Real>
@@ -9,39 +10,39 @@ class SphericalHarmonics{
 
   public:
 
-    static void SHC2Grid(const pvfmm::Vector<Real>& S, long p0, long p1, pvfmm::Vector<Real>& X, pvfmm::Vector<Real>* X_theta=NULL, pvfmm::Vector<Real>* X_phi=NULL);
+    static void SHC2Grid(const sctl::Vector<Real>& S, long p0, long p1, sctl::Vector<Real>& X, sctl::Vector<Real>* X_theta=NULL, sctl::Vector<Real>* X_phi=NULL);
 
-    static void Grid2SHC(const pvfmm::Vector<Real>& X, long p0, long p1, pvfmm::Vector<Real>& S);
+    static void Grid2SHC(const sctl::Vector<Real>& X, long p0, long p1, sctl::Vector<Real>& S);
 
-    static void SHC2GridTranspose(const pvfmm::Vector<Real>& X, long p0, long p1, pvfmm::Vector<Real>& S);
+    static void SHC2GridTranspose(const sctl::Vector<Real>& X, long p0, long p1, sctl::Vector<Real>& S);
 
-    static void SHC2Pole(const pvfmm::Vector<Real>& S, long p0, pvfmm::Vector<Real>& P);
+    static void SHC2Pole(const sctl::Vector<Real>& S, long p0, sctl::Vector<Real>& P);
 
-    static void RotateAll(const pvfmm::Vector<Real>& S, long p0, long dof, pvfmm::Vector<Real>& S_);
+    static void RotateAll(const sctl::Vector<Real>& S, long p0, long dof, sctl::Vector<Real>& S_);
 
-    static void RotateTranspose(const pvfmm::Vector<Real>& S_, long p0, long dof, pvfmm::Vector<Real>& S);
+    static void RotateTranspose(const sctl::Vector<Real>& S_, long p0, long dof, sctl::Vector<Real>& S);
 
-    static pvfmm::Vector<Real>& LegendreNodes(long p1);
+    static sctl::Vector<Real>& LegendreNodes(long p1);
 
-    static pvfmm::Vector<Real>& LegendreWeights(long p1);
+    static sctl::Vector<Real>& LegendreWeights(long p1);
 
-    static pvfmm::Vector<Real>& SingularWeights(long p1);
+    static sctl::Vector<Real>& SingularWeights(long p1);
 
-    static pvfmm::Matrix<Real>& MatFourier(long p0, long p1);
+    static sctl::Matrix<Real>& MatFourier(long p0, long p1);
 
-    static pvfmm::Matrix<Real>& MatFourierInv(long p0, long p1);
+    static sctl::Matrix<Real>& MatFourierInv(long p0, long p1);
 
-    static pvfmm::Matrix<Real>& MatFourierGrad(long p0, long p1);
+    static sctl::Matrix<Real>& MatFourierGrad(long p0, long p1);
 
-    static std::vector<pvfmm::Matrix<Real> >& MatLegendre(long p0, long p1);
+    static std::vector<sctl::Matrix<Real> >& MatLegendre(long p0, long p1);
 
-    static std::vector<pvfmm::Matrix<Real> >& MatLegendreInv(long p0, long p1);
+    static std::vector<sctl::Matrix<Real> >& MatLegendreInv(long p0, long p1);
 
-    static std::vector<pvfmm::Matrix<Real> >& MatLegendreGrad(long p0, long p1);
+    static std::vector<sctl::Matrix<Real> >& MatLegendreGrad(long p0, long p1);
 
-    static std::vector<pvfmm::Matrix<Real> >& MatRotate(long p0);
+    static std::vector<sctl::Matrix<Real> >& MatRotate(long p0);
 
-    static void StokesSingularInteg(const pvfmm::Vector<Real>& S, long p0, long p1, pvfmm::Vector<Real>* SLMatrix=NULL, pvfmm::Vector<Real>* DLMatrix=NULL);
+    static void StokesSingularInteg(const sctl::Vector<Real>& S, long p0, long p1, sctl::Vector<Real>* SLMatrix=NULL, sctl::Vector<Real>* DLMatrix=NULL);
 
   private:
 
@@ -60,7 +61,7 @@ class SphericalHarmonics{
     static void LegPolyDeriv(Real* poly_val, const Real* X, long N, long degree);
 
     template <bool SLayer, bool DLayer>
-    static void StokesSingularInteg_(const pvfmm::Vector<Real>& X0, long p0, long p1, pvfmm::Vector<Real>& SL, pvfmm::Vector<Real>& DL);
+    static void StokesSingularInteg_(const sctl::Vector<Real>& X0, long p0, long p1, sctl::Vector<Real>& SL, sctl::Vector<Real>& DL);
 
     static struct MatrixStorage{
       MatrixStorage(int size){
@@ -75,22 +76,22 @@ class SphericalHarmonics{
         Mfinv_ .resize(size*size);
         Mlinv_ .resize(size*size);
       }
-      std::vector<pvfmm::Vector<Real> > Qx_;
-      std::vector<pvfmm::Vector<Real> > Qw_;
-      std::vector<pvfmm::Vector<Real> > Sw_;
-      std::vector<pvfmm::Matrix<Real> > Mf_ ;
-      std::vector<pvfmm::Matrix<Real> > Mdf_;
-      std::vector<std::vector<pvfmm::Matrix<Real> > > Ml_ ;
-      std::vector<std::vector<pvfmm::Matrix<Real> > > Mdl_;
-      std::vector<std::vector<pvfmm::Matrix<Real> > > Mr_;
-      std::vector<pvfmm::Matrix<Real> > Mfinv_ ;
-      std::vector<std::vector<pvfmm::Matrix<Real> > > Mlinv_ ;
+      std::vector<sctl::Vector<Real> > Qx_;
+      std::vector<sctl::Vector<Real> > Qw_;
+      std::vector<sctl::Vector<Real> > Sw_;
+      std::vector<sctl::Matrix<Real> > Mf_ ;
+      std::vector<sctl::Matrix<Real> > Mdf_;
+      std::vector<std::vector<sctl::Matrix<Real> > > Ml_ ;
+      std::vector<std::vector<sctl::Matrix<Real> > > Mdl_;
+      std::vector<std::vector<sctl::Matrix<Real> > > Mr_;
+      std::vector<sctl::Matrix<Real> > Mfinv_ ;
+      std::vector<std::vector<sctl::Matrix<Real> > > Mlinv_ ;
     } matrix;
 
 };
 
-SphericalHarmonics<double>::MatrixStorage SphericalHarmonics<double>::matrix(SHMAXDEG);
-SphericalHarmonics<float >::MatrixStorage SphericalHarmonics<float >::matrix(SHMAXDEG);
+template<> SphericalHarmonics<double>::MatrixStorage SphericalHarmonics<double>::matrix(SHMAXDEG);
+template<> SphericalHarmonics<float >::MatrixStorage SphericalHarmonics<float >::matrix(SHMAXDEG);
 
 #include "SphericalHarmonics.cc"
 

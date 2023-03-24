@@ -21,7 +21,6 @@ MovePole<Container, Operators>::MovePole(const Operators &mats) :
     eager_results_(NULL),
     eager_last_latitude_(-1)
 {
-    COUT("move pole");
     if ( mats.all_rot_mats_ == NULL )
         all_rot_mats_.resize(0);
     else
@@ -37,7 +36,6 @@ MovePole<Container, Operators>::MovePole(const Operators &mats) :
             sp_harm_mats_.size() * sizeof(value_type),
             Container::getDevice().MemcpyDeviceToDevice);
 
-    COUT("move pole2");
     //Generating the longitudinal rotation matrices stored in the
     //coordinate format
     size_t size(longitude_rot_.size());
@@ -88,7 +86,6 @@ MovePole<Container, Operators>::MovePole(const Operators &mats) :
 
     delete[] row;
     delete[] col;
-    COUT("move pole");
 }
 
 template<typename Container, typename Operators>
