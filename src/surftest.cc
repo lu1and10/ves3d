@@ -139,6 +139,67 @@ void timestep(const real &dt, const int &n_step, const Surf_t &S, const VectorCo
 }
 
 template<typename ScalarContainer, typename VectorContainer>
+void timestep_dilation(const real &dt, const int &n_step, Surf_t &S, ScalarContainer &density){
+    // temp work space
+    ScalarContainer s_tmp; s_tmp.replicate(density); set_zero(s_tmp);
+    ScalarContainer s_tmp2; s_tmp2.replicate(density); set_zero(s_tmp2);
+    VectorContainer v_tmp; v_tmp.replicate(density); set_zero(v_tmp);
+    VectorContainer v_tmp2; v_tmp2.replicate(density); set_zero(v_tmp2);
+    VectorContainer u; u.replicate(density); set_zero(u);
+
+    std::string filename_prefix = "timestep";
+    char suffix[7];
+    sprintf(suffix, "%06d", 0);
+    std::string filename;
+    filename.append(filename_prefix);
+    filename.append(std::string(suffix));
+    xv(density, S.getNormal(), v_tmp);      // v_tmp2 = density.v_tmp   (pointwise)
+    test_vtu_surface_writer(S.getPosition(), v_tmp, density, filename);
+    // update density explicitly
+    for(int i=1; i<=n_step; i++){         // time steps
+      //filename
+      sprintf(suffix, "%06d", i);
+      std::string filename;
+      filename.append(filename_prefix);
+      filename.append(std::string(suffix));
+
+      // set velocity equal to unit outward normal
+      u.getDevice().Memcpy(u.begin(), S.getNormal().begin(),
+        S.getNormal().size() * sizeof(real),
+        u.getDevice().MemcpyDeviceToDevice);
+
+      // advect density on surface
+      // Stone, H. A. (1990). A simple derivation of the time‐dependent convective‐diffusion equation for surfactant transport along a deforming interface. Physics of Fluids A: Fluid Dynamics, 2(1), 111–112. doi:10.1063/1.857686
+      // (d/dt) c + (u.n) (Div_s.n) c = 0
+      S.div(S.getNormal(), s_tmp);                   // s_tmp = Div_s.n
+      // instead wrk = -2*meancurv!    Libin checked Div_s.n = -2*meancurv
+      // BUT check sign with sphere!
+      GeometricDot(u, S.getNormal(), s_tmp2);  // s_tmp2m = u.n
+      xy(s_tmp, s_tmp2, s_tmp2);                           // ptwise dot
+      axpy(dt, s_tmp2, s_tmp2);                        // s_tmp2 now dt.(u.n)(Div_s.n)
+      /*
+      // do explicit fwd Euler  c <- c - s_tmp2.c
+      xy(density, s_tmp2, s_tmp2);
+      axpy(-1.0, s_tmp2, density, density);
+      */
+      // do implicit bkw Euler   c <- c / (1+s_tmp2)
+      #pragma omp parallel for
+      for(int ii=0; ii<s_tmp.size(); ii++){
+          s_tmp.begin()[ii] = 1.0;
+      }
+      axpy(1.0, s_tmp, s_tmp2, s_tmp);   // s_tmp = 1+s_tmp2
+      xyInv(density, s_tmp, density);  // ptwise division
+
+      // dilate surface alone unit normal
+      axpy(dt, u, S.getPositionModifiable(), S.getPositionModifiable());
+
+      // scalar field times vector field point wise
+      xv(density, S.getNormal(), v_tmp);      // v_tmp2 = density.v_tmp   (pointwise)
+      test_vtu_surface_writer(S.getPosition(), v_tmp, density, filename);
+    }
+}
+
+template<typename ScalarContainer, typename VectorContainer>
 void test_vtu_point_cloud_writer(const VectorContainer &X, const VectorContainer &v1, const VectorContainer &v2, const ScalarContainer &s, const std::string &filename){
     int N = s.size();         // # nodes on surf of vesicle
     const int dim = 3;
@@ -352,8 +413,71 @@ void test_utils(){
 
 }
 
+void test_sphere_dilation(){
+    int const nv(1);    // # vesicles or particles
+
+    //IO
+    DataIO myIO;
+
+    Parameters<real> sim_par;
+    sim_par.sh_order = 16;        // sph harm
+    sim_par.upsample_freq = 32;   // used in various geom calcs
+
+    // initializing vesicle positions from text file
+    VecCPU_t x0(nv, sim_par.sh_order);    // quadr nodes defining shapes, vector (x,y,z) on (th,ph)-mesh
+    int fLen = x0.getStride();          // SpharmGridDim is pair order+1, 2*order. fLen is their prod.
+    // this is because x00,x01,...    y00,y01,...  z...   and use ptr to conriguous RAM for eg x0.
+    char fname[400];
+    COUT("Loading initial shape");
+    sprintf(fname, "/precomputed/sphere_%d.txt",sim_par.sh_order);
+    myIO.ReadData(FullPath(fname), x0, DataIO::ASCII, 0, fLen * 3);
+
+    //Reading operators from file
+    COUT("Loading matrices");
+    bool readFromFile = true;
+    Mats_t mats(readFromFile, sim_par);       // reads relevant sized mats from precomputed/
+
+    //Creating objects
+    COUT("Creating the surface object");
+    Surface<ScaCPU_t, VecCPU_t> S(x0.getShOrder(),mats, &x0);  // x0 stores coords
+
+    // define some vector scalar field on surface
+    ScaCPU_t density;
+    density.replicate(x0);
+
+    // how to integrate over surf:
+    GaussLegendreIntegrator<ScaCPU_t> integrator;
+    // container to store integral result (one number, same type)
+    ScaCPU_t int_density;
+    // set size
+    int_density.replicate(x0);
+    // init to int_density to zero
+    set_zero(int_density);
+    // init density field to constant one
+    set_one(density);
+
+    // MASS CONSERVATION TEST (ADVECTION ONLY) --------------------
+    // integrate density over surf and store in int_density
+    integrator(density, S.getAreaElement(), int_density);
+    real mass_before = int_density.begin()[0];
+    // print out content of int_density
+    std::cout << "mass integral before: " << std::setprecision(8) << mass_before << "\n";
+
+    // timestep:
+    real dt = 0.001;
+    int n_step = 1000;
+    timestep_dilation<ScaCPU_t, VecCPU_t>(dt, n_step, S, density);       // changes density
+
+    // is mass conserved?
+    // integrate density over surf and store in int_density
+    integrator(density, S.getAreaElement(), int_density);
+    // print out content of int_density
+    std::cout << "mass integral after: " << std::setprecision(8) << int_density.begin()[0] << "\n";
+    std::cout << "mass error: " << std::setprecision(8) << std::abs(mass_before-int_density.begin()[0]) << "\n";
+}
+
 int main(int argc, char **argv)
 {
-    test_evolve_surface();
+    test_sphere_dilation();
     return 0;
 }
