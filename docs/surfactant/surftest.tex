@@ -363,15 +363,22 @@ $$\nabla_s \cdot (c\uu) \;=\;
 \nabla_s\cdot (c\uu_s) + (\nabla_s\cdot\n)
 (\n\cdot\uu) c.$$
 
-*** to finish.
-
 The mass conservation test will also apply here.
 
 In testing advection of a scalar function $f$ on moving
 $\Gamma(t)$, the case of a moving vesicle surface
 may not be generic enough,
-since: $dS$ locally conserved due to constant-area constraint
-so that 
+since: $dS$ locally conserved due to constant-area constraint,
+so that $\nabla_s \cdot \uu \equiv 0$, so that the flux of $c$
+is $\uu_s \cdot \nabla_s c$.
+This meas that in a Lagrangian frame,
+$(d/dt) \dot c  = 0$ for advection with $\uu$ and no diffusion term.
+
+An expanding sphere would  be a good test where $dS$ is not conserved.
+But it may not be needed if we always care about vesicles.
+
+*** TO DO: add Laplace-Beltrami diffusion term to $c$ in Lagrangian frame.
+
 
 
 %\bibliographystyle{abbrv}
