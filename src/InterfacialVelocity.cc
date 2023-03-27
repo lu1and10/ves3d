@@ -137,27 +137,48 @@ updateJacobiExplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
 
     //axpy(dt_, pos_vel_, S_.getPosition(), S_.getPositionModifiable());
     dx.replicate(S_.getPosition());
-    axpy(dt_, pos_vel_, dx);
+    axpy(dt_, pos_vel_, dx);         // what does 3-arg axpy do ? update pos_vel?
 
-    // advect density on surface
-    // Stone, H. A. (1990). A simple derivation of the time‐dependent convective‐diffusion equation for surfactant transport along a deforming interface. Physics of Fluids A: Fluid Dynamics, 2(1), 111–112. doi:10.1063/1.857686
-    // (d/dt) c + (u.n) (Div_s.n) c = 0
-    S_.div(S_.getNormal(), *wrk);                   // wrk = Div_s.n
-    // instead wrk = -2*meancurv!    Libin checked Div_s.n = -2*meancurv
-    // BUT check sign with sphere!
-    GeometricDot(pos_vel_, S_.getNormal(), *wrk2);  // wrk2 = u.n
-    xy(*wrk,*wrk2,*wrk2);                           // ptwise dot
-    axpy(dt_,*wrk2,*wrk2);                        // wrk2 now dt.(u.n)(Div_s.n)
-    #pragma omp parallel for
-    for(int ii=0; ii<wrk->size(); ii++){
-        wrk->begin()[ii] = 1.0;
+    // advect density on surface: fill wrk with -dc/dt...
+    const int divs_nontang_ok = 0;        // whether ves3d correctly computes div_s for *nontangential* vectors
+    const int lagrangian = 1;
+    if (lagrangian)
+      set_zero(*wrk);     // that's it, since for a vesicle w/ local area-conservation, div_s u = 0!  (not divs u_s = 0 !)
+    else {   // was eulerian, hence wrong... was useful to check formulae only:
+      // Stone, H. A. (1990). A simple derivation of the time‐dependent convective‐diffusion equation for surfactant transport along a deforming interface. Physics of Fluids A: Fluid Dynamics, 2(1), 111–112. doi:10.1063/1.857686
+      if (divs_nontang_ok) {
+        // (d/dt) c + div_s.(c u) = 0        Stone eq (5)
+        // Note pos_vel_ is u, surface velocity
+        xv(density_, pos_vel_, *u1);      // u1 = c u  (3D vector, flux)
+        S_.div(*u1, *wrk);                // wrk = Div_s.(c u)
+      } else {                            // use equiv tangential vecs formula
+        // (d/dt) c + div_s (c u_s) + 2H(u.n)c = 0       Stone (6), equiv to (5).
+        axpy(-2.0,S_.getMeanCurv(),*wrk);  // now wrk = 2H (note Abtin sign err!)
+        // S_.div(S_.getNormal(), *wrk);   // alternative way wrk = div_s.n = 2H
+        GeometricDot(pos_vel_, S_.getNormal(), *wrk2);  // wrk2 = u.n  normal vel
+        xy(*wrk,*wrk2,*wrk2);                           // ptwise prod -> wrk2
+        xy(density_, *wrk2, *wrk);        // wrk = 2H(u.n) c
+        set_zero(*u1);
+        axpy(0.0,*u1,pos_vel_,*u1);        // u1 = u        annoying way :(
+        S_.mapToTangentSpace(*u1, false);      // overwrites u1 with u_s    :(
+        xv(density_, *u1, *u1);      // u1 = c u_s  tangential flux
+        S_.div(*u1,*wrk2);                // wrk2 = divs(c u_s),  tangential only
+        axpy(1.0, *wrk, *wrk2, *wrk);     // wrk <- wrk + wrk2 = divs(c u_s)+2H(u.n)c
+      }
     }
-    axpy(1.0,*wrk,*wrk2,*wrk);   // wrk = 1+wrk2
-    // do implicit bkw Euler   c <- c / (1+wrk2)
-    // vs explicit fwd Euler  c <- c - wrk2
-    xyInv(density_, *wrk, density_);  // ptwise division
-    
-    // hack to store vector field whose length is "density"
+    const int FE = 1;          // time-step type
+    if (FE)  {               // explicit fwd Euler...
+      axpy(-dt_, *wrk, density_, density_);          // den -= dt*wrk
+    } else {                        // implicit *** would need c^{-1} dc/dt
+      // *** but the case divs_nontang_ok using (5) doesn't give this! -> No implicit for now.
+      //      axpy(-dt_,*wrk,*wrk2);                        // wrk2 now dt.(u.n)(Div_s.n)
+      //for(int ii=0; ii<wrk->size(); ii++)
+      //  wrk->begin()[ii] = 1.0;
+      //  axpy(1.0,*wrk,*wrk2,*wrk);   // wrk = 1+wrk2
+      // do implicit bkw Euler   c <- c / (1+wrk2)   = c/wrk
+      // xyInv(density_, *wrk, density_);  // ptwise division (implicit)
+    }         
+    // hack to store vector field whose length is "density" for plotting
     xv(density_, S_.getNormal(), density_vec_);      // density_vec_ = density_.S_.getNormal()   (pointwise)
 
     recycle(u1);

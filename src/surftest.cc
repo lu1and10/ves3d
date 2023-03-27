@@ -197,7 +197,7 @@ void test_evolve_surface(){
     sim_par.rep_filter_freq = 6;
     sim_par.n_surfs              = 1;
     sim_par.ts                   = 0.1; // 0.005;
-    sim_par.time_horizon         = 30;
+    sim_par.time_horizon         = 50;
     sim_par.scheme               = JacobiBlockExplicit;
     sim_par.singular_stokes      = Direct;
     sim_par.bg_flow_param        = 0.1;
@@ -233,30 +233,79 @@ void test_evolve_surface(){
     //Finally, Evolve surface
     COUT("Making EvolveSurface object");
     Evolve_t Es(&sim_par, mats, vInf, NULL, &interaction, NULL, NULL, &x0);
+    // this object has a F_.density which is surface concentration c.
 
     // how set up density = exp(-||x-x0||) :
     real point0[3] = {0.0, 0.0, 2.16};
-    //set_zero(Es.F_->density_);
-    //set_exp(Es.S_->getPosition(), point0, Es.F_->density_);   // custom routine for this particular func
-    set_one(Es.F_->density_);
+    set_zero(Es.F_->density_);
+    set_exp(Es.S_->getPosition(), point0, Es.F_->density_);   // custom routine for this particular func
+    //set_one(Es.F_->density_);
 
-    GaussLegendreIntegrator<ScaCPU_t> integrator;
+    GaussLegendreIntegrator<ScaCPU_t> integrator;   // setup for surf int
     ScaCPU_t int_density;
     // set size
     int_density.replicate(Es.S_->getPosition());
-    // init to int_density to zero
     set_zero(int_density);
     integrator(Es.F_->density_, Es.S_->getAreaElement(), int_density);
-    // print out content of int_density
-    COUT(int_density);
+    real mass_before = int_density.begin()[0];
+    std::cout << "mass integral before: " << std::setprecision(8) << mass_before << "\n";
+    
+    Es.Evolve();          // do the sim
 
-
-    Es.Evolve();
     set_zero(int_density);
     integrator(Es.F_->density_, Es.S_->getAreaElement(), int_density);
-    COUT(int_density);
+    real mass_after = int_density.begin()[0];
+    std::cout << "mass integral after: " << std::setprecision(8) << mass_after << "\n";
+    std::cout << "rel err in mass cons: " << std::setprecision(3) << (mass_after-mass_before)/mass_before << "\n";
+
 }
 
+
+
+// ===========================================================================
+void test_divsn(){      // test div_s n = 2H, where H = mean curvature. AHB
+  COUT("============= test_divsn ===========================");
+    //IO
+    DataIO myIO;
+
+    Parameters<real> sim_par;
+    sim_par.sh_order = 16;        // sph harm
+    sim_par.upsample_freq = 32;   // used in various geom calcs
+
+    // initializing vesicle positions from text file
+    VecCPU_t x0(1, sim_par.sh_order);    // quadr nodes defining shapes, vector (x,y,z) on (th,ph)-mesh
+    int fLen = x0.getStride();          // SpharmGridDim is pair order+1, 2*order. fLen is their prod.
+    // this is because x00,x01,...    y00,y01,...  z...   and use ptr to conriguous RAM for eg x0.
+    char fname[400];
+    COUT("Loading initial shape");
+    sprintf(fname, "/precomputed/ellipse_%d.txt",sim_par.sh_order);
+    myIO.ReadData(FullPath(fname), x0, DataIO::ASCII, 0, fLen * 3);
+
+    //Reading operators from file
+    COUT("Loading matrices");
+    bool readFromFile = true;
+    Mats_t mats(readFromFile, sim_par);       // reads relevant sized mats from precomputed/
+
+    // Creating object S
+    COUT("Creating the surface object S");
+    Surface<ScaCPU_t, VecCPU_t> S(x0.getShOrder(),mats, &x0);  // x0 stores coords
+
+    ScaCPU_t wrk;
+    wrk.replicate(x0);       // alloc wrk to have size #nodes
+    
+    // check divs n = 2H:
+    S.div(S.getNormal(), wrk);                   // wrk = Div_s.n    
+    axpy(2.0, S.getMeanCurv(), wrk, wrk);        // subtract (-2H), NB sign err!
+    
+    real err = 0.0;                      // L-infty err
+    for(int ii=0; ii<wrk.size(); ii++)
+      err = std::max(err, std::abs(wrk.begin()[ii]));
+    std::cout << "\nMax abs error between div_s n and -2H: " << err << "\n";
+}
+
+
+
+// ==========================================================================
 void test_utils(){
     int const nv(1);    // # vesicles or particles
 
@@ -354,6 +403,8 @@ void test_utils(){
 
 int main(int argc, char **argv)
 {
-    test_evolve_surface();
-    return 0;
+  //test_divsn();  // verify Libin's claim that divs n = -2H not +2H.
+  //test_utils();
+  test_evolve_surface();
+  return 0;
 }

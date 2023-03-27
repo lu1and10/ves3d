@@ -51,6 +51,7 @@
 \newtheorem{pro}[thm]{Proposition}
 \newtheorem{cor}[thm]{Corollary}
 \newtheorem{rmk}[thm]{Remark}
+\newtheorem{exa}[thm]{Example}
 \newtheorem{conj}[thm]{Conjecture}
 % this work...
 \newcommand{\x}{\mbf{x}}
@@ -62,7 +63,7 @@
 
 
 \begin{document}
-\title{How to test a surface advection-reaction-diffusion solver}
+\title{Testing a surface advection-reaction-diffusion solver on fixed or moving surfaces}
 \author{Alex Barnett; with Yuan-Nan Young, Libin Lu, Mike Shelley}
 \date{\today}
 \maketitle
@@ -71,16 +72,134 @@
   for on-surface advection-diffusion equation of a scalar surface function,
   eg, a concentration.
   The surface is smooth, embedded in $\R^3$, and functions are smooth.
-  Fixed surface for now; we will need moving surface eventually.
+  Fixed surface and moving surfaces are discussed.
 \end{abstract}
+
+\section{Notes about calculus on and off surfaces}
+\label{s:calc}
+
+Let $\Gamma \subset \R^3$ be a closed simply-connected surface,
+with outward unit normal vector $\n$.
+
+There is some confusion about the definition of a surface divergence
+div$_s$ of a
+vector field, especially for the case of a nontangential one.
+The notation $\nabla_s \cdot$ for div$_s$ is also poor since the
+surface divergence is not simply a dot with the vector of partials,
+but we use it.
+
+For any vector field $\mbf{F}:\R^3\to\R^3$, not generally tangential,
+\be
+\nabla_s \cdot \mbf{F} = 
+\nabla \cdot \mbf{F} - \n\cdot(\nabla \mbf{F}) \cdot \n
+\label{divs}
+\ee
+in terms of the Euclidean divergence, and the Euclidean Jacobian tensor
+$\nabla \mbf{F}$ with Cartesian elements $\partial_i F_j$.
+
+A potential confusion is then how to define 
+$\nabla_s \cdot \mbf{F}$ for a field defined only on-surface,
+ie $\mbf{F}:\Gamma \to \R^3$, where $\nabla \mbf{F}$ is not available.
+The resolution is that that some extension is needed, but the
+answer is independent of how $\mbf{F}$
+is extended off $\Gamma$; eg it may be extended as a constant vector
+locally along normals, or extended in any other smooth way.
+
+
+\begin{exa}
+  For $\Gamma$ the unit sphere at the origin, one may extend the normal
+  field $\n$ on $\Gamma$ by
+  i) $\mbf{F} = \x$ which is nonconstant in the normal direction,
+  or by ii) $\mbf{F} = \x/\|\x\|$ which is constant along normals
+  (at least locally, since it is not true at the origin).
+  For i) then $\nabla\cdot\x = 3$ while $\n\cdot\nabla\mbf{F}\cdot\n =
+  \n\cdot I \cdot \n = 1$, so their difference is $\nabla_s\mbf{F} = 2$.
+  Instead taking ii) at the point $\x=\n =(0,0,1)$,
+$\nabla\cdot (\x/r) = 2$ where $r=\|\x\|$, while $\n\cdot\nabla\mbf{F}\cdot\n = 0$ because $F_z$ is constant wrt $z$.
+  Both verify \eqref{divsn} below since $H$ is the inverse of a sphere's radius.
+\end{exa}
+
+A special case is the normal field on $\Gamma$, for which
+\be
+\nabla_s\cdot \n = 2H
+\label{divsn}
+\ee
+where $H$ is the mean curvature, a scalar function on $\Gamma$,
+with sign positive for a sphere with
+outward normal. $2H$ is the {\em total curvature} (sometimes called
+$\kappa$ in the 2D case where there is only one principal curvature,
+but we avoid this symbol in 3D due to confusion with the Gaussian curvature $K$).
+
+The split of any $\mbf{F}:\Gamma \to \R^3$ into tangential and normal
+parts is $\mbf{F} = \mbf{F}_s + \n\cdot\mbf{F}$ where
+\be
+\mbf{F}_s := (I-\n\n^T)\mbf{F} = \mbf{F} - (\n\cdot\mbf{F})\n
+.
+\label{proj}
+\ee
+
+Given any smooth vector field $\mbf{F}$ in $\R^3$, with tangential part
+$\mbf{F}_s$ on $\Gamma$,
+a useful formula (eg Marz--MacDonald 2012, ``Calculus on surfaces with general closest point functions'', \S2.3)
+relating surface divergence to the surface divergence of the tangential part is
+\be
+\nabla_s \cdot \mbf{F}
+\;=\;
+\nabla_s \cdot \mbf{F}_s + 2H \n\cdot \mbf{F}
+.
+\label{divss}
+\ee
+Unlike \eqref{divs}, this provides a formula for surface divergence of
+a nontangential vector field referring only to values on $\Gamma$.
+%since $\nabla_s\cdot \mbf{F}_s$ may be written using
+It is easy to prove by applying the product rule
+$\nabla_s\cdot(a\vv) = a \nabla_s\cdot\vv + \vv \cdot \nabla_s a$,
+where $\nabla_s := \nabla + \n (\n \cdot \nabla \cdot)$ is the tangential
+gradient, to \eqref{proj} with $a = \n\cdot\mbf{F}$ and $\vv=\n$.
+This product rule is in turn verified via \eqref{divs} by
+an arbitrary smooth extension of $a$ and $\vv$ off $\Gamma$.
+
+\begin{exa}
+  Again for $\Gamma$ the unit sphere, if $\mbf{F}=\n$, then $\mbf{F}_s\equiv\mbf{0}$,
+  so \eqref{divss} gives $\nabla_s\cdot\mbf{F} = 2H \equiv 1$, accounted
+  for purely by the normal component.
+\end{exa}
+\begin{exa}
+  Again for $\Gamma$ the unit sphere,
+  $\mbf{F}=(0,0,1)$ has vanishing surface divergence. 
+  This may be seen via a) constant extension to $\R^3$ giving
+  both terms vanishing in \eqref{divs}, showing the surface divergence
+  vanishes everywhere.
+  Alternatively, b) without extension
+  we use \eqref{divss} at the north pole, for instance.
+  The two terms cancel: $\nabla_s\cdot \mbf{F}_s = -1$
+  by local projection onto the chart $z(x,y) = \sqrt{1-x^2+y^2}$
+  in which coordinates $\mbf{F}_s = (-x,-y) + \bigO((x,y)^3)$ and
+  the metric $g = I + \bigO((x,y)^2)$.
+  The second term $2H\n\cdot\mbf{F} = +1$.
+  Thus the tangential part has negative surface divergence but this
+  is cancelled by the curvature times normal component.
+  \end{exa}
+
+
+Note the differential geometry formula
+$\nabla_s\cdot\mbf{F} = (\det g)^{-1/2} \partial_i (\sqrt{\det g} F^j)$
+is not so useful for us, except in verifying the formula
+at the north pole above, where $\det g(x,y) = 1/z = 1 + \bigO((x,y)^2)$.
+
+{\bf Question re code:}
+Rahimian '15 (C.1f) definition of div$_\Gamma \mbf{F}$ is only
+for the tangential part, ie $\nabla_s \cdot \mbf{F}_s$.
+Presumably this is what {\tt ves3d} code does.
+This would predict div$_\Gamma\n = 0$.
+However that is inconsistent with Libin's test that
+div$_\Gamma \n = -2H$, which also has the wrong sign.
 
 
 \section{Fixed surface case}
 \label{s:fixed}
 
-Let $\Gamma \subset \R^3$ be a closed simply-connected surface,
-fixed in time for now, with outward unit normal vector $\n$.
-Since it is fixed, fluid velocity $\mbf{u}\equiv \mbf{0}$ on $\Gamma$,
+For now fix $\Gamma$, so fluid velocity $\mbf{u}\equiv \mbf{0}$ on $\Gamma$,
 and we do not have to worry about moving-surface terms.
 
 In this case,
@@ -103,19 +222,6 @@ c(\x,0) & = & c_0(\x), \qqquad\qquad \x\in\Gamma
 \label{ic}
 \eea
 where $c_0$ is the initial data.
-
-The notation $\nabla_s \cdot$ for div$_s$ is not great since the
-surface divergence is not simply a dot with the vector of partials.
-
-For any vector field $\mbf{F}:\R^3\to\R^3$, not generally tangential,
-\be
-\nabla_s \cdot \mbf{F} = 
-\nabla \cdot \mbf{F} - \n\cdot(\nabla \mbf{F}) \cdot \n
-\label{divs}
-\ee
-in terms of the Euclidean divergence and the Jacobian matrix
-$\nabla \mbf{F}$.
-
 
 \subsection{Material conservation test}
 
@@ -146,15 +252,11 @@ where $\Delta_s := \nabla_s\cdot (\nabla_s \cdot)$ is the Laplace--Beltrami
 operator.
 Letting $\Delta$ be the Laplacian in $\R^3$, a standard formula is
 \be
-\Delta \;=\; \Delta_s + \partial_{nn} + \kappa \partial_n
+\Delta \;=\; \Delta_s + \partial_{nn} + 2H \partial_n
 \label{LB}
 \ee
-where the total curvature, a scalar function on $\Gamma$, is
-\be
-\kappa := \nabla_s\cdot \n = 2H
-\label{kappa}
-\ee
-where $H$ is called the mean curvature.
+where the total curvature, a scalar function on $\Gamma$,
+is given by \eqref{divsn}.
 Obviously
 $\partial_{n} u= \n \cdot \nabla u = \sum_{i=1}^3 n_i \partial_{x_i} u$.
 Less obviously,
@@ -165,7 +267,7 @@ normal direction.
 The test procedure for a solver for \eqref{surfheat} is:
 \ben
 \item
-  Evaluate $\kappa$ on $\Gamma$ (meaning, at all surface nodes). This
+  Evaluate $2H$ on $\Gamma$ (meaning, at all surface nodes). This
   is purely geometry.
 \item Pick an analytic
   solution $u$ to the heat equation in $\R^3$,
@@ -183,7 +285,7 @@ The test procedure for a solver for \eqref{surfheat} is:
 \item
   Set up a function to evaluate a source
   \be
-  f \;=\; D(\partial_{nn} u + \kappa \partial_n u)
+  f \;=\; D(\partial_{nn} u + 2H \partial_n u)
   \label{f}
   \ee
   on $\Gamma$ for all times $t$. Use the analytic partials of $u$ in $\R^3$.
@@ -202,19 +304,6 @@ The test procedure for a solver for \eqref{surfheat} is:
 
 This tests advection is correct on a fixed surface for $D\equiv 0$,
 using the simplest advection in 3D.
-
-Given any smooth vector field $\mbf{F}$ in $\R^3$, with tangential part
-$\mbf{F}_s$ on $\Gamma$,
-a useful formula (from Marz--MacDonald 2012, ``Calculus on surfaces with general closest point functions'', \S2.3)
-relating surface divergence to the surface divergence of the tangential part is
-\be
-\nabla_s \cdot \mbf{F}
-\;=\;
-\nabla_s \cdot \mbf{F}_s + \kappa \n\cdot \mbf{F}
-\label{divss}
-\ee
-where $\kappa$ is defined in \eqref{kappa}.
-
 Pick a constant 3D advection vector $\vv\in\R^3$.
 Let
 $$
@@ -237,14 +326,14 @@ Set $\mbf{F} := \vv u$, and combining \eqref{divs} and \eqref{divss}
 gives
 \bea
 \nabla_s\cdot(\vv_s u) &=& \nabla\cdot (\vv u) - \n\cdot (\nabla(\vv u)) \cdot n
-- \kappa \n \cdot\vv u
+- 2H \n \cdot\vv u
 \nonumber\\
-&=& \vv \cdot \nabla u - (\n\cdot\vv) \n\cdot \nabla u - \kappa \n \cdot \vv u.
+&=& \vv \cdot \nabla u - (\n\cdot\vv) \n\cdot \nabla u - 2H \n \cdot \vv u.
 \eea
 Since $\partial_u = -\vv\cdot u$ by \eqref{u}, the first term cancel
 and the source
 \be
-f = \partial_u + \nabla_s\cdot(\vv_s u) = (\n\cdot\vv)(\n\cdot \nabla u - \kappa u)
+f = \partial_u + \nabla_s\cdot(\vv_s u) = (\n\cdot\vv)(\n\cdot \nabla u - 2H u)
 \label{fadv}
 \ee
 results in the restriction
@@ -261,12 +350,28 @@ a 3D solution of advection-diffusion (a translating heat solution).
 It is probably not necessary.
 
 
-\section{Deforming vesicle}
+\section{Deforming vesicle (moving surface) case}
 
 Stone 1990 derives transport on a deforming surface.
+\eqref{divs} and \eqref{divss} are used in going from his (5) to his (6),
+ie, writing the nontangential surface divergence
+of the flux $\mbf{F} = c\uu$ where $c$ is concentration and $\uu$ the
+fluid velocity (hence local
+velocity of $\Gamma$),
+using on-surface values only, as
+$$\nabla_s \cdot (c\uu) \;=\;
+\nabla_s\cdot (c\uu_s) + (\nabla_s\cdot\n)
+(\n\cdot\uu) c.$$
 
-The conservation law test will also apply here.
+*** to finish.
 
+The mass conservation test will also apply here.
+
+In testing advection of a scalar function $f$ on moving
+$\Gamma(t)$, the case of a moving vesicle surface
+may not be generic enough,
+since: $dS$ locally conserved due to constant-area constraint
+so that 
 
 
 %\bibliographystyle{abbrv}
