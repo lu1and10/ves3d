@@ -358,9 +358,7 @@ void test_divsn(){      // test div_s n = 2H, where H = mean curvature. AHB
     S.div(S.getNormal(), wrk);                   // wrk = Div_s.n    
     axpy(2.0, S.getMeanCurv(), wrk, wrk);        // subtract (-2H), NB sign err!
     
-    real err = 0.0;                      // L-infty err
-    for(int ii=0; ii<wrk.size(); ii++)
-      err = std::max(err, std::abs(wrk.begin()[ii]));
+    real err = MaxAbs(wrk);                      // L-infty err
     std::cout << "\nMax abs error between div_s n and -2H: " << err << "\n";
 }
 
