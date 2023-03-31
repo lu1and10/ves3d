@@ -311,7 +311,7 @@ void test_evolve_surface(){
     real mass_before = int_density.begin()[0];
     std::cout << "mass integral before: " << std::setprecision(8) << mass_before << "\n";
     
-    Es.Evolve();          // do the sim
+    Es.Evolve();          // do the sim  (using InterfacialVel  & InterfacialForce)
 
     set_zero(int_density);
     integrator(Es.F_->density_, Es.S_->getAreaElement(), int_density);
@@ -527,7 +527,7 @@ int main(int argc, char **argv)
 {
   //test_divsn();  // verify Libin's claim that divs n = -2H not +2H.
   //test_utils();
-  //test_evolve_surface();   // advect c with surface vel u
-  test_sphere_dilation();  // Libin's new test
+  test_evolve_surface();   // advect c with surface vel u
+  //test_sphere_dilation();  // Libin's new test
   return 0;
 }

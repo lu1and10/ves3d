@@ -142,17 +142,60 @@ updateJacobiExplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     // advect density on surface: fill wrk with -dc/dt...
     const int divs_nontang_ok = 0;        // whether ves3d correctly computes div_s for *nontangential* vectors
     const int lagrangian = 1;
-    if (lagrangian)
-      set_zero(*wrk);     // that's it, since for a vesicle w/ local area-conservation, div_s u = 0!  (not divs u_s = 0 !)
-    else {   // was eulerian, hence wrong... was useful to check formulae only:
+    int N = wrk->size();         // # nodes on surf of vesicle
+    if (lagrangian) {
+      set_zero(*wrk);     // if no advection apart from membrane vel, that's it, since for a vesicle w/ local area-conservation, div_s u = 0!  (not divs u_s = 0 !)
+      
+      // Lagrangian:    (d/dt)c + c (div_s u) = 0
+      // f_p = pulling force vector per unit force generator,  eta_m = drag
+      // v_p = pulling-related advection vel relative to u.
+      // D = diffusion const
+      // Lagrangian w/ extra transport (pulling) v_p = (I-nn).f_p / eta_m
+      //      (d/dt)c + div_s (v_p c)   + c (div_s u)          =    D \Delta_s c
+      //                pulling advec    stretching of dS           diffusion
+      // Test (d/dt) \int_surf c(x,t) dS = 0  "mass conservation"
+      // Simulation works in lagrangian!
+      /* Discussion from 3/31/23:
+        in R2: transport eqn  Eulerian  (par/par t)c + div(uc) = 0    u = advec vel
+                                         ^ means sit at fixed x, rate of change of c
+                              Lagrangian  (d/dt)c = 0
+                              d/dt = (par/par t) + u.grad  + (div u)
+                              d/dt = (par/par t) + div (u .)
+                                                    if div u nonzero
+        on moving Gamma surf that may leave x, what does (par/par t)c(x,t) mean ???
+       */
+
+      // to do: add stretching term in case it's not const in some future setting?
+      
+      // need: compute v_p         ... add eta_m, D, f_p (???) to Parameter struct
+      value_type f_p[3] = {0.0, 0.0, 0.0};  // const pulling-derived advection, y-dir
+      //value_type f_p[3] = {0.0, 0.05, 0.0};  // fails, unstable, even w/ diffusion
+      for(int i=0; i<3*N; i++)       // u1 <- const vec f_p
+        u1->begin()[i] = f_p[i%3];
+      S_.mapToTangentSpace(*u1, true);   // overwrites u1, now v_p, tangential
+      xv(density_, *u1, *u1);      // u1 = c v_p
+      S_.div(*u1, *wrk);                // wrk = div_s.(c v_p)
+      // find: explicit t-step unstable here!  (how do implicit for advection?)
+      
+      // add D \Delta_s c = div_s (D grad_s c), and subtract from -dc/dt
+      value_type D = 0.01;        // diffusion rate, const    "real" ? -> value_type?
+      S_.grad(density_,*u1);
+      set_zero(*u2);
+      axpy(-D, *u1, *u2, *u1);      // u1 <-  -D grad_s c
+      S_.div(*u1, *wrk2);              // wrk2 <-  div_s (-D grad_s c)
+      axpy(1.0, *wrk, *wrk2, *wrk);     // wrk = add advection plus diffusion
+      
+    } else {   // was eulerian, hence wrong... was useful to check formulae only:
       // Stone, H. A. (1990). A simple derivation of the time‐dependent convective‐diffusion equation for surfactant transport along a deforming interface. Physics of Fluids A: Fluid Dynamics, 2(1), 111–112. doi:10.1063/1.857686
       if (divs_nontang_ok) {
-        // (d/dt) c + div_s.(c u) = 0        Stone eq (5)
+        // (partial/partial t) c + div_s.(c u) = 0        Stone eq (5)
+        // (partial/partial t) c + u . grad_s c + c (div_s u) = 0
+        //            surf transp    stretching             (in ves3d sim stretch=0)
         // Note pos_vel_ is u, surface velocity
         xv(density_, pos_vel_, *u1);      // u1 = c u  (3D vector, flux)
         S_.div(*u1, *wrk);                // wrk = Div_s.(c u)
       } else {                            // use equiv tangential vecs formula
-        // (d/dt) c + div_s (c u_s) + 2H(u.n)c = 0       Stone (6), equiv to (5).
+        // (par /par t) c + div_s (c u_s) + 2H(u.n)c = 0       Stone (6), equiv to (5).
         axpy(-2.0,S_.getMeanCurv(),*wrk);  // now wrk = 2H (note Abtin sign err!)
         // S_.div(S_.getNormal(), *wrk);   // alternative way wrk = div_s.n = 2H
         GeometricDot(pos_vel_, S_.getNormal(), *wrk2);  // wrk2 = u.n  normal vel
