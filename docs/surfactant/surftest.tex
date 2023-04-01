@@ -129,6 +129,7 @@ with sign positive for a sphere with
 outward normal. $2H$ is the {\em total curvature} (sometimes called
 $\kappa$ in the 2D case where there is only one principal curvature,
 but we avoid this symbol in 3D due to confusion with the Gaussian curvature $K$).
+(Note re code: {\tt ves3d} has negative definition of $H$.)
 
 The split of any $\mbf{F}:\Gamma \to \R^3$ into tangential and normal
 parts is $\mbf{F} = \mbf{F}_s + \n\cdot\mbf{F}$ where
@@ -183,17 +184,10 @@ an arbitrary smooth extension of $a$ and $\vv$ off $\Gamma$.
 
 
 Note the differential geometry formula
-$\nabla_s\cdot\mbf{F} = (\det g)^{-1/2} \partial_i (\sqrt{\det g} F^j)$
+$\nabla_s\cdot\mbf{F} = (\det g)^{-1/2} \partial_j (\sqrt{\det g} F^j)$
 is not so useful for us, except in verifying the formula
 at the north pole above, where $\det g(x,y) = 1/z = 1 + \bigO((x,y)^2)$.
 
-{\bf Question re code:}
-Rahimian '15 (C.1f) definition of div$_\Gamma \mbf{F}$ is only
-for the tangential part, ie $\nabla_s \cdot \mbf{F}_s$.
-Presumably this is what {\tt ves3d} code does.
-This would predict div$_\Gamma\n = 0$.
-However that is inconsistent with Libin's test that
-div$_\Gamma \n = -2H$, which also has the wrong sign.
 
 
 \section{Fixed surface case}
