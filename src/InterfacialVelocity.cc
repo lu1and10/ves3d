@@ -171,11 +171,10 @@ updateJacobiExplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
      // value_type f_p[3] = {0.0, 0.0, 0.0};  // const pulling-derived advection, y-dir
       value_type f_p[3] = {0.0, 0.1, 0.0};  // fails, unstable, even w/ diffusion
       for(int i=0; i<3*N; i++)       // u1 <- const vec f_p
-        u1->begin()[i] = f_p[i/N];
+        u1->begin()[i] = f_p[i/N];   // libin fixed order: xxx...yyy...zzz...
       S_.mapToTangentSpace(*u1, true);   // overwrites u1, now v_p, tangential
       xv(density_, *u1, *u1);      // u1 = c v_p
       S_.div(*u1, *wrk);                // wrk = div_s.(c v_p)
-      // find: explicit t-step unstable here!  (how do implicit for advection?)
       
       // add D \Delta_s c = div_s (D grad_s c), and subtract from -dc/dt
       value_type D = 0.01;        // diffusion rate, const    "real" ? -> value_type?
