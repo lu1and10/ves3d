@@ -36,6 +36,8 @@ class Parameters : public Streamable
     T bending_modulus;
     T viscosity_contrast;
     T excess_density;
+    T diffusion_rate;
+    T pulling_velocity[3];
 
     //Time stepper
     T time_horizon;

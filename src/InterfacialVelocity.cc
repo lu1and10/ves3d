@@ -172,7 +172,7 @@ updateJacobiExplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
       value_type f_p[3] = {0.0, 0.1, 0.0};  // fails, unstable, even w/ diffusion
       for(int i=0; i<3*N; i++)       // u1 <- const vec f_p
         u1->begin()[i] = f_p[i/N];   // libin fixed order: xxx...yyy...zzz...
-      S_.mapToTangentSpace(*u1, true);   // overwrites u1, now v_p, tangential
+      S_.mapToTangentSpace(*u1, false);   // overwrites u1, now v_p, tangential
       xv(density_, *u1, *u1);      // u1 = c v_p
       S_.div(*u1, *wrk);                // wrk = div_s.(c v_p)
       

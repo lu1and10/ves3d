@@ -27,6 +27,10 @@ void Parameters<T>::init()
     checkpoint_stride	    = -1;
     error_factor            = 1;
     excess_density          = 0.0;
+    diffusion_rate          = 0.0;
+    pulling_velocity[0]     = 0.0;
+    pulling_velocity[1]     = 0.0;
+    pulling_velocity[2]     = 0.0;
     filter_freq             = 8;
     gravity_field[0]        = 0;
     gravity_field[1]        = 0;
@@ -165,6 +169,8 @@ void Parameters<T>::setUsage(AnyOption *opt)
     opt->addUsage( "  Physical properties for all (for more control use vesicle-props-file):" );
     opt->addUsage( "          --bending-modulus        The bending modulus of the interfaces" );
     opt->addUsage( "          --excess-density         The difference between the density of fluids inside and outside" );
+    opt->addUsage( "          --diffusion-rate         The surface scalar field diffusion rate" );
+    opt->addUsage( "          --pulling-velocity       The surface scalar field advection velocity" );
     opt->addUsage( "          --viscosity-contrast     The viscosity contrast of vesicles" );
     opt->addUsage( "          --gravity-field          The gravitational field vector (space separated)" );
     opt->addUsage( "" );
@@ -268,6 +274,8 @@ void Parameters<T>::setOptions(AnyOption *opt)
     opt->setOption( "viscosity-contrast" );
     opt->setOption( "gravity-field" );
     opt->setOption( "excess-density" );
+    opt->setOption( "diffusion-rate" );
+    opt->setOption( "pulling-velocity" );
 
     //for options that will be checked only on the command and line not
     //in option/resource file
@@ -336,6 +344,16 @@ void Parameters<T>::getOptionValues(AnyOption *opt)
 
     if( opt->getValue( "excess-density" ) != NULL )
         excess_density = atof(opt->getValue( "excess-density" ));
+
+    if( opt->getValue( "diffusion-rate" ) != NULL )
+        diffusion_rate = atof(opt->getValue( "diffusion-rate" ));
+
+    if( opt->getValue( "pulling-velocity" ) != NULL  ){
+        char* next(opt->getValue("pulling-velocity"));
+        pulling_velocity[0] = strtod(next, &next);
+        pulling_velocity[1] = strtod(next, &next);
+        pulling_velocity[2] = strtod(next, NULL);
+    }
 
     if( opt->getValue( "gravity-field" ) != NULL  ){
         char* next(opt->getValue("gravity-field"));
@@ -467,6 +485,8 @@ Error_t Parameters<T>::pack(std::ostream &os, Format format) const
     os<<"error_factor: "<<error_factor<<"\n";
     os<<"num_threads: "<<num_threads<<"\n";
     os<<"excess_density: "<<excess_density<<"\n";
+    os<<"diffusion_rate: "<<diffusion_rate<<"\n";
+    os<<"pulling_velocity: "<<pulling_velocity[0]<<" "<<pulling_velocity[1]<<" "<<pulling_velocity[2]<<"\n";
     os<<"gravity_field: "<<gravity_field[0]<<" "<<gravity_field[1]<<" "<<gravity_field[2]<<"\n";
     os<<"/PARAMETERS\n";
     return ErrorEvent::Success;
@@ -569,6 +589,9 @@ Error_t Parameters<T>::unpack(std::istream &is, Format format)
     is>>key>>error_factor; ASSERT(key=="error_factor:", "Unexpected key (expected error_factor)");
     is>>key>>num_threads; ASSERT(key=="num_threads:", "Unexpected key (expected num_threads)");
     is>>key>>excess_density; ASSERT(key=="excess_density:", "Unexpected key (expected excess_density)");
+    is>>key>>diffusion_rate; ASSERT(key=="diffusion_rate:", "Unexpected key (expected diffusion_rate)");
+    is>>key>>pulling_velocity[0]>>pulling_velocity[1]>>pulling_velocity[2];
+    ASSERT(key=="pulling_velocity:", "Unexpected key (expected pulling_velocity)");
 
     is>>key>>gravity_field[0]>>gravity_field[1]>>gravity_field[2];
     ASSERT(key=="gravity_field:", "Unexpected key (expected gravity_field)");
@@ -601,6 +624,11 @@ std::ostream& operator<<(std::ostream& output, const Parameters<T>& par)
     output<<"   viscosity contrast       : "<<par.viscosity_contrast<<std::endl;
     output<<"   Singular Stokes          : "<<par.singular_stokes<<std::endl;
     output<<"   Excess density           : "<<par.excess_density<<std::endl;
+    output<<"   Diffusion rate           : "<<par.diffusion_rate<<std::endl;
+    output<<"   Pulling velocity         : "<<"["<<par.pulling_velocity[0]
+          <<", "<<par.pulling_velocity[1]
+          <<", "<<par.pulling_velocity[2]
+          <<"]"<<std::endl;
 
     output<<"------------------------------------"<<std::endl;
     output<<" Time stepper:"<<std::endl;
