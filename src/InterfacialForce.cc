@@ -162,8 +162,13 @@ void InterfacialForce<SurfContainer>::gravityForce(const SurfContainer &S, const
 template<typename SurfContainer>
 void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const Vec_t &centrosome_position, Vec_t &Fp) const
 {
+
+    // TODO: Pre-allocate
     Sca_t stmp;
     stmp.replicate(Fp);
+    Vec_t wrk[2];
+    wrk[0].replicate(Fp);
+    wrk[1].replicate(Fp);
 
     // pulling force direction
     axpy(-1.0, S.getPosition(), centrosome_position, Fp);
@@ -185,7 +190,9 @@ void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const
     }
     xv(stmp, Fp, Fp);
 
+    sht_.lowPassFilterPoly(Fp, wrk[0], wrk[1], Fp);  //filter high frequency
     /*
+    // TODO: calculate in upsample space
     S.resample(params_.upsample_freq, &S_up); // upsample
     Vec_t Fp_up;
     Fp_up.replicate(S_up->getPosition());
