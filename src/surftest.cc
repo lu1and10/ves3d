@@ -261,10 +261,10 @@ void test_evolve_surface(){
     sim_par.time_horizon         = 50;
     sim_par.scheme               = JacobiBlockExplicit;
     sim_par.singular_stokes      = Direct;
-    sim_par.bg_flow_param        = 0.0;
+    sim_par.bg_flow_param        = 0.1;
     sim_par.bg_flow              = ShearFlow;
     sim_par.diffusion_rate       = 0.1;
-    sim_par.pulling_rate         = 0.1;
+    sim_par.pulling_rate         = 0.3;
     sim_par.centrosome_position[0] = 0.0;
     sim_par.centrosome_position[1] = 0.0;
     sim_par.centrosome_position[2] = 2.16;
@@ -304,8 +304,8 @@ void test_evolve_surface(){
     // how set up density = exp(-||x-x0||) :
     real point0[3] = {0.0, 0.0, 2.16};
     set_zero(Es.F_->density_);
-    //set_exp(Es.S_->getPosition(), point0, Es.F_->density_);   // custom routine for this particular func
-    set_one(Es.F_->density_);
+    set_exp(Es.S_->getPosition(), point0, Es.F_->density_);   // custom routine for this particular func
+    //set_one(Es.F_->density_);
     xv(Es.F_->density_, Es.S_->getNormal(), Es.F_->density_vec_);
 
     GaussLegendreIntegrator<ScaCPU_t> integrator;   // setup for surf int

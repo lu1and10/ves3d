@@ -190,7 +190,7 @@ void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const
     }
     xv(stmp, Fp, Fp);
 
-    sht_.lowPassFilterPoly(Fp, wrk[0], wrk[1], Fp);  //filter high frequency
+    sht_.lowPassFilter(Fp, wrk[0], wrk[1], Fp);  //filter high frequency
     /*
     // TODO: calculate in upsample space
     S.resample(params_.upsample_freq, &S_up); // upsample

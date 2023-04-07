@@ -151,7 +151,7 @@ updateJacobiExplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     const int divs_nontang_ok = 0;        // whether ves3d correctly computes div_s for *nontangential* vectors
     const int lagrangian = 1;
     int N = wrk->size();         // # nodes on surf of vesicle
-    //sht_.lowPassFilterPoly(density_, *u1, *u2, density_);
+    sht_.lowPassFilter(density_, *u1, *u2, density_);
     if (lagrangian) {
       set_zero(*wrk);     // if no advection apart from membrane vel, that's it, since for a vesicle w/ local area-conservation, div_s u = 0!  (not divs u_s = 0 !)
       
