@@ -37,6 +37,8 @@ class Parameters : public Streamable
     T viscosity_contrast;
     T excess_density;
     T diffusion_rate;
+    T pulling_rate;
+    T centrosome_position[3];
     T pulling_velocity[3];
 
     //Time stepper

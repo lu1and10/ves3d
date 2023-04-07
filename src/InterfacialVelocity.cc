@@ -31,11 +31,15 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
     tension_.replicate(S_.getPosition());
     density_.replicate(S_.getPosition());
     density_vec_.replicate(S_.getPosition());
+    pulling_force_.replicate(S_.getPosition());
+    centrosome_pos_.replicate(S_.getPosition());
 
     pos_vel_.getDevice().Memset(pos_vel_.begin(), 0, sizeof(value_type)*pos_vel_.size());
     tension_.getDevice().Memset(tension_.begin(), 0, sizeof(value_type)*tension_.size());
     density_.getDevice().Memset(density_.begin(), 0, sizeof(value_type)*density_.size());
     density_vec_.getDevice().Memset(density_vec_.begin(), 0, sizeof(value_type)*density_vec_.size());
+    pulling_force_.getDevice().Memset(pulling_force_.begin(), 0, sizeof(value_type)*pulling_force_.size());
+    centrosome_pos_.getDevice().Memset(centrosome_pos_.begin(), 0, sizeof(value_type)*centrosome_pos_.size());
 
     //Setting initial tension to zero
     tension_.getDevice().Memset(tension_.begin(), 0,
@@ -77,6 +81,10 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
         position_precond.resize(1,p);
         tension_precond.resize(1,p);
     }
+
+    for(int i=0; i<centrosome_pos_.size(); i++)
+        centrosome_pos_.begin()[i] = params_.centrosome_position[i/(centrosome_pos_.size()/3)];
+    Intfcl_force_.pullingForce(S_, centrosome_pos_, pulling_force_);
 }
 
 template<typename SurfContainer, typename Interaction>
@@ -168,16 +176,18 @@ updateJacobiExplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
       // to do: add stretching term in case it's not const in some future setting?
       
       // need: compute v_p         ... add eta_m, D, f_p (???) to Parameter struct
-     // value_type f_p[3] = {0.0, 0.0, 0.0};  // const pulling-derived advection, y-dir
-      value_type f_p[3] = {0.0, 0.1, 0.0};  // fails, unstable, even w/ diffusion
-      for(int i=0; i<3*N; i++)       // u1 <- const vec f_p
-        u1->begin()[i] = f_p[i/N];   // libin fixed order: xxx...yyy...zzz...
+      // value_type f_p[3] = {0.0, 0.0, 0.0};  // const pulling-derived advection, y-dir
+      //value_type f_p[3] = {0.0, 0.1, 0.0};  // fails, unstable, even w/ diffusion
+      //for(int i=0; i<3*N; i++)       // u1 <- const vec f_p
+      //  u1->begin()[i] = f_p[i/N];   // libin fixed order: xxx...yyy...zzz...
+      Intfcl_force_.pullingForce(S_, centrosome_pos_, *u1);
+      axpy(1.0, *u1, pulling_force_);    //store the pulling force in density_vec_ for visualization
       S_.mapToTangentSpace(*u1, false);   // overwrites u1, now v_p, tangential
       xv(density_, *u1, *u1);      // u1 = c v_p
       S_.div(*u1, *wrk);                // wrk = div_s.(c v_p)
       
       // add D \Delta_s c = div_s (D grad_s c), and subtract from -dc/dt
-      value_type D = 0.01;        // diffusion rate, const    "real" ? -> value_type?
+      value_type D = params_.diffusion_rate;        // diffusion rate, const    "real" ? -> value_type?
       S_.grad(density_,*u1);
       set_zero(*u2);
       axpy(-D, *u1, *u2, *u1);      // u1 <-  -D grad_s c

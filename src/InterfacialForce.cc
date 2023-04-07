@@ -160,6 +160,46 @@ void InterfacialForce<SurfContainer>::gravityForce(const SurfContainer &S, const
 }
 
 template<typename SurfContainer>
+void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const Vec_t &centrosome_position, Vec_t &Fp) const
+{
+    Sca_t stmp;
+    stmp.replicate(Fp);
+
+    // pulling force direction
+    axpy(-1.0, S.getPosition(), centrosome_position, Fp);
+    // normalizing
+    GeometricDot(Fp, Fp, stmp);
+    Sqrt(stmp, stmp);
+    uyInv(Fp, stmp, Fp);
+
+    // only consider the surface points which centrosome can directly connent to
+    // TODO: use ray tracing for complex shapes and get number of collisions to the surface
+    // now only consider force direction dot with outward normal
+    GeometricDot(Fp, S.getNormal(), stmp);
+    #pragma omp parallel for
+    for(int i=0; i<stmp.size(); i++){
+        if(stmp.begin()[i] >=0)
+            stmp.begin()[i] = params_.pulling_rate;
+        else
+            stmp.begin()[i] = 0.0;
+    }
+    xv(stmp, Fp, Fp);
+
+    /*
+    S.resample(params_.upsample_freq, &S_up); // upsample
+    Vec_t Fp_up;
+    Fp_up.replicate(S_up->getPosition());
+    { // downsample Fs
+      Vec_t wrk[2]; // TODO: Pre-allocate
+      wrk[0].resize(Fp_up.getNumSubs(), params_.upsample_freq);
+      wrk[1].resize(Fp_up.getNumSubs(), params_.upsample_freq);
+      Fp.replicate(S.getPosition());
+      Resample(Fp_up, sht_up_, sht_, wrk[0], wrk[1], Fp);
+    }
+    */
+}
+
+template<typename SurfContainer>
 void InterfacialForce<SurfContainer>::explicitTractionJump(const SurfContainer &S, Vec_t &F) const
 {
     bendingForce(S, F);

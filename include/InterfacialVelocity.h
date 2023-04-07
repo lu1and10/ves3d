@@ -81,6 +81,8 @@ class InterfacialVelocity
 
     mutable Sca_t density_;
     mutable Vec_t density_vec_;
+    mutable Vec_t pulling_force_;
+    mutable Vec_t centrosome_pos_;
   private:
     SurfContainer &S_;
     const Interaction &interaction_;
