@@ -80,7 +80,7 @@ class InterfacialVelocity
     Sca_t& tension(){ return tension_;}
 
     mutable Sca_t density_;
-    mutable Vec_t density_vec_;
+    mutable Sca_t binding_probability_;
     mutable Vec_t pulling_force_;
     mutable Vec_t centrosome_pos_;
   private:

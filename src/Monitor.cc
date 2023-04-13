@@ -105,7 +105,7 @@ Error_t Monitor<EvolveSurface>::operator()(const EvolveSurface *state,
                 std::string vtkfbase(params_->write_vtk);
                 vtkfbase += suffix;
                 INFO("Writing VTK file "<<vtkfbase);
-                write_vtk(state->S_->getPosition(), state->F_->density_vec_, state->F_->density_, vtkfbase);
+                WriteVTK(*state->S_, vtkfbase.c_str(), &(state->F_->pulling_force_), &(state->F_->density_), -1, params_->periodic_length);
                 //write_vtk(state->S_->getPosition(), state->F_->pulling_force_, state->F_->density_, vtkfbase);
             }
 

@@ -30,14 +30,14 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
     pos_vel_.replicate(S_.getPosition());
     tension_.replicate(S_.getPosition());
     density_.replicate(S_.getPosition());
-    density_vec_.replicate(S_.getPosition());
+    binding_probability_.replicate(S_.getPosition());
     pulling_force_.replicate(S_.getPosition());
     centrosome_pos_.replicate(S_.getPosition());
 
     pos_vel_.getDevice().Memset(pos_vel_.begin(), 0, sizeof(value_type)*pos_vel_.size());
     tension_.getDevice().Memset(tension_.begin(), 0, sizeof(value_type)*tension_.size());
     density_.getDevice().Memset(density_.begin(), 0, sizeof(value_type)*density_.size());
-    density_vec_.getDevice().Memset(density_vec_.begin(), 0, sizeof(value_type)*density_vec_.size());
+    binding_probability_.getDevice().Memset(binding_probability_.begin(), 0, sizeof(value_type)*binding_probability_.size());
     pulling_force_.getDevice().Memset(pulling_force_.begin(), 0, sizeof(value_type)*pulling_force_.size());
     centrosome_pos_.getDevice().Memset(centrosome_pos_.begin(), 0, sizeof(value_type)*centrosome_pos_.size());
 
@@ -84,7 +84,7 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
 
     for(int i=0; i<centrosome_pos_.size(); i++)
         centrosome_pos_.begin()[i] = params_.centrosome_position[i/(centrosome_pos_.size()/3)];
-    Intfcl_force_.pullingForce(S_, centrosome_pos_, pulling_force_);
+    Intfcl_force_.pullingForce(S_, centrosome_pos_, binding_probability_, density_, pulling_force_);
 }
 
 template<typename SurfContainer, typename Interaction>
@@ -132,6 +132,9 @@ updateJacobiExplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
 
     // add S[f_b]
     Intfcl_force_.bendingForce(S_, *u1);
+    // add S[f_p]
+    Intfcl_force_.pullingForce(S_, centrosome_pos_, binding_probability_, density_, pulling_force_); // f_p = c.P.f0.ksi
+    axpy(static_cast<value_type>(1.0), *u1, pulling_force_, *u1);
     CHK(stokes(*u1, *u2));
     axpy(static_cast<value_type>(1.0), *u2, pos_vel_, pos_vel_);
 
@@ -150,7 +153,6 @@ updateJacobiExplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     // advect density on surface: fill wrk with -dc/dt...
     const int divs_nontang_ok = 0;        // whether ves3d correctly computes div_s for *nontangential* vectors
     const int lagrangian = 1;
-    int N = wrk->size();         // # nodes on surf of vesicle
     sht_.lowPassFilter(density_, *u1, *u2, density_);
     if (lagrangian) {
       set_zero(*wrk);     // if no advection apart from membrane vel, that's it, since for a vesicle w/ local area-conservation, div_s u = 0!  (not divs u_s = 0 !)
@@ -177,14 +179,8 @@ updateJacobiExplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
       // to do: add stretching term in case it's not const in some future setting?
       
       // need: compute v_p         ... add eta_m, D, f_p (???) to Parameter struct
-      // value_type f_p[3] = {0.0, 0.0, 0.0};  // const pulling-derived advection, y-dir
-      //value_type f_p[3] = {0.0, 0.1, 0.0};  // fails, unstable, even w/ diffusion
-      //for(int i=0; i<3*N; i++)       // u1 <- const vec f_p
-      //  u1->begin()[i] = f_p[i/N];   // libin fixed order: xxx...yyy...zzz...
-      Intfcl_force_.pullingForce(S_, centrosome_pos_, *u1); // not f_p, but force per MT
-      axpy(1.0, *u1, pulling_force_);    //store the pulling force in density_vec_ for visualization
+      axpy(1.0/params_.pulling_eta, pulling_force_, *u1);  // f_p/eta
       S_.mapToTangentSpace(*u1, false);   // overwrites u1, now v_p, tangential
-      xv(density_, *u1, *u1);      // u1 = c v_p
       S_.div(*u1, *wrk);                // wrk = div_s.(c v_p)
       
       // add D \Delta_s c = div_s (D grad_s c), and subtract from -dc/dt
@@ -231,8 +227,6 @@ updateJacobiExplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
       // do implicit bkw Euler   c <- c / (1+wrk2)   = c/wrk
       // xyInv(density_, *wrk, density_);  // ptwise division (implicit)
     }         
-    // hack to store vector field whose length is "density" for plotting
-    xv(density_, S_.getNormal(), density_vec_);      // density_vec_ = density_.S_.getNormal()   (pointwise)
 
     recycle(u1);
     recycle(u2);

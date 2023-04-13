@@ -160,7 +160,7 @@ void InterfacialForce<SurfContainer>::gravityForce(const SurfContainer &S, const
 }
 
 template<typename SurfContainer>
-void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const Vec_t &centrosome_position, Vec_t &Fp) const
+void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const Vec_t &centrosome_position, const Sca_t &binding_probability, const Sca_t &density, Vec_t &Fp) const
 // returns 3d force vector per microtubule (not force density), ie f_0 \hat{\xi}(y) p(y,t)
 // at all surface points y.
 {
@@ -191,6 +191,8 @@ void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const
             stmp.begin()[i] = 0.0;
     }
     xv(stmp, Fp, Fp);
+    xv(binding_probability, Fp, Fp);
+    xv(density, Fp, Fp);
 
     sht_.lowPassFilter(Fp, wrk[0], wrk[1], Fp);  //filter high frequency
     /*

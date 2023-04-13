@@ -29,6 +29,7 @@ void Parameters<T>::init()
     excess_density          = 0.0;
     diffusion_rate          = 0.0;
     pulling_rate            = 0.0;
+    pulling_eta             = 1.0;
     centrosome_position[0]  = 0.0;
     centrosome_position[1]  = 0.0;
     centrosome_position[2]  = 0.0;
@@ -175,6 +176,7 @@ void Parameters<T>::setUsage(AnyOption *opt)
     opt->addUsage( "          --excess-density         The difference between the density of fluids inside and outside" );
     opt->addUsage( "          --diffusion-rate         The surface scalar field diffusion rate" );
     opt->addUsage( "          --pulling-rate           The centrosome pulling force rate" );
+    opt->addUsage( "          --pulling-eta            The centrosome pulling eta in surface advection" );
     opt->addUsage( "          --centrosome-position    The centrosome position" );
     opt->addUsage( "          --pulling-velocity       The surface scalar field advection velocity" );
     opt->addUsage( "          --viscosity-contrast     The viscosity contrast of vesicles" );
@@ -282,6 +284,7 @@ void Parameters<T>::setOptions(AnyOption *opt)
     opt->setOption( "excess-density" );
     opt->setOption( "diffusion-rate" );
     opt->setOption( "pulling-rate" );
+    opt->setOption( "pulling-eta" );
     opt->setOption( "centrosome-position" );
     opt->setOption( "pulling-velocity" );
 
@@ -358,6 +361,9 @@ void Parameters<T>::getOptionValues(AnyOption *opt)
 
     if( opt->getValue( "pulling-rate" ) != NULL )
         pulling_rate = atof(opt->getValue( "pulling-rate" ));
+
+    if( opt->getValue( "pulling-eta" ) != NULL )
+        pulling_eta = atof(opt->getValue( "pulling-eta" ));
 
     if( opt->getValue( "centrosome-position" ) != NULL  ){
         char* next(opt->getValue("centrosome-position"));
@@ -505,6 +511,7 @@ Error_t Parameters<T>::pack(std::ostream &os, Format format) const
     os<<"excess_density: "<<excess_density<<"\n";
     os<<"diffusion_rate: "<<diffusion_rate<<"\n";
     os<<"pulling_rate: "<<pulling_rate<<"\n";
+    os<<"pulling_eta: "<<pulling_eta<<"\n";
     os<<"centrosome_position: "<<centrosome_position[0]<<" "<<centrosome_position[1]<<" "<<centrosome_position[2]<<"\n";
     os<<"pulling_velocity: "<<pulling_velocity[0]<<" "<<pulling_velocity[1]<<" "<<pulling_velocity[2]<<"\n";
     os<<"gravity_field: "<<gravity_field[0]<<" "<<gravity_field[1]<<" "<<gravity_field[2]<<"\n";
@@ -611,6 +618,7 @@ Error_t Parameters<T>::unpack(std::istream &is, Format format)
     is>>key>>excess_density; ASSERT(key=="excess_density:", "Unexpected key (expected excess_density)");
     is>>key>>diffusion_rate; ASSERT(key=="diffusion_rate:", "Unexpected key (expected diffusion_rate)");
     is>>key>>pulling_rate; ASSERT(key=="pulling_rate:", "Unexpected key (expected diffusion_rate)");
+    is>>key>>pulling_eta; ASSERT(key=="pulling_eta:", "Unexpected key (expected diffusion_eta)");
     is>>key>>centrosome_position[0]>>centrosome_position[1]>>centrosome_position[2];
     ASSERT(key=="centrosome_position:", "Unexpected key (expected centrosome_position)");
     is>>key>>pulling_velocity[0]>>pulling_velocity[1]>>pulling_velocity[2];
@@ -649,6 +657,7 @@ std::ostream& operator<<(std::ostream& output, const Parameters<T>& par)
     output<<"   Excess density           : "<<par.excess_density<<std::endl;
     output<<"   Diffusion rate           : "<<par.diffusion_rate<<std::endl;
     output<<"   Pulling rate             : "<<par.pulling_rate<<std::endl;
+    output<<"   Pulling eta              : "<<par.pulling_eta<<std::endl;
     output<<"   Centrosome position      : "<<"["<<par.centrosome_position[0]
           <<", "<<par.centrosome_position[1]
           <<", "<<par.centrosome_position[2]
