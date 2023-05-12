@@ -233,7 +233,7 @@ void StokesVelocity<Real>::setup_self(){
 }
 
 template <class Real>
-void WriteVTK(const sctl::Vector<Real>& S, long p0, long p1, const char* fname, Real period=0, const sctl::Vector<Real>* v_ptr=NULL, const sctl::Vector<Real>* s_ptr=NULL){
+void WriteVTK(const sctl::Vector<Real>& S, long p0, long p1, const char* fname, Real period=0, const sctl::Vector<Real>* v_ptr=NULL, const sctl::Vector<Real>* s_ptr=NULL, Real* centrosome_pos=NULL, long n_centrosome=0){
   typedef double VTKReal;
   int data__dof=VES3D_DIM;
 
@@ -368,9 +368,21 @@ void WriteVTK(const sctl::Vector<Real>& S, long p0, long p1, const char* fname, 
   std::vector<VTKReal>& value_sca1=point_value_sca1;
   std::vector<int32_t> connect=poly_connect;
   std::vector<int32_t> offset=poly_offset;
+  std::vector<int32_t> connect_vert;
+  std::vector<int32_t> offset_vert;
 
+  for(int i=0; i<n_centrosome; i++){
+    connect_vert.push_back(coord.size()/VES3D_DIM);
+    offset_vert.push_back(connect_vert.size());
+    value_sca1.push_back(0);
+    for(size_t l=0;l<VES3D_DIM;l++){
+      coord.push_back(centrosome_pos[VES3D_DIM*i+l]);
+      value_vec1.push_back(0);
+    }
+  }
   int pt_cnt=coord.size()/VES3D_DIM;
   int poly_cnt=poly_offset.size();
+  int vert_cnt=n_centrosome;
 
   //Open file for writing.
   std::stringstream vtufname;
@@ -393,7 +405,7 @@ void WriteVTK(const sctl::Vector<Real>& S, long p0, long p1, const char* fname, 
   else               vtufile<<"<VTKFile type=\"PolyData\" version=\"0.1\" byte_order=\"BigEndian\">\n";
   //===========================================================================
   vtufile<<"  <PolyData>\n";
-  vtufile<<"    <Piece NumberOfPoints=\""<<pt_cnt<<"\" NumberOfVerts=\"0\" NumberOfLines=\"0\" NumberOfStrips=\"0\" NumberOfPolys=\""<<poly_cnt<<"\">\n";
+  vtufile<<"    <Piece NumberOfPoints=\""<<pt_cnt<<"\" NumberOfVerts=\""<<vert_cnt<<"\" NumberOfLines=\"0\" NumberOfStrips=\"0\" NumberOfPolys=\""<<poly_cnt<<"\">\n";
 
   //---------------------------------------------------------------------------
   vtufile<<"      <Points>\n";
@@ -422,6 +434,14 @@ void WriteVTK(const sctl::Vector<Real>& S, long p0, long p1, const char* fname, 
   data_size+=sizeof(uint32_t)+offset.size() *sizeof(int32_t);
   vtufile<<"      </Polys>\n";
   //---------------------------------------------------------------------------
+  if(vert_cnt>0){
+    vtufile<<"      <Verts>\n";
+    vtufile<<"        <DataArray type=\"Int32\" Name=\"connectivity\" format=\"appended\" offset=\""<<data_size<<"\" />\n";
+    data_size+=sizeof(uint32_t)+connect_vert.size()*sizeof(int32_t);
+    vtufile<<"        <DataArray type=\"Int32\" Name=\"offsets\" format=\"appended\" offset=\""<<data_size<<"\" />\n";
+    data_size+=sizeof(uint32_t)+offset_vert.size() *sizeof(int32_t);
+    vtufile<<"      </Verts>\n";
+  }
 
   vtufile<<"    </Piece>\n";
   vtufile<<"  </PolyData>\n";
@@ -439,6 +459,10 @@ void WriteVTK(const sctl::Vector<Real>& S, long p0, long p1, const char* fname, 
   }
   block_size=connect.size()*sizeof(int32_t); vtufile.write((char*)&block_size, sizeof(int32_t)); vtufile.write((char*)&connect[0], connect.size()*sizeof(int32_t));
   block_size=offset .size()*sizeof(int32_t); vtufile.write((char*)&block_size, sizeof(int32_t)); vtufile.write((char*)&offset [0], offset .size()*sizeof(int32_t));
+  if(vert_cnt>0){
+    block_size=connect_vert.size()*sizeof(int32_t); vtufile.write((char*)&block_size, sizeof(int32_t)); vtufile.write((char*)&connect_vert[0], connect_vert.size()*sizeof(int32_t));
+    block_size=offset_vert .size()*sizeof(int32_t); vtufile.write((char*)&block_size, sizeof(int32_t)); vtufile.write((char*)&offset_vert [0], offset_vert .size()*sizeof(int32_t));
+  }
 
   vtufile<<"\n";
   vtufile<<"  </AppendedData>\n";
@@ -485,7 +509,7 @@ void WriteVTK(const sctl::Vector<Real>& S, long p0, long p1, const char* fname, 
 }
 
 template <class Surf>
-void WriteVTK(const Surf& S, const char* fname, const typename Surf::Vec_t* v_ptr=NULL, const typename Surf::Sca_t* s_ptr=NULL, int order=-1, typename Surf::value_type period=0){
+void WriteVTK(const Surf& S, const char* fname, const typename Surf::Vec_t* v_ptr=NULL, const typename Surf::Sca_t* s_ptr=NULL, int order=-1, typename Surf::value_type period=0, typename Surf::value_type* centrosome_pos=NULL, int n_centrosome=0){
   typedef typename Surf::value_type Real;
   typedef typename Surf::Vec_t Vec;
   size_t p0=S.getShOrder();
@@ -495,6 +519,6 @@ void WriteVTK(const Surf& S, const char* fname, const typename Surf::Vec_t* v_pt
   S_.ReInit(S.getPosition().size(),(Real*)S.getPosition().begin(),false);
   if(v_ptr) v_.ReInit(v_ptr->size(),(Real*)v_ptr->begin(),false);
   if(s_ptr) s_.ReInit(s_ptr->size(),(Real*)s_ptr->begin(),false);
-  WriteVTK(S_, p0, p1, fname, period, (v_ptr?&v_:NULL), (s_ptr?&s_:NULL));
+  WriteVTK(S_, p0, p1, fname, period, (v_ptr?&v_:NULL), (s_ptr?&s_:NULL), centrosome_pos, n_centrosome);
 }
 
