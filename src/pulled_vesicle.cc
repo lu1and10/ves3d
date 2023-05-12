@@ -97,7 +97,7 @@ void test_evolve_surface(){
     sim_par.filter_freq     = 24;
     sim_par.rep_filter_freq = 6;
     sim_par.n_surfs              = 1;
-    sim_par.ts                   = 0.05; // 0.005;
+    sim_par.ts                   = 0.025; // 0.005;
     sim_par.time_horizon         = 50;
     sim_par.scheme               = JacobiBlockExplicit;
     sim_par.singular_stokes      = Direct;
