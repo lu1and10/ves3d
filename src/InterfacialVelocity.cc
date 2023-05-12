@@ -32,14 +32,12 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
     density_.replicate(S_.getPosition());
     binding_probability_.replicate(S_.getPosition());
     pulling_force_.replicate(S_.getPosition());
-    centrosome_pos_.replicate(S_.getPosition());
 
     pos_vel_.getDevice().Memset(pos_vel_.begin(), 0, sizeof(value_type)*pos_vel_.size());
     tension_.getDevice().Memset(tension_.begin(), 0, sizeof(value_type)*tension_.size());
     density_.getDevice().Memset(density_.begin(), 0, sizeof(value_type)*density_.size());
     binding_probability_.getDevice().Memset(binding_probability_.begin(), 0, sizeof(value_type)*binding_probability_.size());
     pulling_force_.getDevice().Memset(pulling_force_.begin(), 0, sizeof(value_type)*pulling_force_.size());
-    centrosome_pos_.getDevice().Memset(centrosome_pos_.begin(), 0, sizeof(value_type)*centrosome_pos_.size());
 
     //Setting initial tension to zero
     tension_.getDevice().Memset(tension_.begin(), 0,
@@ -82,8 +80,10 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
         tension_precond.resize(1,p);
     }
 
-    for(int i=0; i<centrosome_pos_.size(); i++)
-        centrosome_pos_.begin()[i] = params_.centrosome_position[i/(centrosome_pos_.size()/3)];
+    // store centrosome_pos in interfacial velocity class
+    centrosome_pos_ = new value_type[VES3D_DIM];
+    for(int i=0; i<VES3D_DIM; i++)
+        centrosome_pos_[i] = params_.centrosome_position[i];
     Intfcl_force_.pullingForce(S_, centrosome_pos_, binding_probability_, density_, pulling_force_);
 }
 
@@ -103,6 +103,7 @@ InterfacialVelocity<SurfContainer, Interaction>::
     delete parallel_u_;
 
     if(S_up_) delete S_up_;
+    if(centrosome_pos_) delete[] centrosome_pos_;
 }
 
 // Performs the following computation:

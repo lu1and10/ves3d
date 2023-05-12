@@ -160,7 +160,7 @@ void InterfacialForce<SurfContainer>::gravityForce(const SurfContainer &S, const
 }
 
 template<typename SurfContainer>
-void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const Vec_t &centrosome_position, const Sca_t &binding_probability, const Sca_t &density, Vec_t &Fp) const
+void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const value_type* centrosome_position, const Sca_t &binding_probability, const Sca_t &density, Vec_t &Fp) const
 // returns 3d force vector per microtubule (not force density), ie f_0 \hat{\xi}(y) p(y,t)
 // at all surface points y.
 {
@@ -173,7 +173,13 @@ void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const
     wrk[1].replicate(Fp);
 
     // pulling force direction
-    axpy(-1.0, S.getPosition(), centrosome_position, Fp);
+    int N = Fp.size()/VES3D_DIM;
+    for(int idim=0; idim<VES3D_DIM; idim++){
+      #pragma omp parallel for
+      for(int i=0; i<N; i++){
+        Fp.begin()[idim*N+i] = centrosome_position[idim] - S.getPosition().begin()[idim*N+i];
+      }
+    }
     // normalizing  to get \hat\xi
     GeometricDot(Fp, Fp, stmp);
     Sqrt(stmp, stmp);
