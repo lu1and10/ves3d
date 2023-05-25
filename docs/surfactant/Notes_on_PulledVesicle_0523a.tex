@@ -1,0 +1,863 @@
+\documentclass[11pt]{article}
+
+\usepackage{graphicx}% Include figure files
+\usepackage{amsmath}
+\usepackage{fullpage}
+\usepackage{stmaryrd}
+\usepackage[utf8]{inputenc}
+\usepackage{enumitem}
+\usepackage{lipsum}
+\usepackage{booktabs}
+
+\newcommand{\ff}{\mathbf{f}}
+\newcommand{\nn}{\mathbf{n}}
+\newcommand{\uu}{\mathbf{u}}
+\newcommand{\xx}{\mathbf{x}}
+
+\renewcommand{\AA}{\mathcal{A}}
+%\newcommand{\BB}{\mathcal{B}}
+\newcommand{\DD}{\mathcal{D}}
+%\newcommand{\ff}{\mathbf{f}}
+%\newcommand{\nn}{\mathbf{n}}
+\renewcommand{\tt}{\mathbf{t}}
+\newcommand{\pderiv}[2]{\frac{\partial #1}{\partial #2}}
+\newcommand{\rr}{\mathbf{r}}
+%\newcommand{\RR}{\mathbb{R}}
+\renewcommand{\ss}{\mathbf{s}}
+\renewcommand{\SS}{\mathcal{S}}
+%\newcommand{\TT}{\mathcal{T}}
+%\newcommand{\uu}{\mathbf{u}}
+\newcommand{\WW}{\mathcal{W}}
+%\newcommand{\xx}{\mathbf{x}}
+\newcommand{\xxi}{\boldsymbol{\xi}}
+\newcommand{\yy}{\mathbf{y}}
+
+\input my_macros2.tex	
+
+\begin{document}
+%We are interested in describing the dynamics microtubules between the
+%centrosomes and the nucleus of a cell.  Microtubules are polymers that
+%can grow and shrink, and they form part of the cytoskeleton (giving the
+%cell structure) and play a key role in mitosis (cell division).
+%
+%\subsection*{April 9, 2019}
+%\begin{itemize}
+%  \item Skyped with Yuan and Reza
+%
+%  \item Describe the nucleus as a vesicle (locally inextensible and
+%  resistance to bending), and the centrosomes as a single point.
+%
+%  \item Microtubules link the centrosome to the nucleus.
+%
+%  \item Since microtubules do not bend much (???), they can only bind to
+%  the nucleus at locations in the field of view.
+%
+%  \item The probability of linking at a particular location depends
+%  exponentially on the distance from the centrosome.  Therefore, the
+%  pulling force due to the microtubules can be modelled with an
+%  exponential-type potential.
+%
+%  \item As the microtubules grow, they start to buckle, and it is
+%  thought that this causes a pushing force which causes the centrosome
+%  to move.
+%
+%  \item In experiments, the nucleus can be made softer.  This can be
+%  done in the code with the bending rigidity parameter.
+%
+%  \item For our first experiments, we will focus on only the pulling
+%  forces.
+%
+%  \item Experiments indicate that very sharp corners can form.
+%
+%  \item It is unclear if the receptors for the microtubules are
+%  distributed uniformly on the nucleus, if they congregate (cluster)
+%  at a certain location, or if they are able to migrate as the nucleus
+%  deforms.  Two possible models are that the receptors are distributed
+%  uniformly with respect to arclength, or they are distributed uniformly
+%  with respect to curvature.
+%\end{itemize}
+
+\section{Governing Equations for a vesicle in a Stokes flow}
+We represent the nucleus as a two-dimensional inextensible bilayer
+structure that is filled with and submerged in a viscous incompressible
+fluid (inextensible vesicle).  Then the fluid equations in the fluid
+bulk are
+\begin{align}
+  \mu_e \Delta \uu &= \nabla p, \quad \xx \in \Omega, \\
+  \nabla \cdot \uu &= 0, \quad \xx \in \Omega,
+\end{align}
+and inside the nucleus they are
+\begin{align}
+  \mu_i \Delta \uu &= \nabla p, \quad \xx \in \omega, \\
+  \nabla \cdot \uu &= 0, \quad \xx \in \omega.
+\end{align}
+The viscosity ratio $\nu = \mu_e/\mu_i$ is a parameter in our model.  The
+boundary conditions on the nucleus $\gamma$, which is parameterized as
+$\xx(s,t)$, are 
+\begin{align}
+  \dot{\xx} &= \uu \\
+  \llbracket T \rrbracket \nn &= \ff = \ff_B + \ff_T +\ff_P,
+\end{align}
+where $\llbracket T \rrbracket$ is the traction jump across the
+membrane.  The interfacial force $\ff$ is a combination of bending,
+tension, and point forces.  The bending force penalizes curvature and is
+given by
+\begin{align}
+  \ff_B = -\kappa_b \xx_{ssss},
+\end{align}
+where $\kappa_b$ is the bending stiffness.  The tension force is
+\begin{align}
+  \ff_T = (\sigma \xx_s)_s,
+\end{align}
+where the tension $\sigma$ acts as a Lagrange multiplier to satisfy the
+local inextensibility constraint.  We are interested in the new point
+forces that come from a microtubule linking the centrosome to the
+nucleus.  We assume there are two centrosomes placed symmetrically about
+the nucleus
+
+The pulling force $\ff_P$ on the microtubules due to their interactions with the FGs 
+on the nucleus envelope will be explained in \S~\ref{sec:stoichiometry}.
+
+%Based on the probability of a microtubule emitting from a centrosome to the
+%nucleus membrane, the point force at a point $\xx$ on the nucleus
+%membrane is
+%\begin{align}
+%  \ff_P= -W\frac{\xx-\xx_0}{\|\xx-\xx_0\|}\exp\left(-\frac{\|\xx - \xx_0\|}{d}\right)-
+%              W\frac{\xx+\xx_0}{\|\xx+\xx_0\|} \exp\left( -\frac{\|\xx + \xx_0\|}{d}\right),
+%\end{align}
+%where $\pm \xx_0$ are the fixed locations of the centrosomes, $d$ is
+%a parameter corresponding to a length scale of the potential, and $W>0$
+%sets the magnitude of the point forces.  We always assume that the
+%nucleus is centered at the origin and has symmetry in both the $x$ and
+%$y$ directions.
+
+Using potential theory, we recast the governing equations as integro-differential equations for the evolution of membrane positions: 
+%
+\begin{align}
+\label{eq:far_field_bc}
+  &\dot{\xx} = \uu_{\infty}(\xx) + \SS[\xxi](\xx), \\
+\label{eq:inextensibility}
+  &\xx_s \cdot \dot{\xx}_s = 0,
+ \end{align}
+%
+where the single-layer potential $\SS[\cdot]$ is defined by
+\begin{align}
+  \SS[\xxi](\xx) &= \frac{1}{4\pi\mu} \int_\gamma \left(
+    -\log \|\xx - \yy\| + \frac{(\xx - \yy) \otimes (\xx - \yy)}{\|\xx - \yy\|^2} \right) 
+    \xxi(\yy) ds_\yy, 
+  \label{eqn:SLP}
+\end{align}
+%
+and the membrane force $\xxi$ is a sum of the bending, tension and point forces: 
+\begin{align}
+\xxi = -\kappa_b \xx_{ssss} + (\sigma \xx_s)_s + \ff_P.
+\label{eqn:traction}
+\end{align}
+Defining the bending operator as $\BB[\ff](\xx) = -\kappa_b \ff_{ssss}$,
+the tension operator $\TT[\sigma](\xx) = (\sigma \xx_s)_s$, and using
+IMEX-Euler, the no-slip boundary results in the time stepping method
+\begin{align*}
+  \xx^{N+1} - \Delta t \SS^N \BB^N \xx^{N+1} - 
+    \Delta t \SS^N \TT^N \sigma^{N+1} = \xx^N + 
+    \Delta t \SS^N \ff_P^N,
+\end{align*}
+and the inextensibility constraint that is discretized as
+\begin{align*}
+  \xx_s^{N} \cdot \xx_{s}^{N+1} = 1.
+\end{align*}
+We discretize the vesicles at a set of collocation points, compute the
+bending and tension terms with Fourier differentiation, and apply Alpert
+quadrature to the weakly-singular single-layer potential
+$\SS$.  
+%The source and target points of the adhesion force never
+%coincide since they are always on different vesicles, so the adhesion
+%force~\eqref{eqn:adhesionForce} is computed with the spectrally accurate
+%trapezoid rule~\cite{tre-wei2014}.  
+
+%The dynamics of a doublet undergoes many different time scales over time
+%horizons that are sufficiently large to characterize the formation of a
+%doublet and its rheological properties.  Therefore, time adaptivity is
+%crucial so that a user-specified tolerance is achieved without using a
+%guess-and-check procedure to find an appropriately small fixed time step
+%size.  To control the error and achieve second-order accuracy in time,
+%we use a time adaptive spectral deferred correction method that
+%applies IMEX-Euler twice per time step~\cite{quaife2016adaptive}. 
+
+\subsection{Vesicle as an inextensible elastic membrane}
+The above formulation is generally three-dimensional, yet the simulation results below are for two-dimensional (2d) system where
+the 2d vesicle is a 1d membrane boundary at constant, finite temperature $T$. 
+
+Due to the lipid-lipid interactions the lipid bilayer membrane
+is often assumed to be of constant area in 3d or constant length in 2d. Under normal conditions the lipid bilayer membrane (without reconstituted channels) 
+may be assumed to be impermeable to solvents. Thus the incompressibility of the fluid enclosed by the lipid bilayer membrane gives the conservation of total volume (area)
+in 3d (2d) system.
+
+Thus in 2d, the enclosed area $A_0$ and the length $L_0$ of a 2d vesicle are constants of the dynamics. From these two constants there are two dimensionless parameters
+often used to characterize a 2d vesicle.
+
+\noindent
+{\bf excess length $\triangle$:}
+%
+\[
+\triangle\equiv \frac{L_0}{\sqrt{A_0/\pi}}-2\pi.\]
+
+\noindent
+{\bf reduced area $A^*$:}
+%
+\[ A^*\equiv \frac{A_0}{\pi (L_0/2\pi)^2}.\]
+%
+Excess length and reduced area are related by
+\[
+A^* = \left(1+\frac{\triangle}{2\pi}\right)^{-2}. \]
+
+Note that reduced area is always smaller than 1 unless it is a perfect circle with zero excess length.
+The larger excess length $\triangle$ the more membrane is ``available" for deformation from the initial shape. 
+The reduced volume (for a 2d membrane in 3d) for a red blood cell is about $0.6$.
+Note also that because of these two constants the initial conditions often consist of specification of the excess length or reduced area of a 2d vesicle.
+If the vesicle is not pre-stressed, the 2d vesicle often takes the shape of an ellipse. This is very different from a viscous drop of a fixed area (or volume).
+
+\subsection{Semi-permeable membrane}
+Biological membranes are known to be semipermeable to solvents, especially under stress. As a first step to incorporate membrane semi-permeability
+into our continuum formulation, we assume that the solvent flux due to membrane permeability is solely induced by stress on the membrane.
+Consequently the kinematic condition for the membrane is altered to account for  the fact that the solvent can move through the membrane.
+Following work by Mori {\it et al.} we assume that the fluid flux due to membrane permeability is proportional to the normal component of the
+traction on the membrane:
+%
+\begin{equation}
+ \mbu - \dot{\mbx} = - \beta (\ff_\text{mem} \cdot \mbn) \mbn \quad\text{on}\quad\gamma
+ \end{equation}
+%
+with $\mbn$ the outward normal on the membrane $\gamma$.
+Here $\beta>0$ is a constant and the membrane force is the usual tension + bending:
+%
+\begin{equation}  
+\mbf_\text{mem}\equiv  \ff_B + \ff_T.
+\end{equation}
+
+Since the fluid satisfies the Stokes equations, it can be represented as
+layer potential. Given the interfacial boundary
+conditions, the fluid velocity is
+\begin{align}
+  \uu(\xx) = \uu_\infty(\xx) + \SS[\ff_\mathrm{mem}](\xx), \quad
+    \xx \in \Omega,
+\end{align}
+where $\SS$ is the single-layer potential
+\begin{align}
+  \SS[\ff](\xx) = \frac{1}{4\pi\mu} \int_{\gamma} \left(
+    -\mathbf{I} \log\rho + \frac{\rr \otimes \rr}{\rho^2} \right)
+    \ff(\yy) ds_{\yy},
+\end{align}
+with $\rr = \xx - \yy$ and $\rho = \norm{\rr}$. Imposing the flux
+condition and the inextensibility condition, the
+vesicle velocity satisfies
+\begin{align}
+  \label{eqn:vesVelocity}
+  \dot{\xx} &= \uu_\infty(\xx) + \beta (\ff_\mathrm{mem}\cdot\nn)\nn
+  + \SS [\ff_\mathrm{mem}](\xx),  \quad
+  \xx_s \cdot \dot{\xx}_s = 0.
+\end{align}
+
+%\section{Lateral distribution and Kinetics of the Force-generator complex}
+%The dynein motors can conduct directed walk along the microtubles to exert a pulling force  once they are bound to linker molecules either on the cortical membrane or on the
+%nucleus envelop.  
+%
+%In the case of the cortical membrane, these linker molecules can vary depending on the cell types as shown in figure~\ref{fig:FG_cortex}.
+%\begin{figure}
+%\includegraphics[keepaspectratio=true,scale=0.5]{Ananthanarayanan2016_Bioessays_fig04a.png}
+%\includegraphics[keepaspectratio=true,scale=0.5]{Ananthanarayanan2016_Bioessays_fig04b.png}
+%\includegraphics[keepaspectratio=true,scale=0.5]{Ananthanarayanan2016_Bioessays_fig04c.png}
+%%\includegraphics[keepaspectratio=true,scale=0.15]{Sketch_active_strip01.jpeg}
+%\caption{Ternary complexes of the dynein+linker in nuclear positioning and orientation events. Figures are taken from Ananthanaryanan, Bioessays (2016).
+%(A) is in {\it Drosophila} neuroblasts, (B) is in {\it C. elegans} embryo, and (C) is in human cells.}
+%\label{fig:FG_cortex}
+%\end{figure}
+%%
+%Figure~\ref{fig:FG_NE} shows a similar ternary complex consists of zyg-12 (light blue bars) and SUN-1 (dark blue bars) for pulling of microtubules from dyneins bound to the zyg-12 + SUN-1 complexes in the nuclear envelop.
+%\begin{figure}
+%\begin{center}
+%\includegraphics[keepaspectratio=true,scale=0.6]{Gonczy2004_CurrentBiology_fig03.png}
+%\end{center}
+%\caption{Ternary complexes of the dynein+linker in centrosome positioning. Red sphere is the centrosome. Light blue bars are the zyg-12 molecules, and 
+%SUN-1 are the linker embedded in the inner nuclear membrane. Figures are taken from Gonczy {\it et al.}, Current Biology (2004).
+%In A. the centrosome is pulled by the dynein bound to the zyg-12+SUN-1 linker. In B the centrosome is linked to the nucleus envelop with its zyg-12 bound to the zyg-12 in the nucleus envelop.}
+%\label{fig:FG_NE}
+%\end{figure}
+%
+%A significant difference between the cortical and nuclear ternary complexes is that the cortical linker is bound to the inner leaflet of the cellular membrane, while
+%the nuclear ternary complex connects the outer to inner nucleus membranes. In addition, recent results show that the SUN-1 structures are found to locate around the nucleus envelop complexes (NEC), and thus could be much more localized than the membrane component of the cortical linkers.
+%
+%Focusing on the cortical linker first, we use $L_b$ to denote the concentration of bound linkers per unit area on the membrane, and 
+%$L_u$ the concentration of unbound linkers per unit area on the membrane.
+%The governing equations for $L_b$ and $L_u$ are
+%\begin{align}
+%\frac{d L_u}{d t} + L_u\nabla \cdot {\bf v_m} + \nabla \cdot {\bf J} &= f_u,\\
+%\frac{d L_b}{d t} + L_b\nabla \cdot {\bf v_m}                                  &=f_b,
+%\end{align}
+%where $d/dt$ is the material derivative, $f_u$ and $f_b$ are conversion rates between the two species with $f_u+f_b=0$.
+%%
+%The flux of the unbound membrane linker is
+%\begin{align}
+%{\bf J} &=-m\nabla L_u,
+%\end{align}
+%where $m$ is the mobility that depends on the chemical potential of the unbound species interacting with the bound species.
+%
+%
+%To account for the pulling force of the motor protein on the linker, Grill {\it et al.} has a linker displacement that varies with the projection of the pulling force onto the local normal vector on the membrane. The tangential projection depends on how fast the motor protein moves along the bound microtubule.  $\rightarrow$ {\bf need to figure this out consistently with the force-velocity relationship}
+%
+%\clearpage
+
+\section{Transport of force generators in the membrane\label{sec:fp}}
+
+The force generators that bind to MTs nucleated on the centrosome are mostly dynein protein complexes that are bound to either the cytoplasmic
+membrane/cortex or the nucleus envelope. In many theoretical models these FGs are assumed to be stay in their positions as they bind and pull the MTs. 
+However, in physiological conditions, lipid membranes are in the fluid phase, and cross-membranes motor proteins like the dynein protein complexes move
+in the lipid membrane as they pull the MTs, thus experiencing viscous drag as FGs move within the membrane. To model such transport of FGs in the membrane,
+we first start from the equation of motion for a single force generator in the membrane as follows
+\begin{align}
+\label{eq:x_fg}
+\eta_m\left(\dot{\bf x}_{FG} - {\bf v}_m\right) &= \left({\bf I}-{\bf n}{\bf n}\right)\cdot {\bf f}_{P},\\
+{\bf v}_m &= \left({\bf I}-{\bf n}{\bf n}\right)\cdot {\bf u}|_{\Gamma},
+\end{align}
+where ${\bf x}_{FG}$ is the force generator position in the membrane $\Gamma$,
+$\eta_m$ is the drag coefficient for the force generator moving along the membrane with an outward normal ${\bf n}$ and a local  tangential velocity ${\bf v}_m$ along the membrane.
+Note that when the pulling force ${\bf f}_P=0$,  the force generator will move at the velocity ${\bf v}_m$ in the membrnae, which is the same as the tangential projection of the fluid velocity ${\bf u}$ evaluated on the membrane $\Gamma$. Furthermore, the difference between
+the force generator and the membrane velocity is proportional to the tangential projection of the pulling force.
+
+%In equation~\ref{eq:fp}, $\xx_0$ is the location of the centrosome where the microtubules nucleate, $d$ is
+%a parameter corresponding to a length scale of the potential, and $W_0>0$
+%sets the magnitude of the point force.  In equation~\ref{eq:geometric}, $\alpha>1$ is a constant chosen to represent the transition from $W=W_0$ to $W=0$ as the force generators move from inside the cone of contact (where force generators can bind to microtubles and exert a pulling force) to outside the cone of contact (where force generators cannot bind to microtubules).
+%%
+%%We always assume that the
+%%nucleus is centered at the origin and has symmetry in both the $x$ and
+%%$y$ directions.
+
+
+Incorporating this velocity into the transport of the concentration $c$ of the force generators in the membrane
+we obtain the governing equation for $c$ as
+\begin{align}
+\label{eq:c}
+\partial_t c + \nabla_s\cdot \left[ \left({\bf v}_m + \left({\bf I}-{\bf n}{\bf n}\right)\cdot \frac{{\bf f}_{P}}{\eta_m}\right)c\right] + \left({\bf u}\cdot{\bf n}\right) (\nabla_s \cdot{\bf n}) c &= \nabla_s\cdot(D\nabla_s c) + k_{on}(c_0-c) -k_{off}c,
+% \text{sorption/desorption fluxes},
+\end{align} 
+where we have included surface dilation effect (last term on the left), surface diffusion and the exchange fluxes with the bulk. The surface dilation term accounts for change in concentration due to surface dilation, which is commonly found in the equation for surfactant on a drop interface.
+
+%\begin{align}
+%  \ff_B = -\kappa_b \xx_{ssss},
+%\end{align}
+%where $\kappa_b$ is the bending stiffness.  The tension force is
+%\begin{align}
+%  \ff_T = (\sigma \xx_s)_s,
+%\end{align}
+%
+Equation \ref{eq:c} is coupled to the Stokes equation for the velocity field ${\bf u}$ with a deforming interface $\Gamma$:
+\begin{align}
+-\nabla P + \mu \triangle {\bf u} &=0,\\
+\nabla\cdot{\bf u} & =0,\\
+ \left[ \tau\cdot{\bf n}\right]\rvert_{\Gamma} &= \left({\bf f}_{\text{mem}} + c {\bf f}_P\right),\;\;\; \ff_{\text{mem}} = \ff_B + \ff_T = -\kappa_b \xx_{ssss} + (\sigma \xx_s)_s, \\
+%{\bf t}\cdot \left[\sigma\cdot{\bf n}\right]\rvert_{\Gamma} &= \left({\bf f}_{\text{mem}} + c {\bf f}_P\right)\cdot {\bf t},\\
+\label{eq:kinematics}
+\frac{d{\bf x}}{dt} &= {\bf u}\rvert_{\Gamma},\\
+\tau &= -P {\bf I} + \mu\left(\nabla {\bf u} + \left(\nabla {\bf u}\right)^T\right),
+\end{align}
+with $\left[F\right]\rvert_{\Gamma}$ denotes the difference of $F$ across the interface $\Gamma$.
+
+The kinematic equation (equation~\ref{eq:kinematics}) can be modified to incorporate the membrane permeability as
+\begin{equation}
+ \mbu - \dot{\mbx} = - \beta \left(\left(\ff_\text{mem} + c {\bf f}_P \right)\cdot \mbn\right) \mbn \quad\text{on}\quad\Gamma,
+ \end{equation}
+with $\beta$ the membrane permeability.
+
+Since the fluid satisfies the Stokes equations, it can be represented as
+layer potential. Given the interfacial boundary
+conditions, the fluid velocity is
+\begin{align}
+  \uu(\xx) = \uu_\infty(\xx) + \SS[\ff_\mathrm{mem}](\xx), \quad
+    \xx \in \Omega,
+\end{align}
+where $\uu_\infty(\xx)$ is the far-field fluid velocity and $\SS$ is the single-layer potential
+\begin{align}
+  \SS[\ff](\xx) = \frac{1}{4\pi\mu} \int_{\gamma} \left(
+    -\mathbf{I} \log\rho + \frac{\rr \otimes \rr}{\rho^2} \right)
+    \ff(\yy) ds_{\yy},
+\end{align}
+with $\rr = \xx - \yy$ and $\rho = \norm{\rr}$. Imposing the flux
+condition and the inextensibility condition, the
+vesicle velocity satisfies
+\begin{align}
+  \label{eqn:vesVelocity}
+  \dot{\xx} &= \uu_\infty(\xx) + \beta (\ff_\mathrm{mem}\cdot\nn)\nn
+  + \SS [\ff_\mathrm{mem}](\xx),  \quad
+  \xx_s \cdot \dot{\xx}_s = 0.
+\end{align}
+
+\subsection{Non-dimensionalization}
+We use the size of the nucleus $L$ to scale length, and the magnitude of the pulling force $W_0$ divided by the friction coefficient $\eta_m$ (of the force generator in the membrane) to scale the velocity. The corresponding characteristic time scale is $t\equiv L/(W_0/\eta_m)$. We use a characteristic concentration $C_0$ to scale the surface number density of the force generators in the membrane (number per unit area). The corresponding scaling for the pressure is $\mu W_0/(\eta_m L)$, and the system of non-dimensional equations are
+\begin{align}
+\label{eq:x_fg}
+\left(\dot{\bf x}_{FG} - {\bf v}_m\right) &= \left({\bf I}-{\bf n}{\bf n}\right)\cdot {\bf f}_{P},\\
+{\bf v}_m &= \left({\bf I}-{\bf n}{\bf n}\right)\cdot {\bf u}|_{\Gamma},
+ \end{align}
+ where the ratio of length scales $L/d$ is assumed to be of order 1.
+ The governing equations for the hydrodynamics are
+ \begin{align}
+-\nabla P + \triangle {\bf u} &=0,\\
+\nabla\cdot{\bf u} & =0,\\
+ \left[ \tau\cdot{\bf n}\right]\rvert_{\Gamma} &= \left({\bf f}_{\text{mem}} + \zeta c {\bf f}_P\right),\;\;\; \ff_{\text{mem}} = \ff_B + \ff_T = -\kappa \xx_{ssss} + (\sigma \xx_s)_s, \\
+%{\bf t}\cdot \left[\sigma\cdot{\bf n}\right]\rvert_{\Gamma} &= \left({\bf f}_{\text{mem}} + c {\bf f}_P\right)\cdot {\bf t},\\
+\label{eq:kinematics}
+\frac{d{\bf x}}{dt} &= {\bf u}\rvert_{\Gamma},\\
+\tau &= -P {\bf I} + \left(\nabla {\bf u} + \left(\nabla {\bf u}\right)^T\right),
+\end{align}
+where $\zeta\equiv C_0 \eta_m L/\mu$, $\kappa \equiv \frac{\kappa_b \eta_m}{\mu W_0 L^2}$ is the dimensionless bending rigidity, and the membrane tension is scaled by $\sigma_0 \equiv (\mu W_0)/\eta_m$.
+
+The dimensionless governing equation for the transport of force generators in the membrane is
+ \begin{align}
+ \label{eq:c}
+\partial_t c + \nabla_s\cdot \left[ \left({\bf v}_m + \left({\bf I}-{\bf n}{\bf n}\right)\cdot {\bf f}_{P}\right)c\right] + \left({\bf u}\cdot{\bf n}\right) (\nabla_s \cdot{\bf n}) c &= \nabla_s\cdot\left(\frac{1}{\mbox{Pe}}\nabla_s c\right) + k'_{on}(c_0-c) -k'_{off}c,
+\end{align}
+where the Peclet number $\mbox{Pe}\equiv \frac{V_0 L}{D}=\frac{W_0 L}{\eta_m D}$, and the dimensionless reaction rates
+$k'_{on} \equiv k_{on} L/V_0= k_{on} L\eta_m/W_0$ and $k'_{off} \equiv k_{off} L/V_0 = k_{off} L\eta_m/W_0$.
+
+
+\noindent
+{\bf Summary}
+
+All together, here is a list of dimensionless parameters in this system:
+\begin{align*}
+\mbox{ Force Generator: }& \frac{d}{L}, \;\;\;\mbox{Pe} \equiv \frac{W_0 L}{\eta_m D}.\\
+\mbox{ Elasto-hydrodynamics: }& \zeta \equiv \frac{C_0\eta_m L}{\mu},\;\;\; \kappa \equiv \frac{\kappa_b \eta_m}{\mu W_0 L^2}.
+\end{align*}
+
+The friction coefficient $\eta_m$ is crucial in this scaling. For transmembrane proteins in a lipid bilayer membrane, the friction coefficient has been shown to have three independent contributions: one is from the friction between monolayers, the second is from the hydrodynamic friction in the fluid, and the third is contribution from the viscous dissipation within each monolayer (Quemeneur {\it et al.}, (2014), PNAS). In Fourier space (as a function of wave number $k$), 
+the explicit expression for friction ($\lambda_1$) of proteins in a 
+lipid bilayer membrane is
+\begin{align*}
+\lambda_1 &= \frac{b d^2 k}{\eta} + d^2 k^2 + \frac{d^2 \mu_m k^3}{2 \eta},
+\end{align*}
+where $\eta = 10^{-3} \;\mbox{N}\cdot\mbox{s}\cdot\mbox{m}^{-2}$ is the viscosity of fluid in the bulk, $b=10^9 \; {\mbox J}\cdot{\mbox s}\cdot{\mbox m}^{-4}$  is the inter-leaflet friction coefficient,  $d=1$ nm,  $k$ is the wave number in the Fourier transform,  $\mu_m=6\times 10^{-10}\;\mbox{J}\cdot\mbox{s}\cdot\mbox{m}^{-2}$  is the shear viscosity in each monolayer, 
+
+At smallest scales $\sim 1\;\mbox{nm}$, the in-plane viscous dissipation is the dominant contribution to the protein-membrane friction. For example, say $k$ corresponds to the wave number at the length scale of 5 nm,  the relative contributions are (taken from supplementary material of Quemeneur {\it et al.}, (2014), PNAS):
+\begin{align*} 
+\frac{bd^2}{\eta a} &\sim 200,\\
+\frac{d^2}{a^2} &\sim 0.04,\\
+\frac{\mu_m d^2}{2 \eta a^3} &\sim 2.
+\end{align*}
+For lengths smaller than 0.5 nm, the shear viscosity dominates. For lengths larger than 0.5 nm, the friction between two monolayers dominate.
+%%
+%%For intermediate lengths, the friction between two monolayers dominates. For even larger scales, the 
+%%
+%%At intermediate scales the viscous dissipation due to membrane shear viscosity is the dominant contribution, and this is the length scales that we focus on for the force generators. 
+%
+%Thus in our system, we estimate the friction $\eta_m$ from the friction between the two monolayers by choosing a length scale $d\sim $ such that 
+
+
+However, if we naively assume that $\eta_m$ is due to the membrane shear viscosity, and set $\eta_m \sim  6\times 10^{-10}\;\mbox{J}\cdot\mbox{s}\cdot\mbox{m}^{-2}$. With $L = 10 \mu\mbox{m}$, we can estimate the dimensionless parameter $\zeta$ as
+\begin{align*}
+\zeta &= \frac{C_0 \times 6\times 10^{-10} 10\times 10^{-6}}{10^{-3}}=C_0 \times 6\times 10^{-12}.
+\end{align*}
+Thus $\zeta=1$ when the characteristic number density is 1 force generator per $6 \; \mu\mbox{m}^2$. This means that for a vesicle of size $10 \; \mu\mbox{m}$ there are about 200 force generators.
+
+
+\section{Stoichiometric Model for Pulling forces from the FGs \label{sec:stoichiometry}}
+To account for the kinetics of microtubules and their binding with the force generators whose transport is coarse-grained in equation~\ref{eq:c}, we proceed with the stoichiometric model summarized in  Farhadifar {\it et al.}, eLife (2020). Below is a brief summary of the stoichiometric model for a centrosome inside a cell. In our case the centrosome is outside the nucleus covered with similar force generators that can bind to microtubules nucleated on the centrosome.
+
+Microtubules (MTs) are stiff polar filaments with persistence length of  tens of microns, uniformly nucleating from the centrosome (microtubule organization center) with rate $\dot n$. While their minus ends are anchored to the centrosome, their plus ends polymerize (grow) at a speed $V_g$, and go through catastrophe with rate $\lambda$. MTs that reach the cell surface either bind to an unoccupied force generator (FG, protein complex composed of the motor protein dynein and other proteins connecting dynein to the cell cortex), or they go through catastrophe and disassemble. Previous studies show that an unbound FG can bind to at most one MT at a time.
+
+In this stoichiometric model, microtubules emanate from the centrosome at a given nucleation rate, and go through catastrophe at a given catastrophe rate. Once these microtubules are in contact with the force generators on the membrane, we assume that  microtubules can bind to at least one of the FGs at this location and may unbind at a given rate. Once a FG is occupied (bound to a MT) it exerts a pulling force $f_0$ on the MT and the centrosome. Bound FGs can detach from the MTs with rate $K$ and become unoccupied. In the low Reynolds number regime, the dynamics of the centrosome and its MT array is governed by a balance between puling forces from the cortical FGs and the viscous drag forces from the cytoplasm. %\cite{WuKabacaogluEtAl2021_bioRxiv}.
+
+The length distribution of MTs, $\psi(l,t)$ satisfies the Fokker-Planck equation
+\begin{align}
+\label{eq:FP}
+\partial_t\psi(l,t) + V_g \partial_l\psi(l,t) = -\lambda\psi(l,t),
+\end{align}
+where $l$ is the MT length. The boundary condition at $l=0$ is the balance between the MT flux and the nucleation rate: $V_g\psi(0,t)=\dot n$. The initial condition is a state with no MTs present: $\psi(l>0,0) = 0$, leading to the time-dependent solution for the MT length distribution
+\begin{align}
+\psi(l,t) = \frac{\dot n}{V_g}e^{-l\lambda/V_g} \mbox{H}[V_g t - l],
+\end{align}
+where $\mbox{H}[.]$ is the Heaviside function. Without any confinement, all MTs have length less than or equal to $V_g t$, which defines the MT front: $\psi(l>V_g t, t) = 0$. In steady state, the MTs length distribution exponentially decreases with $l$:
+$
+\psi(0\le l\le V_g t) =\frac{\dot n}{V_g}e^{-l/l_e}$,
+where $l_e = V_g/\lambda$ is the average MT length. 
+
+For a centrosome confined in a cell,
+only those FGs in contact with the MT front can interact with MTs and pull upon centrosome.
+First, we derive the time evolution of the MT front, ${\bf S}(\hat\xi({\bf Y}, t))$, with $\hat\xi=\frac{{\bf Y}-{\bf X}_c}{|{\bf Y}-{\bf X}_c|}$ a unit vector from the centrosome positioned at ${\bf X}_c(t)$ moving with velocity ${\bf V}_C = \frac{d {\bf X}_c}{dt}$ towards the point ${\bf Y}$ on the cell surface, $\Gamma({\bf Y})$. The velocity of the MT front in the lab frame is given by
+\begin{align}
+\label{eq:MTFront1}
+&{\bf S}\;\mbox{ inside the cell}:\; 
+\frac{d{\bf S}}{dt} = {\bf V}_c + V_g\hat\xi \equiv {\bf V}_S,\\
+\label{eq:MTFront2}
+%&{\bf S}\;\mbox{ on the cell surface } \Gamma({{\bf Y}}):\; 
+%\left\{\begin{array}{l} 
+%\frac{d{\bf S}}{dt}=0  \;\mbox{  if  }\; {\bf V}_S\cdot \hat {\bf n} > 0 \\  
+%\frac{d{\bf S}}{dt} = {\bf V}_S \;\mbox{  if  }\; {\bf V}_S\cdot \hat {\bf n} \le 0\end{array}\right.
+%
+&{\bf S}\;\mbox{ on the cell surface } \Gamma({{\bf Y}}):\; 
+\frac{d{\bf S}}{dt} = \mbox{H}[-{\bf V}_S\cdot \hat {\bf n}]{\bf V}_S,
+\end{align}
+where 
+%${\bf V}_c=\frac{d{\bf X}_c}{dt}$ is the centrosome velocity, and 
+$\hat {\bf n} = \hat {\bf n} ({\bf Y})$ is the outward unit normal on $\Gamma({\bf Y})$. 
+%
+%
+A point on the MT front that is far from the surface moves at velocity ${\bf V}_S$ away from the centrosome and towards the periphery. Note that the MT front cannot pass the cell periphery, therefore,  for a point on the front that reaches the cell surface with ${\bf V}_S\cdot{\hat{\bf n}}>0$, it stays on the surface ($\frac{d{\bf S}}{dt}=0$) while the point that reaches the cell  periphery with ${\bf V}_S\cdot{\hat{\bf n}}\le 0$ continues to move at velocity ${\bf V}_S$.
+To solve the dynamic equations of the MT front in arbitrary convex geometry, we define the function $\phi({\bf S})$ such that 
+%\begin{align}
+%    \phi({\bf S}) = \left\{\begin{array}{l} 1 \; \mbox{ when } \; {\bf S}\in\Gamma, \\
+%    0 \; \mbox{ when } \; {\bf S}\notin\Gamma,
+%    \end{array}\right.
+%\end{align}
+\begin{align}
+    \phi({\bf S}) = \left\{\begin{array}{l} 1 \; \mbox{ for } \; {\bf S} \in \Gamma \\
+    %\mbox{  on the cell surface } \Gamma, \\
+    0 \; \mbox{ otherwise}.
+    \end{array}\right.
+\end{align}
+The MT front velocity in equations~(\ref{eq:MTFront1})-(\ref{eq:MTFront2}) 
+can be expressed as
+\begin{align}
+\label{eq:dSdt}
+    \frac{d {\bf S}(\hat\xi({\bf Y}, t),t)}{dt} &= \phi({\bf S}) \mbox{H}\left[-{\bf V}_S\cdot\hat {\bf n}\right]{\bf V}_S + \left(1-\phi({\bf S})\right){\bf V}_S.
+\end{align}
+Integrating equation~(\ref{eq:dSdt})  using the first-order forward Euler scheme, the MT front position is updated from $t$ to $t+\triangle t$:
+\begin{align}
+\label{eq:dSdtEuler}
+    {\bf S}\left(\hat\xi({\bf Y}, t+\triangle  t)\right) & \approx {\bf S}\left(\hat\xi\left({\bf Y}, t\right)\right) + \triangle t\left(\phi({\bf S}) \mbox{H}\left[-{\bf V}_S\cdot\hat {\bf n}\right]{\bf V}_S + \left(1-\phi({\bf S})\right){\bf V}_S\right)|_t,
+\end{align}
+We solve equation~(\ref{eq:dSdtEuler}) using first-order 
+forward Euler scheme by triangulating the cell surface (see Appendix).
+%%
+
+Next, we calculate the force from FGs located on the cell periphery. Consider a patch of cell surface $\delta A$ 
+loaded with force generators of effective interaction radius $r_m$ and area density $M/A$ at position ${\bf Y}$
+and distance $D = |{\bf Y}-{\bf X}_c|$ from the centrosome. The rate at which MTs from the centrosome impinge upon $\delta A$ is 
+\begin{align}
+\label{eq:impingement_rate_3d}
+%R(\phi,\theta) 
+R({\bf Y},{\bf X}_C) &= \mbox{H}[\phi]\frac{\left[{\bf V}_S\cdot\hat{\bf n} \right]_+}{V_g} \chi\left(\frac{r_m}{D}\right)e^{- D/l_e}\dot n,
+\end{align}
+where 
+$\chi\left(\rho\right) = \frac{1}{2}\left(1-\frac{1}{\sqrt{1+\rho^2}}\right)$ is the fraction of MTs nucleated from the centrosome and can reach the surface element $\delta A$.
+The notation $[a]_+=a$ for $a>0$ and  zero otherwise ensures that the impingement rate is positive definite - when the centrosome moves faster than $V_g$ away from the surface element, the MTs cannot reach the surface and the impingement rate is zero.
+Note that as  the centrosome moves toward the surface element, the impingement rate exponentially increases, resulting in a high probability of interaction with FGs.
+
+In our model we consider a stoichiometric interaction between MTs and FGs - only one MT can interact with a FG at a time. 
+FGs appear in two states: unbound and bound.
+An unbound FG  binds to a MT that reaches its interaction zone, while a bound FG pulls upon the MT that is attached to and can detach with rate $K$ and becomes unbound. Consider a patch of cell periphery  of area $\delta A$ at position ${\bf Y}$ occupied by an unbound FG of effective area $a_0$.  The probability that a MT (located inside a cone defined by the centrosome and the patch) reaches the patch and binds to the FG is $p_u = 1-\left(1-\frac{a_0}{\delta A}\right)$. For an ensemble of $\delta n_u$ unbound FGs, which may overlap, the probability that a MT in this cone reaches at least one unbound FG and binds to it is $p_u = 1-\left(1-\frac{a_0}{\delta A}\right)^{\delta n_u}$. Taking the limit $a_0/\delta A\rightarrow 0$ while keeping the FG area density constant, the probability of binding of a MT to an unbound FG is $p_u = 1-e^{-\rho_u a_0}$, where $\rho_u = \delta n_u/\delta A$ is the local area density of unbound FGs.
+With $M$ force generators (both bound and unbound) uniformly distributed on the cell periphery (of area $A$), 
+%and the probability $P({\bf Y})$ that the FG at position ${\bf Y}$ is bound to a MT at time $t$,  
+the local density of bound FGs is $\rho_b({\bf Y}) = \frac{MP({\bf Y})}{A}$, where $P({\bf Y})$ is the probability of finding a bound FG at position ${\bf Y}$ (the density of unbound FGs is $\rho_u({\bf Y})=\frac{M(1- P({\bf Y}))}{A})$.
+Thus the number of bound FGs in this patch is $\delta n_b = \rho_b \delta A = M P({\bf Y}) \delta A/A$.
+%
+The rate of change in the number of bound FGs is equal to the rate of unbound FGs turning to bound FGs minus the rate of bound FGs becoming unbound. 
+%
+%The rate of unbound FGs 
+%
+%binding to one of the impinging MTs in the cone, and the rate of bound FGs turning into unbound FGs by detaching from their associated MTs.
+%
+As the MTs from the centrosome impinge upon the patch, the rate of unbound FGs turning into bound state is the product of the MT impingement rate with the probability of finding at least one unbound FG in this patch: $R p_u \delta A/a_0$. 
+Thus the time evolution of bound FGs in the patch of $\delta A$ is given by
+\begin{align}
+    \frac{d}{dt}\delta n_b = R \frac{p_u\delta A}{a_0} - K \delta n_b.
+\end{align}
+%
+Replacing $\delta n_b$ and $p_u$ in terms of $P({\bf Y})$ yields the governing equation for 
+the probability of binding a MT to a FG at position ${\bf Y}$ 
+\begin{align}
+\label{eq:dPdt_overlap}
+%\frac{\partial P(\phi,\theta)}{\partial t} &= %R(\phi,\theta) \frac{1-e^{-\frac{M}{M_0}(1-P(\phi,\theta))}}{M/M_0} - \bar k P(\phi,\theta),
+\frac{d P({\bf Y})}{d t} &= R({\bf Y},t) \frac{1-e^{-\frac{M}{M_0}(1-P({\bf Y}))}}{M/M_0} - K P({\bf Y}), 
+\end{align}
+where $M_0 = A/a_{0}$ is the number of FGs that cover the surface of the cell without overlap.
+In the limit of $M/M_0 \ll 1$, where the overlap between the FGs is negligible, the probability of attachment is given by
+\begin{align}
+\label{eq:dPdot_3d}
+\frac{d P({\bf Y},t)}{d t} &=  R({\bf Y},t)\left(1-P({\bf Y},t)\right)-K P({\bf Y},t),
+\end{align}
+which gives a steady state solution: $P({\bf Y})= R({\bf Y})/(R({\bf Y})+K)$. The pulling force from the surface element at position ${\bf Y}$ is $\mbox{H}[\phi]f_0P({\bf Y}, t)\hat\xi$. 
+The motion of the centrosome is given by an overdamped dynamics
+\begin{align}
+\label{eq:Zdot_3d}
+%\eta \dot{{\bf X}}_c= {\bf F} &\equiv \frac{M f_0}{A}\int_{\Gamma} P\hat{\xi}dA.
+\eta \frac{d {\bf X}_c}{dt} = {\bf F} &\equiv \frac{M f_0}{A}\int_{\Gamma({\bf Y},t)} \mbox{H}[\phi]P({\bf Y},t)\hat{\xi}({\bf Y},t)d{\bf Y},
+\end{align}
+where $\eta$ is the drag coefficient on the centrosome and its MTs.
+%
+Equations~(\ref{eq:dSdt}), (\ref{eq:impingement_rate_3d}), (\ref{eq:dPdt_overlap}) and (\ref{eq:Zdot_3d}) describe the governing dynamics of the centrosome due to the pulling forces from the cortical FGs.  
+
+
+Now we apply the stoichiometric model to a centrosome pulling a vesicle covered with FGs. We assume that the pulling forces from the FGs do not give rise to membrane motion that exceeds the MT growth velocity, and thus we ignore the dynamics of MT front. 
+For points ${\bf x}_i$ in the membrane within the cone of interactions where MTs from the centrosome can bind to FGs to produce pulling forces,  the binding probability satisfies the equation
+\begin{align}
+\frac{d P({\bf x}_i)}{d t} = R({\bf x}_i)\left[\frac{1-e^{-c({\bf x}_i) (1-P({\bf x}_i))}}{c({\bf x}_i)}\right]-\kappa P({\bf x}_i),
+\end{align}
+where $R({\bf x}_i)$ is an impingement rate, $c({\bf x}_i)$ is the coarse-grained FG concentration at a location ${\bf x}_i$ in the membrane, and $\kappa$ is the detachment rate.
+For membrane points outside the cone of interactions, MTs nucleated from the centrosome cannot reach the membrane without bending, and in our model this leads to zero impingement rate and the binding probability satisfies the equation
+\begin{align}
+\frac{d P({\bf x}_i)}{d t} = -\kappa P({\bf x}_i).
+\end{align}
+%
+In two dimensions, the impingement rate is computed to be
+\begin{align}
+R({\bf x}_i)&= \left({\bf v}_c  + V_g \hat {\bf \xi}({\bf x}_i)\right)\cdot \hat {\bf r}({\bf x}_i) \tan^{-1}\left(\frac{r_m}{D({\bf x}_i)}\right)\frac{\dot n}{V_g} e^{-k_{cat} D({\bf x}_i)/V_g},
+\end{align}
+where $\hat{\bf \xi}({\bf x}_i)$ is the unit vector from the centrosome to the membrane point ${\bf x}_i$, $\hat{\bf r}({\bf x}_i)$ is the inward normal on the vesicle, 
+and $D_i$ is the distance between the centrosome and the FG(s) at membrane location ${\bf x}_i$.
+${\bf v}_c=d{\bf x}_c/dt$ is the velocity of the centrosome, $V_g$ is the MT growth velocity, $r_m$ is the effective radius of FGs, and $k_{cat}$ is the MT catastrophe rate.
+%
+
+
+The total pulling force on the centrosome is the following surface integral over $\Gamma_I$, 
+the part of the vesicle membrane that can be reached by MTs nucleated from the centrosome without bending 
+\begin{align}
+{\bf F}_c &= f_0 \int_{\Gamma_I} c\left({\bf x}_i\right) P\left({\bf x}_i\right) \hat\xi\left({\bf x}_i\right) dA =  \int_{\Gamma_I} c\left({\bf x}_i\right) (-\ff_P) dA,
+%{\bf F} &= \sum_i F_0 c({\bf x}_i)P({\bf x}_i) \hat{\bf \xi}({\bf x}_i) = \sum_i c({\bf x}_i) {\bf f}_{p}({\bf x}_i),
+\end{align}
+where $\ff_P = -f_0 P({\bf x}_i)\hat\xi({\bf x}_i)$ is the force on a single FG bound to a MT inside the interaction cone.
+%
+The centrosome velocity is related to the total force ${\bf F}_c$ as
+\begin{align}
+\eta_c \frac{d{\bf x}_c}{dt} &= \eta_c {\bf v}_c = {\bf F}_c,
+\end{align}
+where $\eta_c$ is the drag coefficient for the centrosome motion inside the cell.
+
+
+The force ${\bf f}_p$ also appears in the transport equation  for $c$ and the stress balance:
+ \begin{align}
+ \label{eq:c_new}
+\partial_t c + \nabla_s\cdot \left[ \left({\bf v}_m + \left({\bf I}-{\bf n}{\bf n}\right)\cdot {\bf f}_{P}\right)c\right] + \left({\bf u}\cdot{\bf n}\right) (\nabla_s \cdot{\bf n}) c &= \nabla_s\cdot\left(\frac{1}{\mbox{Pe}}\nabla_s c\right),
+\end{align}
+\begin{align}
+\left[ \tau\cdot{\bf n}\right]\rvert_{\Gamma}  &= \left({\bf f}_{\text{mem}} + \zeta c {\bf f}_P\right),\;\;\; \ff_{\text{mem}} = \ff_B + \ff_T = -\kappa \xx_{ssss} + (\sigma \xx_s)_s, 
+\end{align}
+where the bulk exchange terms are being neglected.
+
+In summary, below are the governing equations for a vesicle being pulled by a centrosome via the interactions between the FGs on the vesicle and the MTs that nucleate on the centrosome.
+%
+%\noindent
+%{\bf dimensional version of the equations}
+%{\bf binding probability $P$ versus pressure $P$}
+%
+%
+\noindent
+{\bf (1):  In the viscous fluid where the centrosome and the vesicle are immersed in:}
+ \begin{align}
+-\nabla \mbox{P} + \mu \triangle {\bf u} &=0,\\
+\nabla\cdot{\bf u} & =0,\\
+ \left[ \tau\cdot{\bf n}\right]\rvert_{\Gamma} &= \left({\bf f}_{\text{mem}} +{\bf f}_P\right),\;\;\; \ff_{\text{mem}} ={\bf \tau}^{\kappa} + {\bf \tau}^{\sigma},\\
+ {\bf \tau}^{\kappa} &= -\kappa(4 H^3 - 4 K H + 2 \nabla^2_s H){\bf n},\;\;\;
+ {\bf \tau}^{\sigma} = 2 \sigma H {\bf n} - \nabla_s \sigma,\\
+ %
+ %\ff_{\text{mem}} = \ff_B + \ff_T = -\kappa \xx_{ssss} + (\sigma \xx_s)_s, \\
+%{\bf t}\cdot \left[\sigma\cdot{\bf n}\right]\rvert_{\Gamma} &= \left({\bf f}_{\text{mem}} + c {\bf f}_P\right)\cdot {\bf t},\\
+\label{eq:kinematics}
+\frac{d{\bf x}}{dt} &= {\bf u}\rvert_{\Gamma},\\
+\tau &= -\mbox{P} {\bf I} + \mu \left(\nabla {\bf u} + \left(\nabla {\bf u}\right)^T\right),\\
+\eta_c\frac{d {\bf x}_c}{dt} &= \eta_c {\bf v}_c = {\bf F}_c,\\
+%{\bf F}_c &= f_0 \int_{\Gamma_I} c\left({\bf x}_i\right) P\left({\bf x}_i\right) \hat\xi\left({\bf x}_i\right) dA =  \int_{\Gamma_I}  -\ff_P dA,\\
+{\bf F}_c &=  \int_{\Gamma_I}  -\ff_P dA,\;\;\; \ff_P = -f_0 c\left({\bf x}_i\right)P({\bf x}_i)\hat\xi({\bf x}_i) \phi\left({\bf x}_i\right).
+\end{align}
+$\phi({\bf x}_i)$ is the indicator function for the contact region: $\phi({\bf x}_i)=1$ in the contact zone and $\phi({\bf x}_i)=0$ outside the contact zone.
+%C_0 \eta_m L/\mu$,
+$\hat\xi$ is the unit vector from membrane point ${\bf x}_i$ in the contact zone to the centrosome position ${\bf x_c}$.
+$H=(1/2)\nabla\cdot{\bf n}$ is the mean curvature,
+$K = (1/2) [ (\nabla\cdot{\bf n})^2+\nabla{\bf n}:\left(\nabla{\bf n}\right)^T]$ is the Gaussian curvature and $\kappa$ is the bending modulus.
+For a vesicle in free space, the flow field ${\bf u}\rightarrow 0$ in the far-field. For a vesicle confined in a cell, the flow field satisfies the no-slip boundary condition on the cell boundary.
+
+\noindent
+{\bf (2): On the vesicle:}
+
+\begin{align}
+\frac{d P({\bf x}_i)}{d t} &= R({\bf x}_i)\left[\frac{1-e^{-c({\bf x}_i) (1-P({\bf x}_i))}}{c({\bf x}_i)}\right]- k P({\bf x}_i),
+\end{align}
+with $k$ the detachment rate. The binding probability $P$ is defined on the surface grid that is advected with the local fluid velocity on the membrane.
+The rate of change $\frac{dP}{dt}$ is calculated in the Lagrangian frame. The impingement rate $R({\bf x}_i)$ is derived from the microtubule kinetic theory as
+\begin{align}
+R({\bf x}_i)&= \left({\bf v}_c  + V_g \hat {\bf \xi}({\bf x}_i)\right)\cdot \left(-{\bf n}\right) \frac{\dot n}{V_g} e^{-k_{cat} D({\bf x}_i)/V_g} \frac{1}{2}\left(1-\frac{1}{\sqrt{1+\left(\frac{r_m}{D({\bf x}_i)}\right)^2}}\right)\phi({\bf x}_i),
+\end{align}
+where ${\bf n}$ is the outward normal on the vesicle. 
+The concentration of the FGs obeys the transport equation with diffusivity $D_c$
+\begin{align}
+\frac{dc({\bf x}_i)}{dt} + \nabla_s\cdot \left[ \left({\bf I}-{\bf n}{\bf n}\right)\cdot \frac{{\bf f}_{P}}{\eta_m}\right]  &= \nabla_s\cdot\left(D_c\nabla_s c\right),
+\end{align}
+%\begin{align}
+%\partial_t c + \nabla_s\cdot \left[ \left({\bf v}_m + \left({\bf I}-{\bf n}{\bf n}\right)\cdot {\bf f}_{P}\right)c\right] + \left({\bf u}\cdot{\bf n}\right) (\nabla_s \cdot{\bf n}) c &= \nabla_s\cdot\left(\frac{1}{\mbox{Pe}}\nabla_s c\right),
+%\end{align}
+where $\eta_m$ is the drag coefficient for the FG moving in the membrane. The FG concentration $c({\bf x}_i)$ is in the Lagrangian frame,  and
+$D({\bf x}_i) = |{\bf x}_c - {\bf x}_i|$ is the distance between ${\bf x}_c$ and ${\bf x}_i$.
+
+%
+\begin{table}[h]
+\caption{Variables in the model and their notations in the code}
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+        \toprule
+        Model variable & Notations in the code \\
+        \cmidrule(r){1-1}\cmidrule(lr){2-2}\cmidrule(l){3-3}
+        $V_g$ &  $\dot n$ & mt_growth_velocity\\
+        %Total number of microtubules & $N_{\infty}$ & $5\times 10^3\sim10^4$ \\
+        $K$ & detachment_rate  \\
+        Microtubule growth velocity      &   $V_g$   & $0.7$  $\mu\text{m}s^{-1}$ \\
+        Microtubule catastrophe rate & $k_{cat}$ & $k_{cat}=V_g/l_e\sim 0.035 s^{-1}$\\
+        Force-generator radius &  $r_m$ &  $1$ $\mu\text{m}$\\
+        Force-generator detachment rate & $k$  & $0.1 s^{-1}$ \\
+        Force-generator pulling force   &  $f_0$  & $10$ $p$N\\
+        Centrsome drag       &  $\eta_c$  &  $150$  $p$N/($\mu$m$s^{-1}$)\\
+        \bottomrule
+\end{tabular}
+\end{center}
+ %\caption{Microtubule catastrophe rate $\lambda=V_g/l_e$, and microtubule nucleation rate $\dot n = N_{\infty}\lambda = N_{\infty}V_g/l_e$.\label{tab:parameters}}
+\end{table}
+%
+\begin{table}[h]
+\caption{Biophysical parameters of Stoichiometric Model}
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+        \toprule
+        Biophysical Parameters & Symbol & Value \\
+        \cmidrule(r){1-1}\cmidrule(lr){2-2}\cmidrule(l){3-3}
+        Microtubule nucleation rate &  $\dot n$ & $250 s^{-1}$\\
+        %Total number of microtubules & $N_{\infty}$ & $5\times 10^3\sim10^4$ \\
+        Microtubule average length & $l_e$ & $20$ $\mu \text{m}$ \\
+        Microtubule growth velocity      &   $V_g$   & $0.7$  $\mu\text{m}s^{-1}$ \\
+        Microtubule catastrophe rate & $k_{cat}$ & $k_{cat}=V_g/l_e\sim 0.035 s^{-1}$\\
+        Force-generator radius &  $r_m$ &  $1$ $\mu\text{m}$\\
+        Force-generator detachment rate & $k$  & $0.1 s^{-1}$ \\
+        Force-generator pulling force   &  $f_0$  & $10$ $p$N\\
+        Centrsome drag       &  $\eta_c$  &  $150$  $p$N/($\mu$m$s^{-1}$)\\
+        \bottomrule
+\end{tabular}
+\end{center}
+ %\caption{Microtubule catastrophe rate $\lambda=V_g/l_e$, and microtubule nucleation rate $\dot n = N_{\infty}\lambda = N_{\infty}V_g/l_e$.\label{tab:parameters}}
+\end{table}
+%
+%\subsection{Preliminary Results}
+%
+%\begin{figure}[h]
+%\includegraphics[keepaspectratio=true,scale=0.75]{collect_pulled_membrane_Jun22a.png}
+%\caption{A circular vesicle (reduced area = 1) at $t=0$ with a point force at $-1.1$ (black), $-1.2$ (red), $-1.4$ (blue) and $-1.8$ (cyan).}
+%\label{fig:pulledMembrane01}
+%\end{figure}
+%
+%\begin{figure}[h]
+%\includegraphics[keepaspectratio=true,scale=0.75]{collect_pulled_membrane_Jun22b.png}
+%\caption{A circular vesicle (reduced area = 1) at $t=0$ with a point force at $-1.1$ (black), $-1.2$ (red), $-1.4$ (blue) and $-1.8$ (cyan). All cases are shifted the centrosome is located at $x=0$.}
+%\label{fig:pulledMembrane02}
+%\end{figure}
+%
+%\begin{figure}[h]
+%\includegraphics[keepaspectratio=true,scale=0.75]{collect_pulled_membrane_Jun22c.png}
+%\caption{A circular vesicle (reduced area = 1) at $t=0$ with a point force at $-1.1$ (right most), $-1.2$, $-1.4$ and $-1.8$ (left most).}
+%\label{fig:pulledMembrane03}
+%\end{figure}
+%
+%\begin{figure}[h]
+%\includegraphics[keepaspectratio=true,scale=0.75]{collect_pulled_membrane_Jun22d.png}
+%\caption{Distribution of $c$ for a circular vesicle (reduced area = 1) at $t=0$ with a point force at  $-1.4$ (blue) and $-1.8$ (cyan).}
+%\label{fig:pulledMembrane04}
+%\end{figure}
+%
+%\begin{figure}[h]
+%\includegraphics[keepaspectratio=true,scale=0.75]{collect_pulled_membrane_Jun22e.png}
+%\caption{Change in the enclosed area for an initially circular vesicle (reduced area = 1 at $t=0$) with a point force at $-1.1$ (right most), $-1.2$, $-1.4$ and $-1.8$ (left most). }
+%\label{fig:pulledMembrane05}
+%\end{figure}
+%
+%\begin{figure}[h]
+%\includegraphics[keepaspectratio=true,scale=0.75]{collect_pulled_membrane_Jun22f.png}
+%\caption{$c_{max}$ for an initially circular vesicle (reduced area = 1 at $t=0$) with a point force at $-1.1$ (right most), $-1.2$, $-1.4$ and $-1.8$ (left most).}
+%\label{fig:pulledMembrane06}
+%\end{figure}
+%%\section{Preliminary Results}
+%%
+%%Here we show the dynamics of an inextensible vesicle (of a reduced area 0.65) being pulled by a point force that is kept always to the left of the vesicle.  Fixing the drag coefficient $\eta_m=5$, we vary the Peclet number and examine the dynamics of vesicle shape and the distribution of $c$ along the membrane.
+%%\begin{figure}[h]
+%%\includegraphics[keepaspectratio=true,scale=0.45]{Deformation_Three_Pe_Apr12.png}
+%%\includegraphics[keepaspectratio=true,scale=0.45]{MaxC_Three_Pe_Apr12.png}
+%%\caption{Vesicle deformation and maximum of FG concentration as a function of time. $Pe=10$ for the black curves. $Pe=20$ for the blue curves. $Pe=30$ for the red curves.}
+%%\label{fig:MaxC_D}
+%%\end{figure}
+%%The left panel in 
+%%figure~\ref{fig:MaxC_D} shows the vesicle deformation (defined as ratio $\frac{l-a}{l+a}$, where $l$ is the largest distance and $a$ is the shortest distance from the center to the vesicle membrane).  The right panel shows the maximum value of $c$ versus time for three Peclet number.
+%%
+%%Figure~\ref{fig:sur} shows the concentration as a function of arclength for different values of Peclet number at these four times.
+%%\begin{figure}[h]
+%%\includegraphics[keepaspectratio=true,scale=0.45]{Concentration_vs_arclength_t5.png}
+%%\includegraphics[keepaspectratio=true,scale=0.45]{Concentration_vs_arclength_t10.png}
+%%\includegraphics[keepaspectratio=true,scale=0.45]{Concentration_vs_arclength_t15.png}
+%%\includegraphics[keepaspectratio=true,scale=0.45]{Concentration_vs_arclength_t20.png}
+%%\caption{Distribution of $c$ along the arclength at four different times. $Pe=10$ for the black curves. $Pe=20$ for the blue curves. $Pe=30$ for the red curves. $Pe=40$ for the cyan curves.}
+%%\label{fig:sur}
+%%\end{figure}
+%%Focusing on the case of $Pe=30$, we observe that the two peaks at $t=5$ correspond to the membrane location closest to the pulling force (left) and the membrane fold (see figure~\ref{fig:Pe10c} for example). The higher the Peclet number is, the higher the force generator concentration.  At $t=10$ we observe a bi-modal distribution of $c$ along the membrane for $Pe\ge 20$.
+%%At $t=15$ the concentration is homogenized for $Pe=10$ and $Pe=20$, while for $Pe=30$ the difference in $c$ between these two regions continues to increase. At $t=20$, the concentration field $c$ is homogenized for all three Peclet numbers.
+%%
+%%Figure~\ref{fig:Pe10c} shows the vesicle shape  for $Pe=10$, color coded by the concentration $c$ at $t=5$, $10$, $15$, and $20$ from left to right, top to bottom.
+%%\begin{figure}[h]
+%%\includegraphics[keepaspectratio=true,scale=0.45]{imagePe10c1251.png}
+%%\includegraphics[keepaspectratio=true,scale=0.45]{imagePe10c2501.png}
+%%\includegraphics[keepaspectratio=true,scale=0.45]{imagePe10c3751.png}
+%%\includegraphics[keepaspectratio=true,scale=0.45]{imagePe10c5001.png}
+%%\caption{$Pe=10$. From left to right, $t=5$, $10$, $15$, $20$.}
+%%\label{fig:Pe10c}
+%%\end{figure}
+%%%
+%%Figure~\ref{fig:Pe20c} shows the vesicle shape  for $Pe=20$.
+%%%, color coded by the concentration $c$ at $t=5$, $10$, $15$, and $20$ from left to right , top to bottom.
+%%\begin{figure}[h]
+%%\includegraphics[keepaspectratio=true,scale=0.45]{imagePe20c1251.png}
+%%\includegraphics[keepaspectratio=true,scale=0.45]{imagePe20c2501.png}
+%%\includegraphics[keepaspectratio=true,scale=0.45]{imagePe20c3751.png}
+%%\includegraphics[keepaspectratio=true,scale=0.45]{imagePe20c5001.png}
+%%\caption{$Pe=20$. From left to right, $t=5$, $10$, $15$, $20$.}
+%%\label{fig:Pe20c}
+%%\end{figure}
+%%%
+%%Figure~\ref{fig:Pe30c} shows the vesicle shape  for $Pe=30$.
+%%%, color coded by the concentration $c$ at $t=5$, $10$, $15$, and $20$ from left to right , top to bottom.
+%%\begin{figure}[h]
+%%\includegraphics[keepaspectratio=true,scale=0.45]{imagePe30c1251.png}
+%%\includegraphics[keepaspectratio=true,scale=0.45]{imagePe30c2501.png}
+%%\includegraphics[keepaspectratio=true,scale=0.45]{imagePe30c3751.png}
+%%\includegraphics[keepaspectratio=true,scale=0.45]{imagePe30c5001.png}
+%%\caption{$Pe=30$. From left to right, $t=5$, $10$, $15$, $20$.}
+%%\label{fig:Pe30c}
+%%\end{figure}
+%%
+%%\newpage
+%%\begin{align*}
+%%\eta \frac{d\vec{\bf x}_1}{dt} &= \vec{\bf F}_1 + \alpha \hat{\bf S},\\
+%%\eta \frac{d\vec{\bf x}_2}{dt} &= \vec{\bf F}_2 - \alpha \hat{\bf S},\\
+%%\frac{d\triangle \vec{\bf x}}{dt} &=\frac{\triangle \vec{\bf F} + 2 \alpha \hat{\bf S}}{\eta},\\
+%%\hat{\bf S} &\equiv \frac{\vec{\bf x}_1-\vec{\bf x}_2}{|\vec{\bf x}_1-\vec{\bf x}_2|}\equiv \frac{\triangle \vec{\bf x}}{L}.
+%%\end{align*}
+%%
+%%\begin{align*}
+%%L^2 &= \triangle \vec{\bf x}\cdot \triangle \vec{\bf x},\\
+%%\dot L &= \frac{d\triangle \vec{\bf x}}{dt}\cdot\frac{\triangle\vec{\bf x}}{L}=\frac{\triangle \vec{\bf F} + 2 \alpha \hat{\bf S}}{\eta}\cdot\hat{\bf S}.\\
+%%\end{align*}
+%%
+%%If $\dot L \le 0$
+%%\begin{align*}
+%%\alpha &= -\frac{\triangle\vec{\bf F}\cdot\hat{\bf S}}{2},\\
+%%\eta \vec{\bf v}_1 &=\vec{\bf F}_1 -\frac{\triangle\vec{\bf F}\cdot\hat{\bf S}}{2}\hat{\bf S},\\
+%%\eta \vec{\bf v}_2 &=\vec{\bf F}_2 + \frac{\triangle\vec{\bf F}\cdot\hat{\bf S}}{2}\hat{\bf S},\\
+%%\vec{\bf F}^c_1 &\equiv -\frac{\triangle\vec{\bf F}\cdot\hat{\bf S}}{2}\hat{\bf S},\\
+%%\vec{\bf F}^c_2 &\equiv  \frac{\triangle\vec{\bf F}\cdot\hat{\bf S}}{2}\hat{\bf S}.
+%%\end{align*}
+%%
+%%If $\dot L >0$
+%%\begin{align*}
+%%\eta \vec{\bf v}_1 &= \vec{\bf F}_1 - \frac{\nu \dot L}{2} \hat{\bf S},\\
+%%\eta \vec{\bf v}_2 &= \vec{\bf F}_2 + \frac{\nu \dot L}{2} \hat{\bf S},\\
+%%\dot L &= \frac{\triangle \vec{\bf F}\cdot\hat{\bf S}}{\eta+\nu},\\
+%%\vec{\bf F}^v_1 &\equiv - \frac{\nu \dot L}{2} \hat{\bf S},\\
+%%\vec{\bf F}^v_2 &\equiv  \frac{\nu \dot L}{2} \hat{\bf S}.
+%%\end{align*}
+%%
+%%For the more general case where centrosome 1 has a drag coefficient $\eta_1$ and centrosome 2 has a drag coefficient $\eta_2$, 
+%%\begin{align*}
+%%\dot L &= \frac{2\left(\vec{\bf F}_1/\eta_1 - \vec{\bf F}_2/\eta_2\right)\cdot\hat{\bf S}}{2+\nu\left(1/\eta_1 + 1/\eta_2\right)}.
+%%\end{align*}
+
+\end{document}
