@@ -233,6 +233,148 @@ void StokesVelocity<Real>::setup_self(){
 }
 
 template <class Real>
+void WriteCentrosomeVTK(const char* fname, Real period=0, Real* centrosome_pos=NULL, long n_centrosome=0){
+  typedef double VTKReal;
+  int data__dof=VES3D_DIM;
+  int myrank, np;
+  np = 1;
+  myrank = 0;
+
+  std::vector<VTKReal> coord;
+  std::vector<VTKReal> value_vec1;
+  std::vector<VTKReal> value_sca1;
+  std::vector<int32_t> connect_vert;
+  std::vector<int32_t> offset_vert;
+
+  for(int i=0; i<n_centrosome; i++){
+    connect_vert.push_back(coord.size()/VES3D_DIM);
+    offset_vert.push_back(connect_vert.size());
+    value_sca1.push_back(0);
+    for(size_t l=0;l<VES3D_DIM;l++){
+      coord.push_back(centrosome_pos[VES3D_DIM*i+l]);
+      value_vec1.push_back(0);
+    }
+  }
+  int pt_cnt=coord.size()/VES3D_DIM;
+  int poly_cnt = 0;
+  int vert_cnt=n_centrosome;
+
+  //Open file for writing.
+  std::stringstream vtufname;
+  vtufname<<"centrosome_"<<fname<<"_"<<std::setfill('0')<<std::setw(6)<<myrank<<".vtp";
+  std::ofstream vtufile;
+  vtufile.open(vtufname.str().c_str());
+  if(vtufile.fail()) return;
+
+  bool isLittleEndian;
+  {
+    uint16_t number = 0x1;
+    uint8_t *numPtr = (uint8_t*)&number;
+    isLittleEndian=(numPtr[0] == 1);
+  }
+
+  //Proceed to write to file.
+  size_t data_size=0;
+  vtufile<<"<?xml version=\"1.0\"?>\n";
+  if(isLittleEndian) vtufile<<"<VTKFile type=\"PolyData\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
+  else               vtufile<<"<VTKFile type=\"PolyData\" version=\"0.1\" byte_order=\"BigEndian\">\n";
+  //===========================================================================
+  vtufile<<"  <PolyData>\n";
+  vtufile<<"    <Piece NumberOfPoints=\""<<pt_cnt<<"\" NumberOfVerts=\""<<vert_cnt<<"\" NumberOfLines=\"0\" NumberOfStrips=\"0\" NumberOfPolys=\""<<poly_cnt<<"\">\n";
+
+  //---------------------------------------------------------------------------
+  vtufile<<"      <Points>\n";
+  vtufile<<"        <DataArray type=\"Float"<<sizeof(VTKReal)*8<<"\" NumberOfComponents=\""<<VES3D_DIM<<"\" Name=\"Position\" format=\"appended\" offset=\""<<data_size<<"\" />\n";
+  data_size+=sizeof(uint32_t)+coord.size()*sizeof(VTKReal);
+  vtufile<<"      </Points>\n";
+  //---------------------------------------------------------------------------
+  if(value_vec1.size() || value_sca1.size())
+    vtufile<<"      <PointData>\n";
+  if(value_vec1.size()){ // value
+    vtufile<<"        <DataArray type=\"Float"<<sizeof(VTKReal)*8<<"\" NumberOfComponents=\""<<value_vec1.size()/pt_cnt<<"\" Name=\""<<"value vec1"<<"\" format=\"appended\" offset=\""<<data_size<<"\" />\n";
+    data_size+=sizeof(uint32_t)+value_vec1.size()*sizeof(VTKReal);
+  }
+  if(value_sca1.size()){ // value
+    vtufile<<"        <DataArray type=\"Float"<<sizeof(VTKReal)*8<<"\" NumberOfComponents=\""<<value_sca1.size()/pt_cnt<<"\" Name=\""<<"value sca1"<<"\" format=\"appended\" offset=\""<<data_size<<"\" />\n";
+    data_size+=sizeof(uint32_t)+value_sca1.size()*sizeof(VTKReal);
+  }
+  if(value_vec1.size() || value_sca1.size())
+    vtufile<<"      </PointData>\n";
+  //---------------------------------------------------------------------------
+  if(vert_cnt>0){
+    vtufile<<"      <Verts>\n";
+    vtufile<<"        <DataArray type=\"Int32\" Name=\"connectivity\" format=\"appended\" offset=\""<<data_size<<"\" />\n";
+    data_size+=sizeof(uint32_t)+connect_vert.size()*sizeof(int32_t);
+    vtufile<<"        <DataArray type=\"Int32\" Name=\"offsets\" format=\"appended\" offset=\""<<data_size<<"\" />\n";
+    data_size+=sizeof(uint32_t)+offset_vert.size() *sizeof(int32_t);
+    vtufile<<"      </Verts>\n";
+  }
+
+  vtufile<<"    </Piece>\n";
+  vtufile<<"  </PolyData>\n";
+  //===========================================================================
+  vtufile<<"  <AppendedData encoding=\"raw\">\n";
+  vtufile<<"    _";
+
+  int32_t block_size;
+  block_size=coord.size()*sizeof(VTKReal); vtufile.write((char*)&block_size, sizeof(int32_t)); vtufile.write((char*)&coord  [0], coord.size()*sizeof(VTKReal));
+  if(value_vec1.size()){ // value
+    block_size=value_vec1.size()*sizeof(VTKReal); vtufile.write((char*)&block_size, sizeof(int32_t)); vtufile.write((char*)&value_vec1  [0], value_vec1.size()*sizeof(VTKReal));
+  }
+  if(value_sca1.size()){ // value
+    block_size=value_sca1.size()*sizeof(VTKReal); vtufile.write((char*)&block_size, sizeof(int32_t)); vtufile.write((char*)&value_sca1  [0], value_sca1.size()*sizeof(VTKReal));
+  }
+  if(vert_cnt>0){
+    block_size=connect_vert.size()*sizeof(int32_t); vtufile.write((char*)&block_size, sizeof(int32_t)); vtufile.write((char*)&connect_vert[0], connect_vert.size()*sizeof(int32_t));
+    block_size=offset_vert .size()*sizeof(int32_t); vtufile.write((char*)&block_size, sizeof(int32_t)); vtufile.write((char*)&offset_vert [0], offset_vert .size()*sizeof(int32_t));
+  }
+
+  vtufile<<"\n";
+  vtufile<<"  </AppendedData>\n";
+  //===========================================================================
+  vtufile<<"</VTKFile>\n";
+  vtufile.close();
+
+
+  if(myrank) return;
+  std::stringstream pvtufname;
+  pvtufname<<"centrosome_"<<fname<<".pvtp";
+  std::ofstream pvtufile;
+  pvtufile.open(pvtufname.str().c_str());
+  if(pvtufile.fail()) return;
+  pvtufile<<"<?xml version=\"1.0\"?>\n";
+  pvtufile<<"<VTKFile type=\"PPolyData\">\n";
+  pvtufile<<"  <PPolyData GhostLevel=\"0\">\n";
+  pvtufile<<"      <PPoints>\n";
+  pvtufile<<"        <PDataArray type=\"Float"<<sizeof(VTKReal)*8<<"\" NumberOfComponents=\""<<VES3D_DIM<<"\" Name=\"Position\"/>\n";
+  pvtufile<<"      </PPoints>\n";
+  if(value_vec1.size() || value_sca1.size())
+    pvtufile<<"      <PPointData>\n";
+  if(value_vec1.size()){ // value
+    pvtufile<<"        <PDataArray type=\"Float"<<sizeof(VTKReal)*8<<"\" NumberOfComponents=\""<<value_vec1.size()/pt_cnt<<"\" Name=\""<<"value vec1"<<"\"/>\n";
+  }
+  if(value_sca1.size()){ // value
+    pvtufile<<"        <PDataArray type=\"Float"<<sizeof(VTKReal)*8<<"\" NumberOfComponents=\""<<value_sca1.size()/pt_cnt<<"\" Name=\""<<"value sca1"<<"\"/>\n";
+  }
+  if(value_vec1.size() || value_sca1.size())
+    pvtufile<<"      </PPointData>\n";
+
+  {
+    // Extract filename from path.
+    std::stringstream vtupath;
+    vtupath<<'/'<<"centrosome_"<<fname;
+    std::string pathname = vtupath.str();
+    unsigned found = pathname.find_last_of("/\\");
+    std::string fname_ = pathname.substr(found+1);
+    for(int i=0;i<np;i++) pvtufile<<"      <Piece Source=\""<<fname_<<"_"<<std::setfill('0')<<std::setw(6)<<i<<".vtp\"/>\n";
+  }
+  pvtufile<<"  </PPolyData>\n";
+  pvtufile<<"</VTKFile>\n";
+  pvtufile.close();
+
+}
+
+template <class Real>
 void WriteVTK(const sctl::Vector<Real>& S, long p0, long p1, const char* fname, Real period=0, const sctl::Vector<Real>* v_ptr=NULL, const sctl::Vector<Real>* s_ptr=NULL, Real* centrosome_pos=NULL, long n_centrosome=0){
   typedef double VTKReal;
   int data__dof=VES3D_DIM;
@@ -506,6 +648,7 @@ void WriteVTK(const sctl::Vector<Real>& S, long p0, long p1, const char* fname, 
   pvtufile<<"  </PPolyData>\n";
   pvtufile<<"</VTKFile>\n";
   pvtufile.close();
+  WriteCentrosomeVTK(fname, period, centrosome_pos, n_centrosome);
 }
 
 template <class Surf>
