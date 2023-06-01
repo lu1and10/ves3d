@@ -104,8 +104,8 @@ void test_evolve_surface(){
     sim_par.bg_flow_param        = 0.0;
     sim_par.bg_flow              = ShearFlow;
     sim_par.diffusion_rate       = 0.1;
-    sim_par.pulling_rate         = 0.3;        // f_0
-    sim_par.pulling_eta          = 1.0;        // eta_m
+    sim_par.fg_pulling_force     = 0.3;        // f_0
+    sim_par.fg_drag_coeff        = 1.0;        // eta_m
     sim_par.centrosome_position[0] = 0.0;
     sim_par.centrosome_position[1] = 0.0;
     sim_par.centrosome_position[2] = 2.16;

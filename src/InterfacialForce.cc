@@ -160,17 +160,19 @@ void InterfacialForce<SurfContainer>::gravityForce(const SurfContainer &S, const
 }
 
 template<typename SurfContainer>
-void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const value_type* centrosome_position, const Sca_t &binding_probability, const Sca_t &density, Vec_t &Fp) const
+void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const value_type* centrosome_position, const Sca_t &binding_probability, const Sca_t &density, Vec_t &Fp, Sca_t &impingement_rate) const
 // returns 3d force vector per microtubule (not force density), ie f_0 \hat{\xi}(y) p(y,t)
 // at all surface points y.
 {
 
     // TODO: Pre-allocate
-    Sca_t stmp;
-    stmp.replicate(Fp);
-    Vec_t wrk[2];
-    wrk[0].replicate(Fp);
-    wrk[1].replicate(Fp);
+    Sca_t s_wrk[3];
+    s_wrk[0].replicate(Fp);
+    s_wrk[1].replicate(Fp);
+    s_wrk[2].replicate(Fp);
+    Vec_t v_wrk[2];
+    v_wrk[0].replicate(Fp);
+    v_wrk[1].replicate(Fp);
 
     // pulling force direction
     int N = Fp.size()/VES3D_DIM;
@@ -181,26 +183,46 @@ void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const
       }
     }
     // normalizing  to get \hat\xi
-    GeometricDot(Fp, Fp, stmp);
-    Sqrt(stmp, stmp);
-    uyInv(Fp, stmp, Fp);
+    GeometricDot(Fp, Fp, s_wrk[0]);
+    // s_wrk[0] stores D, distance between centrosome and membrane surface points
+    Sqrt(s_wrk[0], s_wrk[0]);
+    uyInv(Fp, s_wrk[0], Fp);
+
+    set_one(s_wrk[1]);
+    axpy(1.0/params_.fg_radius, s_wrk[0], s_wrk[2]);
+    xy(s_wrk[2], s_wrk[2], s_wrk[2]);
+    axpy(1.0, s_wrk[1], s_wrk[2], s_wrk[2]);
+    Sqrt(s_wrk[2], s_wrk[2]);
+    xyInv(s_wrk[1], s_wrk[2], s_wrk[2]);
+    axpy(-1.0, s_wrk[2], s_wrk[1], s_wrk[2]);
+    axpy(0.5*params_.mt_nucleation_rate/params_.mt_growth_velocity, s_wrk[2], s_wrk[2]);
+    axpy(-params_.mt_catastrophe_rate/params_.mt_growth_velocity, s_wrk[0], s_wrk[1]);
+    Exp(s_wrk[1], s_wrk[1]);
+    xy(s_wrk[1], s_wrk[2], s_wrk[1]);
+    axpy(-1.0, s_wrk[1], s_wrk[1]);
+    xv(s_wrk[1], S.getNormal(), v_wrk[0]);
+    axpy(params_.mt_growth_velocity, Fp, v_wrk[1]);
+    GeometricDot(v_wrk[0], v_wrk[1], impingement_rate);
 
     // only consider the surface points which centrosome can directly connent to
     // TODO: use ray tracing for complex shapes and get number of collisions to the surface
     // now only consider force direction dot with outward normal
-    GeometricDot(Fp, S.getNormal(), stmp);
+    GeometricDot(Fp, S.getNormal(), s_wrk[0]);
     #pragma omp parallel for
-    for(int i=0; i<stmp.size(); i++){
-        if(stmp.begin()[i] >=0)
-            stmp.begin()[i] = params_.pulling_rate;     // f_0
-        else
-            stmp.begin()[i] = 0.0;
+    for(int i=0; i<s_wrk[0].size(); i++){
+        if(s_wrk[0].begin()[i] >=0){
+            s_wrk[0].begin()[i] = params_.fg_pulling_force;     // f_0
+        }
+        else{
+            s_wrk[0].begin()[i] = 0.0;
+            impingement_rate.begin()[i] = 0;
+        }
     }
-    xv(stmp, Fp, Fp);
+    xv(s_wrk[0], Fp, Fp);
     xv(binding_probability, Fp, Fp);
     xv(density, Fp, Fp);
 
-    sht_.lowPassFilter(Fp, wrk[0], wrk[1], Fp);  //filter high frequency
+    sht_.lowPassFilter(Fp, v_wrk[0], v_wrk[1], Fp);  //filter high frequency
     /*
     // TODO: calculate in upsample space
     S.resample(params_.upsample_freq, &S_up); // upsample

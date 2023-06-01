@@ -16,6 +16,10 @@ inline void Sqrt(const ScalarContainer &x_in,
     ScalarContainer &sqrt_out);
 
 template<typename ScalarContainer>
+inline void Exp(const ScalarContainer &x_in,
+    ScalarContainer &exp_out);
+
+template<typename ScalarContainer>
 inline void xy(const ScalarContainer &x_in,
     const ScalarContainer &y_in, ScalarContainer &xy_out);
 

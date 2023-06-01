@@ -15,6 +15,14 @@ void Sqrt(const ScalarContainer &x_in, ScalarContainer &sqrt_out)
 }
 
 template<typename ScalarContainer>
+void Exp(const ScalarContainer &x_in, ScalarContainer &exp_out)
+{
+    ASSERT(AreCompatible(x_in, exp_out),"Incompatible containers");
+
+    x_in.getDevice().Exp(x_in.begin(), x_in.size(), exp_out.begin());
+}
+
+template<typename ScalarContainer>
 void xy(const ScalarContainer &x_in, const ScalarContainer &y_in,
     ScalarContainer &xy_out)
 {

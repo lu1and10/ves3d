@@ -37,10 +37,14 @@ class Parameters : public Streamable
     T viscosity_contrast;
     T excess_density;
     T diffusion_rate;
-    T pulling_rate;
-    T pulling_eta;
+    T fg_pulling_force;
+    T fg_detachment_rate;
+    T fg_radius;
+    T fg_drag_coeff;
     T centrosome_position[3];
-    T pulling_velocity[3];
+    T mt_growth_velocity;
+    T mt_nucleation_rate;
+    T mt_catastrophe_rate;
 
     //Time stepper
     T time_horizon;

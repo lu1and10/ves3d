@@ -132,6 +132,10 @@ class Device
     template<typename T>
     T* Sqrt(const T* x_in, size_t length, T* sqrt_out) const;
 
+    //! exponential operator.
+    template<typename T>
+    T* Exp(const T* x_in, size_t length, T* exp_out) const;
+
     //! a[i]*x[i,j], i is point index and j is field index
     template<typename T>
     T* ax(const T* a, const T* x, size_t length, size_t n_vecs, T* ax_out) const;

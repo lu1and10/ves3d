@@ -141,6 +141,20 @@ T* Device<CPU>::Sqrt(const T* x_in, size_t length, T* sqrt_out) const
 
 template<>
 template<typename T>
+T* Device<CPU>::Exp(const T* x_in, size_t length, T* exp_out) const
+{
+    PROFILESTART();
+#pragma omp parallel for
+    for (int idx = 0; idx < length; idx++)
+    {
+        exp_out[idx] = ::exp(x_in[idx]);
+    }
+    PROFILEEND("CPU", length);
+    return exp_out;
+}
+
+template<>
+template<typename T>
 T* Device<CPU>::ax(const T* a, const T* x, size_t stride, size_t n_vecs, T* ax_out) const
 {
     PROFILESTART();

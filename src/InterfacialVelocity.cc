@@ -37,6 +37,7 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
     tension_.getDevice().Memset(tension_.begin(), 0, sizeof(value_type)*tension_.size());
     density_.getDevice().Memset(density_.begin(), 0, sizeof(value_type)*density_.size());
     binding_probability_.getDevice().Memset(binding_probability_.begin(), 0, sizeof(value_type)*binding_probability_.size());
+    impingement_rate_.getDevice().Memset(impingement_rate_.begin(), 0, sizeof(value_type)*impingement_rate_.size());
     pulling_force_.getDevice().Memset(pulling_force_.begin(), 0, sizeof(value_type)*pulling_force_.size());
 
     //Setting initial tension to zero
@@ -84,7 +85,7 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
     centrosome_pos_ = new value_type[VES3D_DIM];
     for(int i=0; i<VES3D_DIM; i++)
         centrosome_pos_[i] = params_.centrosome_position[i];
-    Intfcl_force_.pullingForce(S_, centrosome_pos_, binding_probability_, density_, pulling_force_);
+    Intfcl_force_.pullingForce(S_, centrosome_pos_, binding_probability_, density_, pulling_force_, impingement_rate_);
 }
 
 template<typename SurfContainer, typename Interaction>
@@ -133,8 +134,8 @@ updateJacobiExplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
 
     // add S[f_b]
     Intfcl_force_.bendingForce(S_, *u1);
-    // add S[f_p]
-    Intfcl_force_.pullingForce(S_, centrosome_pos_, binding_probability_, density_, pulling_force_); // f_p = c.P.f0.ksi
+    // add S[f_p] and calculate impingment rate
+    Intfcl_force_.pullingForce(S_, centrosome_pos_, binding_probability_, density_, pulling_force_, impingement_rate_); // f_p = c.P.f0.ksi
     axpy(static_cast<value_type>(1.0), *u1, pulling_force_, *u1);
     CHK(stokes(*u1, *u2));
     axpy(static_cast<value_type>(1.0), *u2, pos_vel_, pos_vel_);
@@ -156,6 +157,19 @@ updateJacobiExplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     const int lagrangian = 1;
     sht_.lowPassFilter(density_, *u1, *u2, density_);
     if (lagrangian) {
+      // update binding probability P
+      set_one(*wrk);
+      axpy(-1.0, binding_probability_, *wrk, *wrk);
+      axpy(-1.0, density_, *wrk2);
+      xy(*wrk, *wrk2, *wrk);
+      Exp(*wrk, *wrk);
+      set_one(*wrk2);
+      axpy(-1.0, *wrk, *wrk2, *wrk);
+      xyInv(*wrk, density_, *wrk);
+      xy(impingement_rate_, *wrk, *wrk);
+      axpy(-params_.fg_detachment_rate, binding_probability_, *wrk);
+      axpy(dt_, *wrk, binding_probability_, binding_probability_);
+
       set_zero(*wrk);     // if no advection apart from membrane vel, that's it, since for a vesicle w/ local area-conservation, div_s u = 0!  (not divs u_s = 0 !)
       
       // Lagrangian:    (d/dt)c + c (div_s u) = 0
@@ -180,7 +194,7 @@ updateJacobiExplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
       // to do: add stretching term in case it's not const in some future setting?
       
       // need: compute v_p         ... add eta_m, D, f_p (???) to Parameter struct
-      axpy(1.0/params_.pulling_eta, pulling_force_, *u1);  // f_p/eta
+      axpy(1.0/params_.fg_drag_coeff, pulling_force_, *u1);  // f_p/eta
       S_.mapToTangentSpace(*u1, false);   // overwrites u1, now v_p, tangential
       S_.div(*u1, *wrk);                // wrk = div_s.(c v_p)
       
