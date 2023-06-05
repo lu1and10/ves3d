@@ -167,7 +167,7 @@ updateJacobiExplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
       axpy(-1.0, *wrk, *wrk2, *wrk);
       xyInv(*wrk, density_, *wrk);
       xy(impingement_rate_, *wrk, *wrk);
-      axpy(-params_.fg_detachment_rate, binding_probability_, *wrk);
+      axpy(-params_.fg_detachment_rate, binding_probability_, *wrk, *wrk);
       axpy(dt_, *wrk, binding_probability_, binding_probability_);
 
       set_zero(*wrk);     // if no advection apart from membrane vel, that's it, since for a vesicle w/ local area-conservation, div_s u = 0!  (not divs u_s = 0 !)
