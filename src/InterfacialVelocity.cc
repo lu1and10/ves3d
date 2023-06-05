@@ -31,6 +31,7 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
     tension_.replicate(S_.getPosition());
     density_.replicate(S_.getPosition());
     binding_probability_.replicate(S_.getPosition());
+    impingement_rate_.replicate(S_.getPosition());
     pulling_force_.replicate(S_.getPosition());
 
     pos_vel_.getDevice().Memset(pos_vel_.begin(), 0, sizeof(value_type)*pos_vel_.size());
@@ -233,6 +234,10 @@ updateJacobiExplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     const int FE = 1;          // time-step type
     if (FE)  {               // explicit fwd Euler...
       axpy(-dt_, *wrk, density_, density_);          // den -= dt*wrk
+      for(int ii=0; ii<density_.size(); ii++){
+        if(density_.begin()[ii] < 0)
+          density_.begin()[ii] = 0;
+      }
     } else {                        // implicit *** would need c^{-1} dc/dt
       // *** but the case divs_nontang_ok using (5) doesn't give this! -> No implicit for now.
       //      axpy(-dt_,*wrk,*wrk2);                        // wrk2 now dt.(u.n)(Div_s.n)

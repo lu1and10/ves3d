@@ -199,7 +199,7 @@ void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const
     axpy(-params_.mt_catastrophe_rate/params_.mt_growth_velocity, s_wrk[0], s_wrk[1]);
     Exp(s_wrk[1], s_wrk[1]);
     xy(s_wrk[1], s_wrk[2], s_wrk[1]);
-    axpy(-1.0, s_wrk[1], s_wrk[1]);
+    //axpy(-1.0, s_wrk[1], s_wrk[1]);
     xv(s_wrk[1], S.getNormal(), v_wrk[0]);
     axpy(params_.mt_growth_velocity, Fp, v_wrk[1]);
     GeometricDot(v_wrk[0], v_wrk[1], impingement_rate);
