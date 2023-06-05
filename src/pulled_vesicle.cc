@@ -106,6 +106,11 @@ void test_evolve_surface(){
     sim_par.diffusion_rate       = 0.1;
     sim_par.fg_pulling_force     = 0.3;        // f_0
     sim_par.fg_drag_coeff        = 1.0;        // eta_m
+    sim_par.fg_radius            = 1.0;
+    sim_par.fg_detachment_rate   = 0.1;
+    sim_par.mt_nucleation_rate   = 150;
+    sim_par.mt_growth_velocity   = 0.5;
+    sim_par.mt_catastrophe_rate  = 0.025;
     sim_par.centrosome_position[0] = 0.0;
     sim_par.centrosome_position[1] = 0.0;
     sim_par.centrosome_position[2] = 2.16;
