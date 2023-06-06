@@ -149,104 +149,65 @@ updateJacobiExplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     CHK(stokes(*u1, *u2));
     axpy(static_cast<value_type>(1.0), *u2, pos_vel_, pos_vel_);
 
-    //axpy(dt_, pos_vel_, S_.getPosition(), S_.getPositionModifiable());
     dx.replicate(S_.getPosition());
-    axpy(dt_, pos_vel_, dx);         // what does 3-arg axpy do ? update pos_vel?
+    axpy(dt_, pos_vel_, dx);         // what does 3-arg axpy do ? update pos_vel?, 3-arg axpy does ax -> y
+
+    // update binding probability P
+    set_one(*wrk);
+    axpy(-1.0, binding_probability_, *wrk, *wrk);
+    axpy(-1.0, density_, *wrk2);
+    xy(*wrk, *wrk2, *wrk);
+    Exp(*wrk, *wrk);
+    set_one(*wrk2);
+    axpy(-1.0, *wrk, *wrk2, *wrk);
+    xyInv(*wrk, density_, *wrk);
+    xy(impingement_rate_, *wrk, *wrk);
+    axpy(-params_.fg_detachment_rate, binding_probability_, *wrk, *wrk);
+    axpy(dt_, *wrk, binding_probability_, binding_probability_);
+
+    // begin to update density
+    // if no advection apart from membrane vel, that's it, since for a vesicle w/ local area-conservation, div_s u = 0!  (not divs u_s = 0 !)
+    // Lagrangian:    (d/dt)c + c (div_s u) = 0
+    // f_p = pulling force vector per unit force generator,  eta_m = drag
+    // v_p = pulling-related advection vel relative to u.
+    // D = diffusion const
+    // Lagrangian w/ extra transport (pulling) v_p = (I-nn).f_p / eta_m
+    //      (d/dt)c + div_s (v_p c)   + c (div_s u)          =    D \Delta_s c
+    //                pulling advec    stretching of dS           diffusion
+    // Test (d/dt) \int_surf c(x,t) dS = 0  "mass conservation"
+    // Simulation works in lagrangian!
+    /* Discussion from 3/31/23:
+      in R2: transport eqn  Eulerian  (par/par t)c + div(uc) = 0    u = advec vel
+                                       ^ means sit at fixed x, rate of change of c
+                            Lagrangian  (d/dt)c = 0
+                            d/dt = (par/par t) + u.grad  + (div u)
+                            d/dt = (par/par t) + div (u .)
+                                                  if div u nonzero
+      on moving Gamma surf that may leave x, what does (par/par t)c(x,t) mean ???
+     */
 
     // advect density on surface: fill wrk with -dc/dt...
-    const int divs_nontang_ok = 0;        // whether ves3d correctly computes div_s for *nontangential* vectors
-    const int lagrangian = 1;
     sht_.lowPassFilter(density_, *u1, *u2, density_);
-    if (lagrangian) {
-      // update binding probability P
-      set_one(*wrk);
-      axpy(-1.0, binding_probability_, *wrk, *wrk);
-      axpy(-1.0, density_, *wrk2);
-      xy(*wrk, *wrk2, *wrk);
-      Exp(*wrk, *wrk);
-      set_one(*wrk2);
-      axpy(-1.0, *wrk, *wrk2, *wrk);
-      xyInv(*wrk, density_, *wrk);
-      xy(impingement_rate_, *wrk, *wrk);
-      axpy(-params_.fg_detachment_rate, binding_probability_, *wrk, *wrk);
-      axpy(dt_, *wrk, binding_probability_, binding_probability_);
+    // to do: add stretching term in case it's not const in some future setting?
+    // need: compute v_p         ... add eta_m, D, f_p (???) to Parameter struct
+    axpy(1.0/params_.fg_drag_coeff, pulling_force_, *u1);  // f_p/eta
+    S_.mapToTangentSpace(*u1, false);   // overwrites u1, now v_p, tangential
+    S_.div(*u1, *wrk);                // wrk = div_s.(c v_p)
 
-      set_zero(*wrk);     // if no advection apart from membrane vel, that's it, since for a vesicle w/ local area-conservation, div_s u = 0!  (not divs u_s = 0 !)
-      
-      // Lagrangian:    (d/dt)c + c (div_s u) = 0
-      // f_p = pulling force vector per unit force generator,  eta_m = drag
-      // v_p = pulling-related advection vel relative to u.
-      // D = diffusion const
-      // Lagrangian w/ extra transport (pulling) v_p = (I-nn).f_p / eta_m
-      //      (d/dt)c + div_s (v_p c)   + c (div_s u)          =    D \Delta_s c
-      //                pulling advec    stretching of dS           diffusion
-      // Test (d/dt) \int_surf c(x,t) dS = 0  "mass conservation"
-      // Simulation works in lagrangian!
-      /* Discussion from 3/31/23:
-        in R2: transport eqn  Eulerian  (par/par t)c + div(uc) = 0    u = advec vel
-                                         ^ means sit at fixed x, rate of change of c
-                              Lagrangian  (d/dt)c = 0
-                              d/dt = (par/par t) + u.grad  + (div u)
-                              d/dt = (par/par t) + div (u .)
-                                                    if div u nonzero
-        on moving Gamma surf that may leave x, what does (par/par t)c(x,t) mean ???
-       */
+    // add D \Delta_s c = div_s (D grad_s c), and subtract from -dc/dt
+    value_type D = params_.diffusion_rate;        // diffusion rate, const    "real" ? -> value_type?
+    S_.grad(density_,*u1);
+    set_zero(*u2);
+    axpy(-D, *u1, *u2, *u1);      // u1 <-  -D grad_s c
+    S_.div(*u1, *wrk2);              // wrk2 <-  div_s (-D grad_s c)
+    axpy(1.0, *wrk, *wrk2, *wrk);     // wrk = add advection plus diffusion
 
-      // to do: add stretching term in case it's not const in some future setting?
-      
-      // need: compute v_p         ... add eta_m, D, f_p (???) to Parameter struct
-      axpy(1.0/params_.fg_drag_coeff, pulling_force_, *u1);  // f_p/eta
-      S_.mapToTangentSpace(*u1, false);   // overwrites u1, now v_p, tangential
-      S_.div(*u1, *wrk);                // wrk = div_s.(c v_p)
-      
-      // add D \Delta_s c = div_s (D grad_s c), and subtract from -dc/dt
-      value_type D = params_.diffusion_rate;        // diffusion rate, const    "real" ? -> value_type?
-      S_.grad(density_,*u1);
-      set_zero(*u2);
-      axpy(-D, *u1, *u2, *u1);      // u1 <-  -D grad_s c
-      S_.div(*u1, *wrk2);              // wrk2 <-  div_s (-D grad_s c)
-      axpy(1.0, *wrk, *wrk2, *wrk);     // wrk = add advection plus diffusion
-      
-    } else {   // was eulerian, hence wrong... was useful to check formulae only:
-      // Stone, H. A. (1990). A simple derivation of the time‐dependent convective‐diffusion equation for surfactant transport along a deforming interface. Physics of Fluids A: Fluid Dynamics, 2(1), 111–112. doi:10.1063/1.857686
-      if (divs_nontang_ok) {
-        // (partial/partial t) c + div_s.(c u) = 0        Stone eq (5)
-        // (partial/partial t) c + u . grad_s c + c (div_s u) = 0
-        //            surf transp    stretching             (in ves3d sim stretch=0)
-        // Note pos_vel_ is u, surface velocity
-        xv(density_, pos_vel_, *u1);      // u1 = c u  (3D vector, flux)
-        S_.div(*u1, *wrk);                // wrk = Div_s.(c u)
-      } else {                            // use equiv tangential vecs formula
-        // (par /par t) c + div_s (c u_s) + 2H(u.n)c = 0       Stone (6), equiv to (5).
-        axpy(-2.0,S_.getMeanCurv(),*wrk);  // now wrk = 2H (note Abtin sign err!)
-        // S_.div(S_.getNormal(), *wrk);   // alternative way wrk = div_s.n = 2H
-        GeometricDot(pos_vel_, S_.getNormal(), *wrk2);  // wrk2 = u.n  normal vel
-        xy(*wrk,*wrk2,*wrk2);                           // ptwise prod -> wrk2
-        xy(density_, *wrk2, *wrk);        // wrk = 2H(u.n) c
-        set_zero(*u1);
-        axpy(0.0,*u1,pos_vel_,*u1);        // u1 = u        annoying way :(
-        S_.mapToTangentSpace(*u1, false);      // overwrites u1 with u_s    :(
-        xv(density_, *u1, *u1);      // u1 = c u_s  tangential flux
-        S_.div(*u1,*wrk2);                // wrk2 = divs(c u_s),  tangential only
-        axpy(1.0, *wrk, *wrk2, *wrk);     // wrk <- wrk + wrk2 = divs(c u_s)+2H(u.n)c
-      }
+    axpy(-dt_, *wrk, density_, density_);          // den -= dt*wrk
+    // cap density to be non-negative
+    for(int ii=0; ii<density_.size(); ii++){
+      if(density_.begin()[ii] < 0)
+        density_.begin()[ii] = 0;
     }
-    const int FE = 1;          // time-step type
-    if (FE)  {               // explicit fwd Euler...
-      axpy(-dt_, *wrk, density_, density_);          // den -= dt*wrk
-      for(int ii=0; ii<density_.size(); ii++){
-        if(density_.begin()[ii] < 0)
-          density_.begin()[ii] = 0;
-      }
-    } else {                        // implicit *** would need c^{-1} dc/dt
-      // *** but the case divs_nontang_ok using (5) doesn't give this! -> No implicit for now.
-      //      axpy(-dt_,*wrk,*wrk2);                        // wrk2 now dt.(u.n)(Div_s.n)
-      //for(int ii=0; ii<wrk->size(); ii++)
-      //  wrk->begin()[ii] = 1.0;
-      //  axpy(1.0,*wrk,*wrk2,*wrk);   // wrk = 1+wrk2
-      // do implicit bkw Euler   c <- c / (1+wrk2)   = c/wrk
-      // xyInv(density_, *wrk, density_);  // ptwise division (implicit)
-    }         
 
     recycle(u1);
     recycle(u2);
