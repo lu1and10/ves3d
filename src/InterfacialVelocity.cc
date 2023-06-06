@@ -161,6 +161,12 @@ updateJacobiExplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     set_one(*wrk2);
     axpy(-1.0, *wrk, *wrk2, *wrk);
     xyInv(*wrk, density_, *wrk);
+    // in case density is near zero, take the limit
+    #pragma omp parallel for
+    for(int ii=0; ii<density_.size(); ii++){
+      if(abs(density_.begin()[ii]) < 1e-12)
+        wrk->begin()[ii] = 1.0 - binding_probability_.begin()[ii];
+    }
     xy(impingement_rate_, *wrk, *wrk);
     axpy(-params_.fg_detachment_rate, binding_probability_, *wrk, *wrk);
     axpy(dt_, *wrk, binding_probability_, binding_probability_);
@@ -204,6 +210,7 @@ updateJacobiExplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
 
     axpy(-dt_, *wrk, density_, density_);          // den -= dt*wrk
     // cap density to be non-negative
+    #pragma omp parallel for
     for(int ii=0; ii<density_.size(); ii++){
       if(density_.begin()[ii] < 0)
         density_.begin()[ii] = 0;
