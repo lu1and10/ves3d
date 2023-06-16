@@ -651,6 +651,301 @@ void WriteVTK(const sctl::Vector<Real>& S, long p0, long p1, const char* fname, 
   WriteCentrosomeVTK(fname, period, centrosome_pos, n_centrosome);
 }
 
+template <class Real>
+void WriteVTK(const sctl::Vector<Real>& S, long p0, long p1, const char* fname, Real period=0, const std::vector<sctl::Vector<Real>> &v_l=NULL, const std::vector<sctl::Vector<Real>> &s_l=NULL, Real* centrosome_pos=NULL, long n_centrosome=0){
+  typedef double VTKReal;
+  int data__dof=VES3D_DIM;
+
+  sctl::Vector<Real> X, Xp;
+  { // Upsample X
+    const sctl::Vector<Real>& X0=S;
+    sctl::Vector<Real> X1;
+    SphericalHarmonics<Real>::Grid2SHC(X0,p0,p0,X1);
+    SphericalHarmonics<Real>::SHC2Grid(X1,p0,p1,X);
+    SphericalHarmonics<Real>::SHC2Pole(X1, p0, Xp);
+  }
+  std::vector<sctl::Vector<Real>> V_l, Vp_l;
+  if(v_l.size()>0){ // Upsample V
+    sctl::Vector<Real> X1;
+    for(auto& v_ptr : v_l){
+      sctl::Vector<Real> V, Vp;
+      const sctl::Vector<Real>& X0=v_ptr;
+      SphericalHarmonics<Real>::Grid2SHC(X0,p0,p0,X1);
+      SphericalHarmonics<Real>::SHC2Grid(X1,p0,p1,V);
+      SphericalHarmonics<Real>::SHC2Pole(X1, p0, Vp);
+      V_l.push_back(V);
+      Vp_l.push_back(Vp);
+    }
+  }
+  std::vector<sctl::Vector<Real>> Sca_l, Scap_l;
+  if(s_l.size()>0){ // Upsample Sca
+    sctl::Vector<Real> X1;
+    for(auto& s_ptr : s_l){
+      sctl::Vector<Real> Sca, Scap;
+      const sctl::Vector<Real>& X0=s_ptr;
+      SphericalHarmonics<Real>::Grid2SHC(X0,p0,p0,X1);
+      SphericalHarmonics<Real>::SHC2Grid(X1,p0,p1,Sca);
+      SphericalHarmonics<Real>::SHC2Pole(X1, p0, Scap);
+      Sca_l.push_back(Sca);
+      Scap_l.push_back(Scap);
+    }
+  }
+
+  std::vector<VTKReal> point_coord;
+  std::vector<std::vector<VTKReal>> point_value_vec_l;
+  std::vector<std::vector<VTKReal>> point_value_sca_l;
+  std::vector< int32_t> poly_connect;
+  std::vector< int32_t> poly_offset;
+  { // Set point_coord, point_values, poly_connect
+    size_t N_ves = X.Dim()/(2*p1*(p1+1)*VES3D_DIM); // Number of vesicles
+    assert(Xp.Dim() == N_ves*2*VES3D_DIM);
+    for(size_t k=0;k<N_ves;k++){ // Set point_coord
+      Real C[VES3D_DIM]={0,0,0};
+      if(period>0){
+        for(long l=0;l<VES3D_DIM;l++) C[l]=0;
+        for(size_t i=0;i<p1+1;i++){
+          for(size_t j=0;j<2*p1;j++){
+            for(size_t l=0;l<VES3D_DIM;l++){
+              C[l]+=X[j+2*p1*(i+(p1+1)*(l+k*VES3D_DIM))];
+            }
+          }
+        }
+        for(size_t l=0;l<VES3D_DIM;l++) C[l]+=Xp[0+2*(l+k*VES3D_DIM)];
+        for(size_t l=0;l<VES3D_DIM;l++) C[l]+=Xp[1+2*(l+k*VES3D_DIM)];
+        for(long l=0;l<VES3D_DIM;l++) C[l]/=2*p1*(p1+1)+2;
+        for(long l=0;l<VES3D_DIM;l++) C[l]=(round(C[l]/period))*period;
+      }
+
+      for(size_t i=0;i<p1+1;i++){
+        for(size_t j=0;j<2*p1;j++){
+          for(size_t l=0;l<VES3D_DIM;l++){
+            point_coord.push_back(X[j+2*p1*(i+(p1+1)*(l+k*VES3D_DIM))]-C[l]);
+          }
+        }
+      }
+      for(size_t l=0;l<VES3D_DIM;l++) point_coord.push_back(Xp[0+2*(l+k*VES3D_DIM)]-C[l]);
+      for(size_t l=0;l<VES3D_DIM;l++) point_coord.push_back(Xp[1+2*(l+k*VES3D_DIM)]-C[l]);
+    }
+
+    if(v_l.size()>0){
+      for(size_t iv=0; iv<v_l.size(); iv++){
+        std::vector<VTKReal> point_value_vec1;
+        data__dof = V_l[iv].Dim() / (N_ves * 2*p1*(p1+1));
+        for(size_t k=0;k<N_ves;k++){ // Set point_value_vec1
+          for(size_t i=0;i<p1+1;i++){
+            for(size_t j=0;j<2*p1;j++){
+              for(size_t l=0;l<data__dof;l++){
+                point_value_vec1.push_back(V_l[iv][j+2*p1*(i+(p1+1)*(l+k*data__dof))]);
+              }
+            }
+          }
+          for(size_t l=0;l<data__dof;l++) point_value_vec1.push_back(Vp_l[iv][0+2*(l+k*data__dof)]);
+          for(size_t l=0;l<data__dof;l++) point_value_vec1.push_back(Vp_l[iv][1+2*(l+k*data__dof)]);
+        }
+        point_value_vec_l.push_back(point_value_vec1);
+      }
+    }
+
+    if(s_l.size()>0){
+      for(size_t is=0; is<s_l.size(); is++){
+        std::vector<VTKReal> point_value_sca1;
+        data__dof = Sca_l[is].Dim() / (N_ves * 2*p1*(p1+1));
+        for(size_t k=0;k<N_ves;k++){ // Set point_value_sca1
+          for(size_t i=0;i<p1+1;i++){
+            for(size_t j=0;j<2*p1;j++){
+              for(size_t l=0;l<data__dof;l++){
+                point_value_sca1.push_back(Sca_l[is][j+2*p1*(i+(p1+1)*(l+k*data__dof))]);
+              }
+            }
+          }
+          for(size_t l=0;l<data__dof;l++) point_value_sca1.push_back(Scap_l[is][0+2*(l+k*data__dof)]);
+          for(size_t l=0;l<data__dof;l++) point_value_sca1.push_back(Scap_l[is][1+2*(l+k*data__dof)]);
+        }
+        point_value_sca_l.push_back(point_value_sca1);
+      }
+    }
+
+    for(size_t k=0;k<N_ves;k++){
+      for(size_t j=0;j<2*p1;j++){
+        size_t i0= 0;
+        size_t i1=p1;
+        size_t j0=((j+0)       );
+        size_t j1=((j+1)%(2*p1));
+
+        poly_connect.push_back((2*p1*(p1+1)+2)*k + 2*p1*(p1+1)+0);
+        poly_connect.push_back((2*p1*(p1+1)+2)*k + 2*p1*i0+j0);
+        poly_connect.push_back((2*p1*(p1+1)+2)*k + 2*p1*i0+j1);
+        poly_offset.push_back(poly_connect.size());
+
+        poly_connect.push_back((2*p1*(p1+1)+2)*k + 2*p1*(p1+1)+1);
+        poly_connect.push_back((2*p1*(p1+1)+2)*k + 2*p1*i1+j0);
+        poly_connect.push_back((2*p1*(p1+1)+2)*k + 2*p1*i1+j1);
+        poly_offset.push_back(poly_connect.size());
+      }
+      for(size_t i=0;i<p1;i++){
+        for(size_t j=0;j<2*p1;j++){
+          size_t i0=((i+0)       );
+          size_t i1=((i+1)       );
+          size_t j0=((j+0)       );
+          size_t j1=((j+1)%(2*p1));
+          poly_connect.push_back((2*p1*(p1+1)+2)*k + 2*p1*i0+j0);
+          poly_connect.push_back((2*p1*(p1+1)+2)*k + 2*p1*i1+j0);
+          poly_connect.push_back((2*p1*(p1+1)+2)*k + 2*p1*i1+j1);
+          poly_connect.push_back((2*p1*(p1+1)+2)*k + 2*p1*i0+j1);
+          poly_offset.push_back(poly_connect.size());
+        }
+      }
+    }
+  }
+
+  int myrank, np;
+  np = 1;
+  myrank = 0;
+
+  std::vector<VTKReal>& coord=point_coord;
+  std::vector<std::vector<VTKReal>>& value_vec_l=point_value_vec_l;
+  std::vector<std::vector<VTKReal>>& value_sca_l=point_value_sca_l;
+  std::vector<int32_t> connect=poly_connect;
+  std::vector<int32_t> offset=poly_offset;
+  std::vector<int32_t> connect_vert;
+  std::vector<int32_t> offset_vert;
+
+  int pt_cnt=coord.size()/VES3D_DIM;
+  int poly_cnt=poly_offset.size();
+
+  //Open file for writing.
+  std::stringstream vtufname;
+  vtufname<<fname<<"_"<<std::setfill('0')<<std::setw(6)<<myrank<<".vtp";
+  std::ofstream vtufile;
+  vtufile.open(vtufname.str().c_str());
+  if(vtufile.fail()) return;
+
+  bool isLittleEndian;
+  {
+    uint16_t number = 0x1;
+    uint8_t *numPtr = (uint8_t*)&number;
+    isLittleEndian=(numPtr[0] == 1);
+  }
+
+  //Proceed to write to file.
+  size_t data_size=0;
+  vtufile<<"<?xml version=\"1.0\"?>\n";
+  if(isLittleEndian) vtufile<<"<VTKFile type=\"PolyData\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
+  else               vtufile<<"<VTKFile type=\"PolyData\" version=\"0.1\" byte_order=\"BigEndian\">\n";
+  //===========================================================================
+  vtufile<<"  <PolyData>\n";
+  vtufile<<"    <Piece NumberOfPoints=\""<<pt_cnt<<"\" NumberOfVerts=\""<<0<<"\" NumberOfLines=\"0\" NumberOfStrips=\"0\" NumberOfPolys=\""<<poly_cnt<<"\">\n";
+
+  //---------------------------------------------------------------------------
+  vtufile<<"      <Points>\n";
+  vtufile<<"        <DataArray type=\"Float"<<sizeof(VTKReal)*8<<"\" NumberOfComponents=\""<<VES3D_DIM<<"\" Name=\"Position\" format=\"appended\" offset=\""<<data_size<<"\" />\n";
+  data_size+=sizeof(uint32_t)+coord.size()*sizeof(VTKReal);
+  vtufile<<"      </Points>\n";
+  //---------------------------------------------------------------------------
+  if(value_vec_l.size() || value_sca_l.size())
+    vtufile<<"      <PointData>\n";
+  size_t count_v = 0;
+  if(value_vec_l.size()){ // value
+    for(auto& value_vec1 : value_vec_l){
+      vtufile<<"        <DataArray type=\"Float"<<sizeof(VTKReal)*8<<"\" NumberOfComponents=\""<<value_vec1.size()/pt_cnt<<"\" Name=\""<<"value vec"<<count_v<<"\" format=\"appended\" offset=\""<<data_size<<"\" />\n";
+      data_size+=sizeof(uint32_t)+value_vec1.size()*sizeof(VTKReal);
+      count_v++;
+    }
+  }
+  size_t count_s = 0;
+  if(value_sca_l.size()){ // value
+    for(auto& value_sca1 : value_sca_l){
+      vtufile<<"        <DataArray type=\"Float"<<sizeof(VTKReal)*8<<"\" NumberOfComponents=\""<<value_sca1.size()/pt_cnt<<"\" Name=\""<<"value sca"<<count_s<<"\" format=\"appended\" offset=\""<<data_size<<"\" />\n";
+      data_size+=sizeof(uint32_t)+value_sca1.size()*sizeof(VTKReal);
+      count_s++;
+    }
+  }
+  if(value_vec_l.size() || value_sca_l.size())
+    vtufile<<"      </PointData>\n";
+
+  //---------------------------------------------------------------------------
+  vtufile<<"      <Polys>\n";
+  vtufile<<"        <DataArray type=\"Int32\" Name=\"connectivity\" format=\"appended\" offset=\""<<data_size<<"\" />\n";
+  data_size+=sizeof(uint32_t)+connect.size()*sizeof(int32_t);
+  vtufile<<"        <DataArray type=\"Int32\" Name=\"offsets\" format=\"appended\" offset=\""<<data_size<<"\" />\n";
+  data_size+=sizeof(uint32_t)+offset.size() *sizeof(int32_t);
+  vtufile<<"      </Polys>\n";
+  //---------------------------------------------------------------------------
+
+  vtufile<<"    </Piece>\n";
+  vtufile<<"  </PolyData>\n";
+  //===========================================================================
+  vtufile<<"  <AppendedData encoding=\"raw\">\n";
+  vtufile<<"    _";
+
+  int32_t block_size;
+  block_size=coord.size()*sizeof(VTKReal); vtufile.write((char*)&block_size, sizeof(int32_t)); vtufile.write((char*)&coord  [0], coord.size()*sizeof(VTKReal));
+  if(value_vec_l.size()){ // value
+    for(auto& value_vec1 : value_vec_l){
+      block_size=value_vec1.size()*sizeof(VTKReal); vtufile.write((char*)&block_size, sizeof(int32_t)); vtufile.write((char*)&value_vec1  [0], value_vec1.size()*sizeof(VTKReal));
+    }
+  }
+  if(value_sca_l.size()){ // value
+    for(auto& value_sca1 : value_sca_l){
+      block_size=value_sca1.size()*sizeof(VTKReal); vtufile.write((char*)&block_size, sizeof(int32_t)); vtufile.write((char*)&value_sca1  [0], value_sca1.size()*sizeof(VTKReal));
+    }
+  }
+  block_size=connect.size()*sizeof(int32_t); vtufile.write((char*)&block_size, sizeof(int32_t)); vtufile.write((char*)&connect[0], connect.size()*sizeof(int32_t));
+  block_size=offset .size()*sizeof(int32_t); vtufile.write((char*)&block_size, sizeof(int32_t)); vtufile.write((char*)&offset [0], offset .size()*sizeof(int32_t));
+
+  vtufile<<"\n";
+  vtufile<<"  </AppendedData>\n";
+  //===========================================================================
+  vtufile<<"</VTKFile>\n";
+  vtufile.close();
+
+
+  if(myrank) return;
+  std::stringstream pvtufname;
+  pvtufname<<fname<<".pvtp";
+  std::ofstream pvtufile;
+  pvtufile.open(pvtufname.str().c_str());
+  if(pvtufile.fail()) return;
+  pvtufile<<"<?xml version=\"1.0\"?>\n";
+  pvtufile<<"<VTKFile type=\"PPolyData\">\n";
+  pvtufile<<"  <PPolyData GhostLevel=\"0\">\n";
+  pvtufile<<"      <PPoints>\n";
+  pvtufile<<"        <PDataArray type=\"Float"<<sizeof(VTKReal)*8<<"\" NumberOfComponents=\""<<VES3D_DIM<<"\" Name=\"Position\"/>\n";
+  pvtufile<<"      </PPoints>\n";
+  if(value_vec_l.size() || value_sca_l.size())
+    pvtufile<<"      <PPointData>\n";
+  if(value_vec_l.size()){ // value
+    size_t count_v = 0;
+    for(auto& value_vec1 : value_vec_l){
+      pvtufile<<"        <PDataArray type=\"Float"<<sizeof(VTKReal)*8<<"\" NumberOfComponents=\""<<value_vec1.size()/pt_cnt<<"\" Name=\""<<"value vec"<<count_v<<"\"/>\n";
+      count_v++;
+    }
+  }
+  if(value_sca_l.size()){ // value
+    size_t count_s = 0;
+    for(auto& value_sca1 : value_sca_l){
+      pvtufile<<"        <PDataArray type=\"Float"<<sizeof(VTKReal)*8<<"\" NumberOfComponents=\""<<value_sca1.size()/pt_cnt<<"\" Name=\""<<"value sca"<<count_s<<"\"/>\n";
+      count_s++;
+    }
+  }
+  if(value_vec_l.size() || value_sca_l.size())
+    pvtufile<<"      </PPointData>\n";
+
+  {
+    // Extract filename from path.
+    std::stringstream vtupath;
+    vtupath<<'/'<<fname;
+    std::string pathname = vtupath.str();
+    unsigned found = pathname.find_last_of("/\\");
+    std::string fname_ = pathname.substr(found+1);
+    for(int i=0;i<np;i++) pvtufile<<"      <Piece Source=\""<<fname_<<"_"<<std::setfill('0')<<std::setw(6)<<i<<".vtp\"/>\n";
+  }
+  pvtufile<<"  </PPolyData>\n";
+  pvtufile<<"</VTKFile>\n";
+  pvtufile.close();
+  WriteCentrosomeVTK(fname, period, centrosome_pos, n_centrosome);
+}
+
 template <class Surf>
 void WriteVTK(const Surf& S, const char* fname, const typename Surf::Vec_t* v_ptr=NULL, const typename Surf::Sca_t* s_ptr=NULL, int order=-1, typename Surf::value_type period=0, typename Surf::value_type* centrosome_pos=NULL, int n_centrosome=0){
   typedef typename Surf::value_type Real;
@@ -665,3 +960,23 @@ void WriteVTK(const Surf& S, const char* fname, const typename Surf::Vec_t* v_pt
   WriteVTK(S_, p0, p1, fname, period, (v_ptr?&v_:NULL), (s_ptr?&s_:NULL), centrosome_pos, n_centrosome);
 }
 
+template <class Surf>
+void WriteVTK(const Surf& S, const char* fname, std::initializer_list<const typename Surf::Vec_t*> v_list, std::initializer_list<const typename Surf::Sca_t*> s_list, int order=-1, typename Surf::value_type period=0, typename Surf::value_type* centrosome_pos=NULL, int n_centrosome=0){
+  typedef typename Surf::value_type Real;
+  typedef typename Surf::Vec_t Vec;
+  size_t p0=S.getShOrder();
+  size_t p1=(order>0?order:p0); // upsample
+
+  sctl::Vector<Real> S_;
+  S_.ReInit(S.getPosition().size(),(Real*)S.getPosition().begin(),false);
+
+  std::vector<sctl::Vector<Real>> v_l_, s_l_;
+  for(auto& v_ptr : v_list) {
+    v_l_.push_back(sctl::Vector<Real>(v_ptr->size(),(Real*)v_ptr->begin(),false));
+  }
+  for(auto& s_ptr : s_list) {
+    s_l_.push_back(sctl::Vector<Real>(s_ptr->size(),(Real*)s_ptr->begin(),false));
+  }
+
+  WriteVTK(S_, p0, p1, fname, period, v_l_, s_l_, centrosome_pos, n_centrosome);
+}

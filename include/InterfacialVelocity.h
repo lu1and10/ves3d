@@ -84,6 +84,8 @@ class InterfacialVelocity
     mutable Sca_t impingement_rate_;
     mutable Vec_t pulling_force_;
     mutable value_type* centrosome_pos_;
+    mutable Vec_t pos_vel_;
+    mutable Sca_t tension_;
   private:
     SurfContainer &S_;
     const Interaction &interaction_;
@@ -125,8 +127,6 @@ class InterfacialVelocity
 
     mutable Stokes_t stokes_;
     mutable MovePole<Sca_t, Mats_t> move_pole;
-    mutable Vec_t pos_vel_;
-    mutable Sca_t tension_;
     mutable Sca_t position_precond;
     mutable Sca_t tension_precond;
 
