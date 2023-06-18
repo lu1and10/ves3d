@@ -164,29 +164,47 @@ void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const
 // returns 3d force vector per microtubule (not force density), ie f_0 \hat{\xi}(y) p(y,t)
 // at all surface points y.
 {
+    // upsample everything
+    S.resample(params_.upsample_freq, &S_up); // upsample
 
     // TODO: Pre-allocate
     Sca_t s_wrk[3];
-    s_wrk[0].replicate(Fp);
-    s_wrk[1].replicate(Fp);
-    s_wrk[2].replicate(Fp);
+    s_wrk[0].replicate(S_up->getPosition());
+    s_wrk[1].replicate(S_up->getPosition());
+    s_wrk[2].replicate(S_up->getPosition());
     Vec_t v_wrk[2];
-    v_wrk[0].replicate(Fp);
-    v_wrk[1].replicate(Fp);
+    v_wrk[0].replicate(S_up->getPosition());
+    v_wrk[1].replicate(S_up->getPosition());
+
+    Sca_t binding_probability_up;
+    Sca_t density_up;
+    Sca_t impingement_rate_up;
+    Vec_t Fp_up;
+    { // upsample binding_probability
+      binding_probability_up.resize(binding_probability.getNumSubs(), params_.upsample_freq);
+      Resample(binding_probability, sht_, sht_up_, s_wrk[0], s_wrk[1], binding_probability_up);
+
+      // upsample density
+      density_up.resize(density.getNumSubs(), params_.upsample_freq);
+      Resample(density, sht_, sht_up_, s_wrk[0], s_wrk[1], density_up);
+
+      impingement_rate_up.resize(impingement_rate.getNumSubs(), params_.upsample_freq);
+      Fp_up.resize(Fp.getNumSubs(), params_.upsample_freq);
+    }
 
     // pulling force direction
-    int N = Fp.size()/VES3D_DIM;
+    int N = Fp_up.size()/VES3D_DIM;
     for(int idim=0; idim<VES3D_DIM; idim++){
       #pragma omp parallel for
       for(int i=0; i<N; i++){
-        Fp.begin()[idim*N+i] = centrosome_position[idim] - S.getPosition().begin()[idim*N+i];
+        Fp_up.begin()[idim*N+i] = centrosome_position[idim] - S_up->getPosition().begin()[idim*N+i];
       }
     }
     // normalizing  to get \hat\xi
-    GeometricDot(Fp, Fp, s_wrk[0]);
+    GeometricDot(Fp_up, Fp_up, s_wrk[0]);
     // s_wrk[0] stores D, distance between centrosome and membrane surface points
     Sqrt(s_wrk[0], s_wrk[0]);
-    uyInv(Fp, s_wrk[0], Fp);
+    uyInv(Fp_up, s_wrk[0], Fp_up);
 
     set_one(s_wrk[1]);
     axpy(1.0/params_.fg_radius, s_wrk[0], s_wrk[2]);
@@ -199,15 +217,14 @@ void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const
     axpy(-params_.mt_catastrophe_rate/params_.mt_growth_velocity, s_wrk[0], s_wrk[1]);
     Exp(s_wrk[1], s_wrk[1]);
     xy(s_wrk[1], s_wrk[2], s_wrk[1]);
-    //axpy(-1.0, s_wrk[1], s_wrk[1]);
-    xv(s_wrk[1], S.getNormal(), v_wrk[0]);
-    axpy(params_.mt_growth_velocity, Fp, v_wrk[1]);
-    GeometricDot(v_wrk[0], v_wrk[1], impingement_rate);
+    xv(s_wrk[1], S_up->getNormal(), v_wrk[0]);
+    axpy(params_.mt_growth_velocity, Fp_up, v_wrk[1]);
+    GeometricDot(v_wrk[0], v_wrk[1], impingement_rate_up);
 
     // only consider the surface points which centrosome can directly connent to
     // TODO: use ray tracing for complex shapes and get number of collisions to the surface
     // now only consider force direction dot with outward normal
-    GeometricDot(Fp, S.getNormal(), s_wrk[0]);
+    GeometricDot(Fp_up, S_up->getNormal(), s_wrk[0]);
     #pragma omp parallel for
     for(int i=0; i<s_wrk[0].size(); i++){
         if(s_wrk[0].begin()[i] >=0){
@@ -215,27 +232,23 @@ void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const
         }
         else{
             s_wrk[0].begin()[i] = 0.0;
-            impingement_rate.begin()[i] = 0;
+            impingement_rate_up.begin()[i] = 0;
         }
     }
-    xv(s_wrk[0], Fp, Fp);
-    xv(binding_probability, Fp, Fp);
-    xv(density, Fp, Fp);
+    xv(s_wrk[0], Fp_up, Fp_up);
+    xv(binding_probability_up, Fp_up, Fp_up);
+    xv(density_up, Fp_up, Fp_up);
 
-    sht_.lowPassFilter(Fp, v_wrk[0], v_wrk[1], Fp);  //filter high frequency
-    /*
-    // TODO: calculate in upsample space
-    S.resample(params_.upsample_freq, &S_up); // upsample
-    Vec_t Fp_up;
-    Fp_up.replicate(S_up->getPosition());
-    { // downsample Fs
-      Vec_t wrk[2]; // TODO: Pre-allocate
-      wrk[0].resize(Fp_up.getNumSubs(), params_.upsample_freq);
-      wrk[1].resize(Fp_up.getNumSubs(), params_.upsample_freq);
+    sht_.lowPassFilter(Fp_up, v_wrk[0], v_wrk[1], Fp_up);  //filter high frequency
+    sht_.lowPassFilter(impingement_rate_up, s_wrk[0], s_wrk[1], impingement_rate_up);  //filter high frequency
+
+    { // downsample Fp
       Fp.replicate(S.getPosition());
-      Resample(Fp_up, sht_up_, sht_, wrk[0], wrk[1], Fp);
+      Resample(Fp_up, sht_up_, sht_, v_wrk[0], v_wrk[1], Fp);
+      // downsample impingement_rate
+      impingement_rate.replicate(S.getPosition());
+      Resample(impingement_rate_up, sht_up_, sht_, s_wrk[0], s_wrk[1], impingement_rate);
     }
-    */
 }
 
 template<typename SurfContainer>

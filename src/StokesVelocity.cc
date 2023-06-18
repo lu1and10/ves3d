@@ -261,7 +261,7 @@ void WriteCentrosomeVTK(const char* fname, Real period=0, Real* centrosome_pos=N
 
   //Open file for writing.
   std::stringstream vtufname;
-  vtufname<<"centrosome_"<<fname<<"_"<<std::setfill('0')<<std::setw(6)<<myrank<<".vtp";
+  vtufname<<fname<<"_"<<std::setfill('0')<<std::setw(6)<<myrank<<".vtp";
   std::ofstream vtufile;
   vtufile.open(vtufname.str().c_str());
   if(vtufile.fail()) return;
@@ -338,7 +338,7 @@ void WriteCentrosomeVTK(const char* fname, Real period=0, Real* centrosome_pos=N
 
   if(myrank) return;
   std::stringstream pvtufname;
-  pvtufname<<"centrosome_"<<fname<<".pvtp";
+  pvtufname<<fname<<".pvtp";
   std::ofstream pvtufile;
   pvtufile.open(pvtufname.str().c_str());
   if(pvtufile.fail()) return;
@@ -362,7 +362,7 @@ void WriteCentrosomeVTK(const char* fname, Real period=0, Real* centrosome_pos=N
   {
     // Extract filename from path.
     std::stringstream vtupath;
-    vtupath<<'/'<<"centrosome_"<<fname;
+    vtupath<<'/'<<fname;
     std::string pathname = vtupath.str();
     unsigned found = pathname.find_last_of("/\\");
     std::string fname_ = pathname.substr(found+1);
@@ -375,7 +375,7 @@ void WriteCentrosomeVTK(const char* fname, Real period=0, Real* centrosome_pos=N
 }
 
 template <class Real>
-void WriteVTK(const sctl::Vector<Real>& S, long p0, long p1, const char* fname, Real period=0, const sctl::Vector<Real>* v_ptr=NULL, const sctl::Vector<Real>* s_ptr=NULL, Real* centrosome_pos=NULL, long n_centrosome=0){
+void WriteVTK(const sctl::Vector<Real>& S, long p0, long p1, const char* fname, Real period=0, const sctl::Vector<Real>* v_ptr=NULL, const sctl::Vector<Real>* s_ptr=NULL, Real* centrosome_pos=NULL, long n_centrosome=0, const char* fname_centrosome=NULL){
   typedef double VTKReal;
   int data__dof=VES3D_DIM;
 
@@ -648,11 +648,11 @@ void WriteVTK(const sctl::Vector<Real>& S, long p0, long p1, const char* fname, 
   pvtufile<<"  </PPolyData>\n";
   pvtufile<<"</VTKFile>\n";
   pvtufile.close();
-  WriteCentrosomeVTK(fname, period, centrosome_pos, n_centrosome);
+  WriteCentrosomeVTK(fname_centrosome, period, centrosome_pos, n_centrosome);
 }
 
 template <class Real>
-void WriteVTK(const sctl::Vector<Real>& S, long p0, long p1, const char* fname, Real period=0, const std::vector<sctl::Vector<Real>> &v_l=NULL, const std::vector<sctl::Vector<Real>> &s_l=NULL, Real* centrosome_pos=NULL, long n_centrosome=0){
+void WriteVTK(const sctl::Vector<Real>& S, long p0, long p1, const char* fname, Real period=0, const std::vector<sctl::Vector<Real>> &v_l=NULL, const std::vector<sctl::Vector<Real>> &s_l=NULL, Real* centrosome_pos=NULL, long n_centrosome=0, const char* fname_centrosome=NULL){
   typedef double VTKReal;
   int data__dof=VES3D_DIM;
 
@@ -943,11 +943,11 @@ void WriteVTK(const sctl::Vector<Real>& S, long p0, long p1, const char* fname, 
   pvtufile<<"  </PPolyData>\n";
   pvtufile<<"</VTKFile>\n";
   pvtufile.close();
-  WriteCentrosomeVTK(fname, period, centrosome_pos, n_centrosome);
+  WriteCentrosomeVTK(fname_centrosome, period, centrosome_pos, n_centrosome);
 }
 
 template <class Surf>
-void WriteVTK(const Surf& S, const char* fname, const typename Surf::Vec_t* v_ptr=NULL, const typename Surf::Sca_t* s_ptr=NULL, int order=-1, typename Surf::value_type period=0, typename Surf::value_type* centrosome_pos=NULL, int n_centrosome=0){
+void WriteVTK(const Surf& S, const char* fname, const typename Surf::Vec_t* v_ptr=NULL, const typename Surf::Sca_t* s_ptr=NULL, int order=-1, typename Surf::value_type period=0, typename Surf::value_type* centrosome_pos=NULL, int n_centrosome=0, const char* fname_centrosome=NULL){
   typedef typename Surf::value_type Real;
   typedef typename Surf::Vec_t Vec;
   size_t p0=S.getShOrder();
@@ -957,11 +957,11 @@ void WriteVTK(const Surf& S, const char* fname, const typename Surf::Vec_t* v_pt
   S_.ReInit(S.getPosition().size(),(Real*)S.getPosition().begin(),false);
   if(v_ptr) v_.ReInit(v_ptr->size(),(Real*)v_ptr->begin(),false);
   if(s_ptr) s_.ReInit(s_ptr->size(),(Real*)s_ptr->begin(),false);
-  WriteVTK(S_, p0, p1, fname, period, (v_ptr?&v_:NULL), (s_ptr?&s_:NULL), centrosome_pos, n_centrosome);
+  WriteVTK(S_, p0, p1, fname, period, (v_ptr?&v_:NULL), (s_ptr?&s_:NULL), centrosome_pos, n_centrosome, fname_centrosome);
 }
 
 template <class Surf>
-void WriteVTK(const Surf& S, const char* fname, std::initializer_list<const typename Surf::Vec_t*> v_list, std::initializer_list<const typename Surf::Sca_t*> s_list, int order=-1, typename Surf::value_type period=0, typename Surf::value_type* centrosome_pos=NULL, int n_centrosome=0){
+void WriteVTK(const Surf& S, const char* fname, std::initializer_list<const typename Surf::Vec_t*> v_list, std::initializer_list<const typename Surf::Sca_t*> s_list, int order=-1, typename Surf::value_type period=0, typename Surf::value_type* centrosome_pos=NULL, int n_centrosome=0, const char* fname_centrosome=NULL){
   typedef typename Surf::value_type Real;
   typedef typename Surf::Vec_t Vec;
   size_t p0=S.getShOrder();
@@ -978,5 +978,5 @@ void WriteVTK(const Surf& S, const char* fname, std::initializer_list<const type
     s_l_.push_back(sctl::Vector<Real>(s_ptr->size(),(Real*)s_ptr->begin(),false));
   }
 
-  WriteVTK(S_, p0, p1, fname, period, v_l_, s_l_, centrosome_pos, n_centrosome);
+  WriteVTK(S_, p0, p1, fname, period, v_l_, s_l_, centrosome_pos, n_centrosome, fname_centrosome);
 }

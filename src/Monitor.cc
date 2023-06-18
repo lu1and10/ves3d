@@ -102,10 +102,14 @@ Error_t Monitor<EvolveSurface>::operator()(const EvolveSurface *state,
             ++last_checkpoint_;
 
             if(params_->write_vtk.size()){
+                std::string vtkfbase_centrosome(params_->write_vtk);
+                std::string centrosome_suffix("_centrosome_");
+                vtkfbase_centrosome += centrosome_suffix;
+                vtkfbase_centrosome += suffix;
                 std::string vtkfbase(params_->write_vtk);
                 vtkfbase += suffix;
                 INFO("Writing VTK file "<<vtkfbase);
-                WriteVTK(*state->S_, vtkfbase.c_str(), {&(state->F_->pulling_force_), &(state->F_->pos_vel_)}, {&(state->F_->density_), &(state->F_->binding_probability_), &(state->F_->impingement_rate_), &(state->F_->tension_)}, -1, params_->periodic_length, state->F_->centrosome_pos_, 1);
+                WriteVTK(*state->S_, vtkfbase.c_str(), {&(state->F_->pulling_force_), &(state->F_->pos_vel_)}, {&(state->F_->density_), &(state->F_->binding_probability_), &(state->F_->impingement_rate_), &(state->F_->tension_)}, -1, params_->periodic_length, state->F_->centrosome_pos_, 1, vtkfbase_centrosome.c_str());
             }
 
 #if HAVE_PVFMM
