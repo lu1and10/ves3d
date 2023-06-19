@@ -8,6 +8,7 @@
 #include "Logger.h"
 #include "HelperFuns.h"
 #include "VesicleProps.h"
+#include "GLIntegrator.h"
 
 template<typename SurfContainer>
 class InterfacialForce
@@ -30,6 +31,7 @@ class InterfacialForce
     mutable Vec_t v1, ftmp;
     mutable SurfContainer* S_up;
 
+    GaussLegendreIntegrator<Sca_t> integrator_;
   public:
     InterfacialForce(const Parameters<value_type> &params,
         const VProp_t &ves_porps,
@@ -40,7 +42,7 @@ class InterfacialForce
     void linearBendingForce(const SurfContainer &S, const Vec_t &x, Vec_t &Fb) const;
     void tensileForce(const SurfContainer &S, const Sca_t &tension, Vec_t &Fs) const;
     void gravityForce(const SurfContainer &S, const Vec_t &x, Vec_t &Fg) const;
-    void pullingForce(const SurfContainer &S, const value_type* centrosome_position, const Sca_t &binding_probability, const Sca_t &density, Vec_t &Fp, Sca_t &impingement_rate) const;
+    void pullingForce(const SurfContainer &S, const value_type* centrosome_position, const Sca_t &binding_probability, const Sca_t &density, Vec_t &Fp, Sca_t &impingement_rate, Vec_t *Fc=nullptr) const;
 
     void explicitTractionJump(
 	const SurfContainer &S,
