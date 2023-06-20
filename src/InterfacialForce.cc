@@ -250,6 +250,12 @@ void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const
       Resample(impingement_rate_up, sht_up_, sht_, s_wrk[0], s_wrk[1], impingement_rate);
     }
 
+    // cap impingement_rate
+    #pragma omp parallel for
+    for(int i=0; i<impingement_rate.size(); i++){
+      if(impingement_rate.begin()[i] < 0) impingement_rate.begin()[i] = 0;
+    }
+
     // calculate force on centrosome
     if(Fc){
         integrator_(Fp, S.getAreaElement(), *Fc);

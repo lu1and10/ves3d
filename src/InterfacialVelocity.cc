@@ -86,7 +86,7 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
     centrosome_pos_ = new value_type[VES3D_DIM];
     for(int i=0; i<VES3D_DIM; i++)
         centrosome_pos_[i] = params_.centrosome_position[i];
-    Intfcl_force_.pullingForce(S_, centrosome_pos_, binding_probability_, density_, pulling_force_, impingement_rate_);
+    //Intfcl_force_.pullingForce(S_, centrosome_pos_, binding_probability_, density_, pulling_force_, impingement_rate_);
 }
 
 template<typename SurfContainer, typename Interaction>
