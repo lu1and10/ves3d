@@ -239,8 +239,8 @@ void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const
     xv(binding_probability_up, Fp_up, Fp_up);
     xv(density_up, Fp_up, Fp_up);
 
-    sht_.lowPassFilter(Fp_up, v_wrk[0], v_wrk[1], Fp_up);  //filter high frequency
-    sht_.lowPassFilter(impingement_rate_up, s_wrk[0], s_wrk[1], impingement_rate_up);  //filter high frequency
+    //sht_.lowPassFilter(Fp_up, v_wrk[0], v_wrk[1], Fp_up);  //filter high frequency
+    //sht_.lowPassFilter(impingement_rate_up, s_wrk[0], s_wrk[1], impingement_rate_up);  //filter high frequency
 
     { // downsample Fp
       Fp.replicate(S.getPosition());
@@ -250,11 +250,13 @@ void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const
       Resample(impingement_rate_up, sht_up_, sht_, s_wrk[0], s_wrk[1], impingement_rate);
     }
 
+    /*
     // cap impingement_rate
     #pragma omp parallel for
     for(int i=0; i<impingement_rate.size(); i++){
       if(impingement_rate.begin()[i] < 0) impingement_rate.begin()[i] = 0;
     }
+    */
 
     // calculate force on centrosome
     if(Fc){

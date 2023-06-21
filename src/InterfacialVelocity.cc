@@ -164,7 +164,7 @@ updateJacobiExplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     // in case density is near zero, take the limit
     #pragma omp parallel for
     for(int ii=0; ii<density_.size(); ii++){
-      if(abs(density_.begin()[ii]) < 1e-12)
+      if(abs(density_.begin()[ii]) < 1e-10)
         wrk->begin()[ii] = 1.0 - binding_probability_.begin()[ii];
     }
     xy(impingement_rate_, *wrk, *wrk);
@@ -209,12 +209,15 @@ updateJacobiExplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     axpy(1.0, *wrk, *wrk2, *wrk);     // wrk = add advection plus diffusion
 
     axpy(-dt_, *wrk, density_, density_);          // den -= dt*wrk
+
+    /*
     // cap density to be non-negative
     #pragma omp parallel for
     for(int ii=0; ii<density_.size(); ii++){
       if(density_.begin()[ii] < 0)
         density_.begin()[ii] = 0;
     }
+    */
 
     recycle(u1);
     recycle(u2);
