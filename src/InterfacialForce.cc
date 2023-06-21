@@ -227,6 +227,10 @@ void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const
     GeometricDot(Fp_up, S_up->getNormal(), s_wrk[0]);
     #pragma omp parallel for
     for(int i=0; i<s_wrk[0].size(); i++){
+        value_type smooth_factor = (1.0+tanh(s_wrk[0].begin()[i]*20.0))/2;
+        s_wrk[0].begin()[i] = smooth_factor * params_.fg_pulling_force;
+        impingement_rate_up.begin()[i] *= smooth_factor;
+        /*
         if(s_wrk[0].begin()[i] >=0){
             s_wrk[0].begin()[i] = params_.fg_pulling_force;     // f_0
         }
@@ -234,6 +238,7 @@ void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const
             s_wrk[0].begin()[i] = 0.0;
             impingement_rate_up.begin()[i] = 0;
         }
+        */
     }
     xv(s_wrk[0], Fp_up, Fp_up);
     xv(binding_probability_up, Fp_up, Fp_up);
