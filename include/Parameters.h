@@ -35,6 +35,7 @@ class Parameters : public Streamable
 
     T bending_modulus;
     T viscosity_contrast;
+    T permeability_coeff;
     T excess_density;
     T diffusion_rate;
     T fg_pulling_force;

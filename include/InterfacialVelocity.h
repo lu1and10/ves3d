@@ -83,6 +83,9 @@ class InterfacialVelocity
     mutable Sca_t binding_probability_;
     mutable Sca_t impingement_rate_;
     mutable Vec_t pulling_force_;
+    mutable Vec_t bending_force_;
+    mutable Vec_t tensile_force_;
+    mutable Vec_t flux_;
     mutable value_type* centrosome_pos_;
     mutable Vec_t pos_vel_;
     mutable Sca_t tension_;

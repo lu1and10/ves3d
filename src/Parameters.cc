@@ -67,6 +67,7 @@ void Parameters<T>::init()
     ts                      = 1;
     upsample_freq           = 24;
     viscosity_contrast      = 1.0;
+    permeability_coeff      = 0.0;
 }
 
 template<typename T>
@@ -186,6 +187,7 @@ void Parameters<T>::setUsage(AnyOption *opt)
     opt->addUsage( "          --mt-nucleation-rate     The MT nucleation rate" );
     opt->addUsage( "          --mt-catastrophe-rate    The MT catastrophe rate" );
     opt->addUsage( "          --viscosity-contrast     The viscosity contrast of vesicles" );
+    opt->addUsage( "          --permeability-coeff     The permeability coefficient  of vesicles" );
     opt->addUsage( "          --gravity-field          The gravitational field vector (space separated)" );
     opt->addUsage( "" );
     opt->addUsage( "  Time stepping:" );
@@ -286,6 +288,7 @@ void Parameters<T>::setOptions(AnyOption *opt)
     opt->setOption( "timestep" );
     opt->setOption( "upsample-freq" );
     opt->setOption( "viscosity-contrast" );
+    opt->setOption( "permeability-coeff" );
     opt->setOption( "gravity-field" );
     opt->setOption( "excess-density" );
     opt->setOption( "diffusion-rate" );
@@ -362,6 +365,9 @@ void Parameters<T>::getOptionValues(AnyOption *opt)
 
     if( opt->getValue( "viscosity-contrast" ) != NULL  )
         viscosity_contrast = atof(opt->getValue( "viscosity-contrast" ));
+
+    if( opt->getValue( "permeability-coeff" ) != NULL  )
+        permeability_coeff = atof(opt->getValue( "permeability-coeff" ));
 
     if( opt->getValue( "excess-density" ) != NULL )
         excess_density = atof(opt->getValue( "excess-density" ));
@@ -494,6 +500,7 @@ Error_t Parameters<T>::pack(std::ostream &os, Format format) const
     os<<"upsample_freq: "<<upsample_freq<<"\n";
     os<<"bending_modulus: "<<bending_modulus<<"\n";
     os<<"viscosity_contrast: "<<viscosity_contrast<<"\n";
+    os<<"permeability_coeff: "<<permeability_coeff<<"\n";
     os<<"time_horizon: "<<time_horizon<<"\n";
     os<<"ts: "<<ts<<"\n";
     os<<"time_tol: "<<time_tol<<"\n";
@@ -567,6 +574,7 @@ Error_t Parameters<T>::unpack(std::istream &is, Format format)
     is>>key>>upsample_freq; ASSERT(key=="upsample_freq:", "Unexpected key (expected upsample_freq)");
     is>>key>>bending_modulus; ASSERT(key=="bending_modulus:", "Unexpected key (expected bending_modulus)");
     is>>key>>viscosity_contrast; ASSERT(key=="viscosity_contrast:", "Unexpected key (expected viscosity_contrast)");
+    is>>key>>permeability_coeff; ASSERT(key=="permeability_coeff:", "Unexpected key (expected permeability_coeff)");
     if (version<592){
         INFO("Ignoring deprecated parameters in checkpoint from version "<<version);
         // removed deprecated options
@@ -678,6 +686,7 @@ std::ostream& operator<<(std::ostream& output, const Parameters<T>& par)
     output<<"   Number of surfaces       : "<<par.n_surfs<<std::endl;
     output<<"   Bending modulus          : "<<par.bending_modulus<<std::endl;
     output<<"   viscosity contrast       : "<<par.viscosity_contrast<<std::endl;
+    output<<"   permeability coefficient : "<<par.permeability_coeff<<std::endl;
     output<<"   Singular Stokes          : "<<par.singular_stokes<<std::endl;
     output<<"   Excess density           : "<<par.excess_density<<std::endl;
     output<<"   Diffusion rate           : "<<par.diffusion_rate<<std::endl;

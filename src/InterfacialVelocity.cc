@@ -33,6 +33,9 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
     binding_probability_.replicate(S_.getPosition());
     impingement_rate_.replicate(S_.getPosition());
     pulling_force_.replicate(S_.getPosition());
+    bending_force_.replicate(S_.getPosition());
+    tensile_force_.replicate(S_.getPosition());
+    flux_.replicate(S_.getPosition());
 
     pos_vel_.getDevice().Memset(pos_vel_.begin(), 0, sizeof(value_type)*pos_vel_.size());
     tension_.getDevice().Memset(tension_.begin(), 0, sizeof(value_type)*tension_.size());
@@ -40,6 +43,9 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
     binding_probability_.getDevice().Memset(binding_probability_.begin(), 0, sizeof(value_type)*binding_probability_.size());
     impingement_rate_.getDevice().Memset(impingement_rate_.begin(), 0, sizeof(value_type)*impingement_rate_.size());
     pulling_force_.getDevice().Memset(pulling_force_.begin(), 0, sizeof(value_type)*pulling_force_.size());
+    bending_force_.getDevice().Memset(bending_force_.begin(), 0, sizeof(value_type)*bending_force_.size());
+    tensile_force_.getDevice().Memset(tensile_force_.begin(), 0, sizeof(value_type)*tensile_force_.size());
+    flux_.getDevice().Memset(flux_.begin(), 0, sizeof(value_type)*flux_.size());
 
     //Setting initial tension to zero
     tension_.getDevice().Memset(tension_.begin(), 0,
@@ -86,7 +92,6 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
     centrosome_pos_ = new value_type[VES3D_DIM];
     for(int i=0; i<VES3D_DIM; i++)
         centrosome_pos_[i] = params_.centrosome_position[i];
-    //Intfcl_force_.pullingForce(S_, centrosome_pos_, binding_probability_, density_, pulling_force_, impingement_rate_);
 }
 
 template<typename SurfContainer, typename Interaction>
@@ -131,23 +136,37 @@ updateJacobiExplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     std::auto_ptr<Sca_t> wrk2 = checkoutSca();
 
     // puts u_inf and interaction in pos_vel_
-    this->updateFarField();
+    // so pos_vel_ = u_inf + S[f_b+f_p+f_sigma] + \beta (f_b+f_p+f_sigma) \cdot n n
+    this->updateFarField(); // puts u_inf in pos_vel_ first
 
-    // add S[f_b]
-    Intfcl_force_.bendingForce(S_, *u1);
-    // add S[f_p] and calculate impingment rate
-    Intfcl_force_.pullingForce(S_, centrosome_pos_, binding_probability_, density_, pulling_force_, impingement_rate_); // f_p = c.P.f0.ksi
-    axpy(static_cast<value_type>(1.0), *u1, pulling_force_, *u1);
-    CHK(stokes(*u1, *u2));
-    axpy(static_cast<value_type>(1.0), *u2, pos_vel_, pos_vel_);
+    Intfcl_force_.bendingForce(S_, bending_force_); // compute f_b
+    Intfcl_force_.pullingForce(S_, centrosome_pos_, binding_probability_, density_, pulling_force_, impingement_rate_); // f_p = c.P.f0.ksi, put it in pulling_force_ and compute impingement rate
+    axpy(static_cast<value_type>(1.0), bending_force_, pulling_force_, *u1); // compute f_b+f_p and put it in u1
+
+    CHK(stokes(*u1, *u2)); // compute S[f_b+f_p] and put it in u2
+    axpy(static_cast<value_type>(1.0), *u2, pos_vel_, pos_vel_); // add S[f_b+f_p] to pos_vel_, now pos_vel_ = u_inf + S[f_b+f_p]
+
+    GeometricDot(*u1, S_.getNormal(), *wrk); // compute (f_p+f_b) \cdot n and put it in wrk
+    xv(*wrk, S_.getNormal(), *u2); // compute (f_p+f_b) \cdot n n and put it in u2
+    axpy(params_.permeability_coeff, *u2, pos_vel_, pos_vel_); // compute \beta (f_b+f_p) \cdot n n and add it in pos_vel_, now pos_vel_ = u_inf + S[f_b+f_p] + \beta (f_b+f_p) \cdot n n
 
     // compute tension
     CHK(getTension(pos_vel_, tension_));
 
-    // add S[f_sigma]
-    Intfcl_force_.tensileForce(S_, tension_, *u1);
-    CHK(stokes(*u1, *u2));
-    axpy(static_cast<value_type>(1.0), *u2, pos_vel_, pos_vel_);
+    // function Intfcl_force_.tensileForce returns the total tensile force, i.e., normal part + tangential part, fs = fs_normal + fs_tangential
+    Intfcl_force_.tensileForce(S_, tension_, tensile_force_); // compute f_sigma and put it in tensile_force_
+    CHK(stokes(tensile_force_, *u1)); // compute S[f_sigma] and put it in u2
+    axpy(static_cast<value_type>(1.0), *u1, pos_vel_, pos_vel_); // pos_vel_ = u_inf + S[f_b+f_p+f_sigma] + \beta (f_b+f_p) \cdot n n
+
+    // TODO: optimization can be done if only normal part of tensile force can be returned.
+    // we just need to scale the normal part by permeability_coeff \beta, the following computation can be shorten as,
+    // axpy(params_.permeability_coeff, f_sigma_normal, pos_vel_, pos_vel_)
+    GeometricDot(tensile_force_, S_.getNormal(), *wrk); // compute f_sigma \cdot n and put it in wrk
+    xv(*wrk, S_.getNormal(), *u1); // compute f_sigma \cdot n n and put it in u2
+    axpy(params_.permeability_coeff, *u1, pos_vel_, pos_vel_); // compute pos_vel_ = u_inf + S[f_b+f_p+f_sigma] + \beta (f_b+f_p+f_sigma) \cdot n n
+
+    axpy(static_cast<value_type>(1.0), *u1, *u2, flux_); // compute (f_b+f_p+f_sigma) \cdot n n
+    axpy(params_.permeability_coeff, flux_, flux_); // compute flux = \beta (f_b+f_p+f_sigma) \cdot n n
 
     dx.replicate(S_.getPosition());
     axpy(dt_, pos_vel_, dx);         // what does 3-arg axpy do ? update pos_vel?, 3-arg axpy does ax -> y
@@ -1614,8 +1633,17 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::operator()(
     std::auto_ptr<Vec_t> u = checkoutVec();
 
     COUTDEBUG("Tension matvec");
-    Intfcl_force_.tensileForce(S_, tension, *fs);
-    CHK(stokes(*fs, *u));
+    // function Intfcl_force_.tensileForce returns the total tensile force, i.e., normal part + tangential part, fs = fs_normal + fs_tangential
+    Intfcl_force_.tensileForce(S_, tension, *fs); // compute f_sigma
+    CHK(stokes(*fs, *u)); // compute S[f_sigma] put it in u
+
+    // TODO: optimization can be done if only normal part of tensile force can be returned.
+    // we just need to scale the normal part by permeability_coeff \beta, the following computation can be shorten as,
+    // axpy(params_.permeability_coeff, fs_normal, *u, *u)
+    GeometricDot(*fs, S_.getNormal(), div_stokes_fs); // compute f_sigma \cdot n and put it in div_stokes_fs
+    xv(div_stokes_fs, S_.getNormal(), *fs); // compute f_sigma \cdot n n and put it in fs
+    axpy(params_.permeability_coeff, *fs, *u, *u); // compute S[f_sigma] + \beta f_sigma \cdot n n and put it in u
+
     S_.div(*u, div_stokes_fs);
 
     recycle(fs);
