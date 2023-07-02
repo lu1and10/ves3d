@@ -92,6 +92,7 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
     centrosome_pos_ = new value_type[VES3D_DIM];
     for(int i=0; i<VES3D_DIM; i++)
         centrosome_pos_[i] = params_.centrosome_position[i];
+    set_one(density_);
 }
 
 template<typename SurfContainer, typename Interaction>
@@ -166,7 +167,7 @@ updateJacobiExplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     axpy(params_.permeability_coeff, *u1, pos_vel_, pos_vel_); // compute pos_vel_ = u_inf + S[f_b+f_p+f_sigma] + \beta (f_b+f_p+f_sigma) \cdot n n
 
     axpy(static_cast<value_type>(1.0), *u1, *u2, flux_); // compute (f_b+f_p+f_sigma) \cdot n n
-    axpy(params_.permeability_coeff, flux_, flux_); // compute flux = \beta (f_b+f_p+f_sigma) \cdot n n
+    axpy(-params_.permeability_coeff, flux_, flux_); // compute flux = \beta (f_b+f_p+f_sigma) \cdot n n
 
     dx.replicate(S_.getPosition());
     axpy(dt_, pos_vel_, dx);         // what does 3-arg axpy do ? update pos_vel?, 3-arg axpy does ax -> y

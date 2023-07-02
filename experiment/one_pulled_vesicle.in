@@ -1,0 +1,46 @@
+## spherical harmonics -----------------------
+sh-order : 16
+upsample-freq : 32
+filter-freq : 24
+interaction-upsample
+
+## initial shape -----------------------------
+n-surfs : 1
+bending-modulus : 0.01
+permeability-coeff : 0.1
+shape-gallery-file : precomputed/ellipse_{{sh_order}}.txt
+vesicle-geometry-file : precomputed/pulled_vesicle_geo.txt
+
+## time stepping -----------------------------
+time-horizon : 1250
+timestep : 6.25e-2
+time-scheme : JacobiBlockExplicit
+singular-stokes : Direct
+
+## pulling force setup -----------------------
+diffusion-rate : 0.0
+fg-pulling-force : 0.0
+fg-drag-coeff : 200000000.0
+fg-radius : 1.0
+fg-detachment-rate : 0.1
+mt-nucleation-rate : 150
+mt-growth-velocity : 0.5
+mt-catastrophe-rate : 0.025
+centrosome-position : 0.0 0.0 2.3
+
+## reparametrization ------------------------
+rep-max-iter : 0
+rep-filter-freq : 6
+
+## checkpoint/monitor ------------------------
+checkpoint
+checkpoint-file : result/dummy.chk
+checkpoint-stride : 1.25
+write-vtk : result/pulled_vesicle_ns{{n_surfs}}_
+
+## far filed ---------------------------------
+bg-flow-type : ShearFlow
+bg-flow-param : 0.0
+
+## misc  -------------------------------------
+num-threads : 8

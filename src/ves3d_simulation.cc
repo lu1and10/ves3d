@@ -187,7 +187,7 @@ Error_t Simulation<DT,DEVICE>::setup_from_options()
             prp->resize(nves);
             prp->getDevice().Memcpy(prp->begin(),
                 props.begin() + (iP*nproc + rank)*nves,
-                nves * sizeof(VProp_t::value_type),
+                nves * sizeof(typename VProp_t::value_type),
                 DT::MemcpyDeviceToDevice);
         }
         ves_props_->update();

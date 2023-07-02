@@ -100,6 +100,8 @@ class EvolveSurface : public Streamable
 
     bool ownedObjs_[4];//for monitor, interaction, repartition, and ves_props
 
+    value_type mass_before_;
+    value_type mass_after_;
   private:
 
     Error_t AreaVolumeCorrection(const Sca_t& area, const Sca_t& vol, const value_type tol=1e-12);

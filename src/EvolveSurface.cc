@@ -162,6 +162,13 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
     CHK( (*monitor_)( this, 0, dt) );
     INFO("Stepping with "<<params_->scheme);
 
+    GaussLegendreIntegrator<Sca_t> integrator;   // setup for surf int
+    Sca_t int_density;
+    int_density.replicate(S_->getPosition());
+    set_zero(int_density);
+    integrator(F_->density_, S_->getAreaElement(), int_density);
+    mass_before_ = int_density.begin()[0];
+
     //MPI_Comm comm=MPI_COMM_WORLD;
     //pvfmm::Profile::Enable(true);
     while ( ERRORSTATUS() && t < time_horizon && dt>1e-10 )
@@ -341,12 +348,16 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
         //(*repartition_)(S_->getPositionModifiable(), F_->tension());
         //pvfmm::Profile::Toc();
         //pvfmm::Profile::Tic("Monitor",&comm,true);
+        set_zero(int_density);
+        integrator(F_->density_, S_->getAreaElement(), int_density);
+        mass_after_ = int_density.begin()[0];
         CHK( (*monitor_)( this, t, dt) );
         //pvfmm::Profile::Toc();
 
         //pvfmm::Profile::Toc();
         //pvfmm::Profile::print(&comm);
     }
+
     PROFILEEND("",0);
     return ErrorEvent::Success;
 }

@@ -652,7 +652,10 @@ void WriteVTK(const sctl::Vector<Real>& S, long p0, long p1, const char* fname, 
 }
 
 template <class Real>
-void WriteVTK(const sctl::Vector<Real>& S, long p0, long p1, const char* fname, Real period=0, const std::vector<sctl::Vector<Real>> &v_l=NULL, const std::vector<sctl::Vector<Real>> &s_l=NULL, Real* centrosome_pos=NULL, long n_centrosome=0, const char* fname_centrosome=NULL){
+void WriteVTK(const sctl::Vector<Real>& S, long p0, long p1, const char* fname, Real period=0,
+        const std::vector<sctl::Vector<Real>> &v_l=NULL, std::initializer_list<const std::string> &v_l_name=NULL,
+        const std::vector<sctl::Vector<Real>> &s_l=NULL, std::initializer_list<const std::string> &s_l_name=NULL,
+        Real* centrosome_pos=NULL, long n_centrosome=0, const char* fname_centrosome=NULL){
   typedef double VTKReal;
   int data__dof=VES3D_DIM;
 
@@ -847,7 +850,7 @@ void WriteVTK(const sctl::Vector<Real>& S, long p0, long p1, const char* fname, 
   size_t count_v = 0;
   if(value_vec_l.size()){ // value
     for(auto& value_vec1 : value_vec_l){
-      vtufile<<"        <DataArray type=\"Float"<<sizeof(VTKReal)*8<<"\" NumberOfComponents=\""<<value_vec1.size()/pt_cnt<<"\" Name=\""<<"value vec"<<count_v<<"\" format=\"appended\" offset=\""<<data_size<<"\" />\n";
+      vtufile<<"        <DataArray type=\"Float"<<sizeof(VTKReal)*8<<"\" NumberOfComponents=\""<<value_vec1.size()/pt_cnt<<"\" Name=\""<<v_l_name.begin()[count_v]<<"\" format=\"appended\" offset=\""<<data_size<<"\" />\n";
       data_size+=sizeof(uint32_t)+value_vec1.size()*sizeof(VTKReal);
       count_v++;
     }
@@ -855,7 +858,7 @@ void WriteVTK(const sctl::Vector<Real>& S, long p0, long p1, const char* fname, 
   size_t count_s = 0;
   if(value_sca_l.size()){ // value
     for(auto& value_sca1 : value_sca_l){
-      vtufile<<"        <DataArray type=\"Float"<<sizeof(VTKReal)*8<<"\" NumberOfComponents=\""<<value_sca1.size()/pt_cnt<<"\" Name=\""<<"value sca"<<count_s<<"\" format=\"appended\" offset=\""<<data_size<<"\" />\n";
+      vtufile<<"        <DataArray type=\"Float"<<sizeof(VTKReal)*8<<"\" NumberOfComponents=\""<<value_sca1.size()/pt_cnt<<"\" Name=\""<<s_l_name.begin()[count_s]<<"\" format=\"appended\" offset=\""<<data_size<<"\" />\n";
       data_size+=sizeof(uint32_t)+value_sca1.size()*sizeof(VTKReal);
       count_s++;
     }
@@ -917,14 +920,14 @@ void WriteVTK(const sctl::Vector<Real>& S, long p0, long p1, const char* fname, 
   if(value_vec_l.size()){ // value
     size_t count_v = 0;
     for(auto& value_vec1 : value_vec_l){
-      pvtufile<<"        <PDataArray type=\"Float"<<sizeof(VTKReal)*8<<"\" NumberOfComponents=\""<<value_vec1.size()/pt_cnt<<"\" Name=\""<<"value vec"<<count_v<<"\"/>\n";
+      pvtufile<<"        <PDataArray type=\"Float"<<sizeof(VTKReal)*8<<"\" NumberOfComponents=\""<<value_vec1.size()/pt_cnt<<"\" Name=\""<<v_l_name.begin()[count_v]<<"\"/>\n";
       count_v++;
     }
   }
   if(value_sca_l.size()){ // value
     size_t count_s = 0;
     for(auto& value_sca1 : value_sca_l){
-      pvtufile<<"        <PDataArray type=\"Float"<<sizeof(VTKReal)*8<<"\" NumberOfComponents=\""<<value_sca1.size()/pt_cnt<<"\" Name=\""<<"value sca"<<count_s<<"\"/>\n";
+      pvtufile<<"        <PDataArray type=\"Float"<<sizeof(VTKReal)*8<<"\" NumberOfComponents=\""<<value_sca1.size()/pt_cnt<<"\" Name=\""<<s_l_name.begin()[count_s]<<"\"/>\n";
       count_s++;
     }
   }
@@ -961,7 +964,12 @@ void WriteVTK(const Surf& S, const char* fname, const typename Surf::Vec_t* v_pt
 }
 
 template <class Surf>
-void WriteVTK(const Surf& S, const char* fname, std::initializer_list<const typename Surf::Vec_t*> v_list, std::initializer_list<const typename Surf::Sca_t*> s_list, int order=-1, typename Surf::value_type period=0, typename Surf::value_type* centrosome_pos=NULL, int n_centrosome=0, const char* fname_centrosome=NULL){
+void WriteVTK(const Surf& S, const char* fname,
+        std::initializer_list<const typename Surf::Vec_t*> v_list,
+        std::initializer_list<const std::string> v_list_name,
+        std::initializer_list<const typename Surf::Sca_t*> s_list,
+        std::initializer_list<const std::string> s_list_name,
+        int order=-1, typename Surf::value_type period=0, typename Surf::value_type* centrosome_pos=NULL, int n_centrosome=0, const char* fname_centrosome=NULL){
   typedef typename Surf::value_type Real;
   typedef typename Surf::Vec_t Vec;
   size_t p0=S.getShOrder();
@@ -978,5 +986,5 @@ void WriteVTK(const Surf& S, const char* fname, std::initializer_list<const type
     s_l_.push_back(sctl::Vector<Real>(s_ptr->size(),(Real*)s_ptr->begin(),false));
   }
 
-  WriteVTK(S_, p0, p1, fname, period, v_l_, s_l_, centrosome_pos, n_centrosome, fname_centrosome);
+  WriteVTK(S_, p0, p1, fname, period, v_l_, v_list_name, s_l_, s_list_name, centrosome_pos, n_centrosome, fname_centrosome);
 }

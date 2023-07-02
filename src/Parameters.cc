@@ -563,10 +563,10 @@ Error_t Parameters<T>::unpack(std::istream &is, Format format)
         if (key=="+") {++version;is>>key;}
     };
 
-    if (version>590){
+    //if (version>590){
         ASSERT(key=="name:", "Unexpected key (expected name)");
         is>>Streamable::name_>>key;
-    }
+    //}
 
     is>>n_surfs; ASSERT(key=="n_surfs:", "Unexpected key (expected n_surfs)");
     is>>key>>sh_order; ASSERT(key=="sh_order:", "Unexpected key (expected sh_order)");
@@ -575,7 +575,7 @@ Error_t Parameters<T>::unpack(std::istream &is, Format format)
     is>>key>>bending_modulus; ASSERT(key=="bending_modulus:", "Unexpected key (expected bending_modulus)");
     is>>key>>viscosity_contrast; ASSERT(key=="viscosity_contrast:", "Unexpected key (expected viscosity_contrast)");
     is>>key>>permeability_coeff; ASSERT(key=="permeability_coeff:", "Unexpected key (expected permeability_coeff)");
-    if (version<592){
+    if (version<0){
         INFO("Ignoring deprecated parameters in checkpoint from version "<<version);
         // removed deprecated options
         is>>key>>s; ASSERT(key=="position_solver_iter:", "Unexpected key (expected position_solver_iter)");
@@ -623,7 +623,7 @@ Error_t Parameters<T>::unpack(std::istream &is, Format format)
     is>>key>>s; ASSERT(key=="write_vtk:", "Unexpected key (expected write_vtk)");
     if (s!="|"){write_vtk=s; is>>s;/* consume | */}else{write_vtk="";}
 
-    if (version<593){
+    if (version<0){
         is>>key>>s; ASSERT(key=="init_file_name:", "Unexpected key (expected init_file_name)");
         if (s!="|"){shape_gallery_file=s; is>>s; /* consume | */}else{shape_gallery_file="";}
         is>>key>>s; ASSERT(key=="cntrs_file_name:", "Unexpected key (expected cntrs_file_name)");
@@ -635,10 +635,10 @@ Error_t Parameters<T>::unpack(std::istream &is, Format format)
         if (s!="|"){vesicle_geometry_file=s; is>>s; /* consume | */}else{vesicle_geometry_file="";}
     }
 
-    if (version>590) {
+    //if (version>590) {
         is>>key>>s; ASSERT(key=="vesicle_props_file:", "Unexpected key (expected vesicle_props_file)");
         if (s!="|"){vesicle_props_file=s; is>>s; /* consume | */}else{vesicle_props_file="";}
-    }
+    //}
     is>>key>>s; ASSERT(key=="checkpoint_file_name:", "Unexpected key (expected checkpoint_file_name)");
     if (s!="|"){checkpoint_file_name=s; is>>s;/* consume | */}else{checkpoint_file_name="";}
     is>>key>>s; ASSERT(key=="load_checkpoint:", "Unexpected key (expected load_checkpoint)");

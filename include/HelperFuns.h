@@ -115,6 +115,18 @@ template<typename Container, typename SHT>
 inline void Resample(const Container &xp, const SHT &shtp, const SHT &shtq,
     Container &shcpq, Container &wrkpq, Container &xq);
 
+template<typename Container>
+void set_zero(Container &x);
+
+template<typename Container>
+void set_one(Container &x);
+
+template<typename ScalarContainer, typename VectorContainer>
+void set_exp(const VectorContainer &x, const typename ScalarContainer::value_type *x0, ScalarContainer &out);
+
+template<typename ScalarContainer, typename VectorContainer>
+void set_exp_simple(const VectorContainer &x, const typename ScalarContainer::value_type *x0, ScalarContainer &out);
+
 #include "HelperFuns.cc"
 
 #endif //_HELPERFUNS_H_

@@ -12,7 +12,7 @@ else
 	CXXFLAGS += -g -rdynamic # for stack trace
 endif
 
-CXXFLAGS += -Wall -Wfloat-conversion  -O3 -march=native -DNDEBUG -DSCTL_GLOBAL_MEM_BUFF=0  -DSCTL_PROFILE=5 -DSCTL_VERBOSE  -DSCTL_QUAD_T=__float128  -lblas -DSCTL_HAVE_BLAS  -llapack -DSCTL_HAVE_LAPACK
+CXXFLAGS += -DDOUBLE_PREC -Wall -Wfloat-conversion  -O3 -march=native -DNDEBUG -DSCTL_GLOBAL_MEM_BUFF=0  -DSCTL_PROFILE=5 -DSCTL_VERBOSE  -DSCTL_QUAD_T=__float128  -lblas -DSCTL_HAVE_BLAS  -llapack -DSCTL_HAVE_LAPACK
 
 # targets of install
 VES3D_BINS = pulled_vesicle

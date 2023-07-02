@@ -228,6 +228,7 @@ void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const
     #pragma omp parallel for
     for(int i=0; i<s_wrk[0].size(); i++){
         value_type smooth_factor = (1.0+tanh(s_wrk[0].begin()[i]*20.0))/2;
+        S_up->contact_indicator_.begin()[i] = smooth_factor;
         s_wrk[0].begin()[i] = smooth_factor * params_.fg_pulling_force;
         impingement_rate_up.begin()[i] *= smooth_factor;
         /*
@@ -253,6 +254,7 @@ void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const
       // downsample impingement_rate
       impingement_rate.replicate(S.getPosition());
       Resample(impingement_rate_up, sht_up_, sht_, s_wrk[0], s_wrk[1], impingement_rate);
+      Resample(S_up->contact_indicator_, sht_up_, sht_, s_wrk[0], s_wrk[1], S.contact_indicator_);
     }
 
     /*

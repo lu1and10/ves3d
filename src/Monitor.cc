@@ -77,7 +77,9 @@ Error_t Monitor<EvolveSurface>::operator()(const EvolveSurface *state,
              <<", dt = "<<SCI_PRINT_FRMT<<dt
              <<", area error = "<<SCI_PRINT_FRMT<<(DA/A0_)
              <<", volume error = "<<SCI_PRINT_FRMT<<(DV/V0_)<<emph);
-
+        INFO(emph<<"Monitor: mass integral before: " << std::setprecision(8) << state->mass_before_
+             <<", mass integral after: " << std::setprecision(8) << state->mass_after_
+             <<", rel err in mass cons: " << std::setprecision(3) << abs(state->mass_after_-state->mass_before_)/abs(state->mass_before_) << emph);
 
         int checkpoint_index(checkpoint_stride_ <= 0 ? last_checkpoint_+1 : t/checkpoint_stride_);
 
@@ -109,7 +111,12 @@ Error_t Monitor<EvolveSurface>::operator()(const EvolveSurface *state,
                 std::string vtkfbase(params_->write_vtk);
                 vtkfbase += suffix;
                 INFO("Writing VTK file "<<vtkfbase);
-                WriteVTK(*state->S_, vtkfbase.c_str(), {&(state->F_->pulling_force_), &(state->F_->bending_force_), &(state->F_->tensile_force_), &(state->F_->flux_), &(state->F_->pos_vel_)}, {&(state->F_->density_), &(state->F_->binding_probability_), &(state->F_->impingement_rate_), &(state->F_->tension_)}, 32, params_->periodic_length, state->F_->centrosome_pos_, 1, vtkfbase_centrosome.c_str());
+                WriteVTK(*state->S_, vtkfbase.c_str(),
+                        {&(state->F_->pulling_force_), &(state->F_->bending_force_), &(state->F_->tensile_force_), &(state->F_->flux_), &(state->F_->pos_vel_)},
+                        {"f_p","f_b","f_s","flux","membrane_vel"},
+                        {&(state->F_->density_), &(state->F_->binding_probability_), &(state->F_->impingement_rate_), &(state->F_->tension_), &(state->S_->contact_indicator_)},
+                        {"concentration","binding_prob","impingement_rate","tension","contact_indicator"},
+                        32, params_->periodic_length, state->F_->centrosome_pos_, 1, vtkfbase_centrosome.c_str());
             }
 
 #if HAVE_PVFMM

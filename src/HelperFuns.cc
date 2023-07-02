@@ -499,3 +499,67 @@ void Resample(const Container &xp, const SHT &shtp, const SHT &shtq,
 
     shtq.backward(shcpq, wrkpq, xq);
 }
+
+template<typename Container>
+void set_zero(Container &x){
+    x.getDevice().Memset(x.begin(), 0, sizeof(typename Container::value_type)*x.size());
+}
+
+template<typename Container>
+void set_one(Container &x){
+    std::fill_n(x.begin(), x.size(), 1);
+}
+
+template<typename ScalarContainer, typename VectorContainer>
+void set_exp(const VectorContainer &x, const typename ScalarContainer::value_type *x0, ScalarContainer &out){
+  // This writes scalar function exp(-||x-x0||) into "out", at nodes "x".
+
+    // store point -x0
+    typename ScalarContainer::array_type a_tmp(x.getNumSubFuncs());
+    for(int i=0; i<x.getNumSubFuncs(); i++){
+        a_tmp.begin()[i] = -x0[i%3];
+    }
+
+    // init v_tmp for output of apx
+    VectorContainer v_tmp;
+    v_tmp.replicate(x);
+    set_zero(v_tmp);
+
+    // store x - x0 in v_tmp          (apx does "a plus x" where a is const vec)
+    x.getDevice().apx(a_tmp.begin(),x.begin(),x.getStride(),x.getNumSubFuncs(),v_tmp.begin());
+    // The point of doing this in an abstracted way is could be CPU or GPU, real/double.
+
+    // init s_tmp
+    ScalarContainer s_tmp;
+    s_tmp.replicate(x);
+    set_zero(s_tmp);
+
+    // store (x - x0) dot (x - x0) in s_tmp
+    GeometricDot(v_tmp, v_tmp, s_tmp);
+
+    // store sqrt(s_tmp) in s_tmp
+    Sqrt(s_tmp, s_tmp);
+
+    // [maybe exp for ScalarContainer should be added to help functions? or not and use loop]
+#pragma omp parallel for
+    for(int idx = 0; idx < out.size(); idx++){
+      // out.begin() is C++ vec style for 1st element. a[idx] is C-style
+      out.begin()[idx] = std::exp(-s_tmp.begin()[idx]);
+    }
+}
+
+template<typename ScalarContainer, typename VectorContainer>
+void set_exp_simple(const VectorContainer &x, const typename ScalarContainer::value_type *x0, ScalarContainer &out){
+  // This writes scalar function exp(-||x-x0||) into "out", at nodes "x".
+  // Would not be abstracted (not on GPU)!
+
+  int N = out.size();         // # nodes on surf of vesicle
+#pragma omp parallel for
+    for(int idx = 0; idx < N; idx++){
+      typename ScalarContainer::value_type d[3];  // displacement vector x[idx]-x0
+      for (int i=0; i<3; i++)
+        d[i] = x.begin()[idx+N*i] - x0[i];      // note a flattened array xxx...yyy..zzz
+      typename ScalarContainer::value_type d2 = d[0]*d[0]+d[1]*d[1]+d[2]*d[2];
+      out.begin()[idx] = std::exp(-std::sqrt(d2));
+    }
+}

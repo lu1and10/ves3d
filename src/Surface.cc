@@ -42,6 +42,8 @@ Surface<ScalarContainer, VectorContainer>::Surface(
 
     x_.set_name("position");
     if (x_in != NULL) setPosition(*x_in);
+    contact_indicator_.replicate(x_);
+    contact_indicator_.getDevice().Memset(contact_indicator_.begin(), 0, sizeof(value_type)*contact_indicator_.size());
 }
 
 template <typename ScalarContainer, typename VectorContainer>
@@ -64,6 +66,7 @@ void Surface<ScalarContainer, VectorContainer>::setPosition(const Vec_t& x_in)
 
     x_.replicate(x_in);
     axpy(static_cast<value_type>(1), x_in, x_);
+    contact_indicator_.replicate(x_);
     PROFILEEND("",0);
 }
 
