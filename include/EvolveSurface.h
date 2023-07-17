@@ -102,6 +102,7 @@ class EvolveSurface : public Streamable
 
     value_type mass_before_;
     value_type mass_after_;
+    value_type int_binding_;
   private:
 
     Error_t AreaVolumeCorrection(const Sca_t& area, const Sca_t& vol, const value_type tol=1e-12);

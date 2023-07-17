@@ -441,6 +441,12 @@ typename Container::value_type MaxAbs(Container &x)
     return(x.getDevice().MaxAbs(x.begin(), x.size()));
 }
 
+template<typename Container>
+typename Container::value_type MinAbs(Container &x)
+{
+    return(x.getDevice().MinAbs(x.begin(), x.size()));
+}
+
 template<typename Container, typename SHT>
 void Resample(const Container &xp, const SHT &shtp, const SHT &shtq,
     Container &shcpq, Container &wrkpq, Container &xq)

@@ -54,6 +54,7 @@ Error_t Monitor<EvolveSurface>::operator()(const EvolveSurface *state,
     vol_new .replicate(state->S_->getPosition());
     state->S_->area  (area_new);
     state->S_->volume( vol_new);
+    value_type v0_new = vol_new.begin()[0];
 
     if(A0_ < 0){ // Initialize area0_, vol0_
         area0_.replicate(state->S_->getPosition());
@@ -75,11 +76,15 @@ Error_t Monitor<EvolveSurface>::operator()(const EvolveSurface *state,
              <<", progress = "<<static_cast<int>(100*t/params_->time_horizon)<<"%"
              <<", t = "<<SCI_PRINT_FRMT<<t
              <<", dt = "<<SCI_PRINT_FRMT<<dt
+             <<", centrosome_pulling = "<<SCI_PRINT_FRMT<<state->F_->centrosome_pulling_.begin()[0]<<" "<<state->F_->centrosome_pulling_.begin()[1]<<" "<<state->F_->centrosome_pulling_.begin()[2]
              <<", area error = "<<SCI_PRINT_FRMT<<(DA/A0_)
-             <<", volume error = "<<SCI_PRINT_FRMT<<(DV/V0_)<<emph);
+             <<", volume error = "<<SCI_PRINT_FRMT<<(DV/V0_)
+             <<", volume = "<<SCI_PRINT_FRMT<<v0_new<<emph);
         INFO(emph<<"Monitor: mass integral before: " << std::setprecision(8) << state->mass_before_
              <<", mass integral after: " << std::setprecision(8) << state->mass_after_
-             <<", rel err in mass cons: " << std::setprecision(3) << abs(state->mass_after_-state->mass_before_)/abs(state->mass_before_) << emph);
+             <<", rel err in mass cons: " << std::setprecision(3) << abs(state->mass_after_-state->mass_before_)/abs(state->mass_before_)
+             <<", binding prob integral: " << std::setprecision(8) << state->int_binding_
+             <<", min distance: " << std::setprecision(8) << state->F_->min_dist_ << emph);
 
         int checkpoint_index(checkpoint_stride_ <= 0 ? last_checkpoint_+1 : t/checkpoint_stride_);
 

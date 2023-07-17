@@ -160,7 +160,7 @@ void InterfacialForce<SurfContainer>::gravityForce(const SurfContainer &S, const
 }
 
 template<typename SurfContainer>
-void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const value_type* centrosome_position, const Sca_t &binding_probability, const Sca_t &density, Vec_t &Fp, Sca_t &impingement_rate, Vec_t *Fc) const
+void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const value_type* centrosome_position, const Sca_t &binding_probability, const Sca_t &density, Vec_t &Fp, Sca_t &impingement_rate, Vec_t *Fc, value_type *min_dist) const
 // returns 3d force vector per microtubule (not force density), ie f_0 \hat{\xi}(y) p(y,t)
 // at all surface points y.
 {
@@ -205,6 +205,7 @@ void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const
     // s_wrk[0] stores D, distance between centrosome and membrane surface points
     Sqrt(s_wrk[0], s_wrk[0]);
     uyInv(Fp_up, s_wrk[0], Fp_up);
+    *min_dist = MinAbs(s_wrk[0]);
 
     set_one(s_wrk[1]);
     axpy(1.0/params_.fg_radius, s_wrk[0], s_wrk[2]);

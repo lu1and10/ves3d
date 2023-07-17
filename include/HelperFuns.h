@@ -106,6 +106,9 @@ inline void InitializeShapes(Vec_t &x, const E &shape_gallery,
 template<typename Container>
 inline typename Container::value_type MaxAbs(Container &x);
 
+template<typename Container>
+inline typename Container::value_type MinAbs(Container &x);
+
 ///@todo this need to be implemented for the GPU
 template<typename ScalarContainer>
 typename ScalarContainer::value_type AlgebraicDot(

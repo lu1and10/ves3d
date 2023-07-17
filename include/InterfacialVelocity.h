@@ -89,6 +89,8 @@ class InterfacialVelocity
     mutable value_type* centrosome_pos_;
     mutable Vec_t pos_vel_;
     mutable Sca_t tension_;
+    mutable Vec_t centrosome_pulling_;
+    mutable value_type min_dist_;
   private:
     SurfContainer &S_;
     const Interaction &interaction_;

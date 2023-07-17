@@ -36,6 +36,7 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
     bending_force_.replicate(S_.getPosition());
     tensile_force_.replicate(S_.getPosition());
     flux_.replicate(S_.getPosition());
+    centrosome_pulling_.replicate(S_.getPosition());
 
     pos_vel_.getDevice().Memset(pos_vel_.begin(), 0, sizeof(value_type)*pos_vel_.size());
     tension_.getDevice().Memset(tension_.begin(), 0, sizeof(value_type)*tension_.size());
@@ -141,7 +142,7 @@ updateJacobiExplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     this->updateFarField(); // puts u_inf in pos_vel_ first
 
     Intfcl_force_.bendingForce(S_, bending_force_); // compute f_b
-    Intfcl_force_.pullingForce(S_, centrosome_pos_, binding_probability_, density_, pulling_force_, impingement_rate_); // f_p = c.P.f0.ksi, put it in pulling_force_ and compute impingement rate
+    Intfcl_force_.pullingForce(S_, centrosome_pos_, binding_probability_, density_, pulling_force_, impingement_rate_, &centrosome_pulling_, &min_dist_); // f_p = c.P.f0.ksi, put it in pulling_force_ and compute impingement rate
     axpy(static_cast<value_type>(1.0), bending_force_, pulling_force_, *u1); // compute f_b+f_p and put it in u1
 
     CHK(stokes(*u1, *u2)); // compute S[f_b+f_p] and put it in u2

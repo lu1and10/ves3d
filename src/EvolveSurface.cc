@@ -168,6 +168,8 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
     set_zero(int_density);
     integrator(F_->density_, S_->getAreaElement(), int_density);
     mass_before_ = int_density.begin()[0];
+    integrator(F_->binding_probability_, S_->getAreaElement(), int_density);
+    int_binding_ = int_density.begin()[0];
 
     //MPI_Comm comm=MPI_COMM_WORLD;
     //pvfmm::Profile::Enable(true);
@@ -351,6 +353,8 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
         set_zero(int_density);
         integrator(F_->density_, S_->getAreaElement(), int_density);
         mass_after_ = int_density.begin()[0];
+        integrator(F_->binding_probability_, S_->getAreaElement(), int_density);
+        int_binding_ = int_density.begin()[0];
         CHK( (*monitor_)( this, t, dt) );
         //pvfmm::Profile::Toc();
 
