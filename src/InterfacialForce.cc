@@ -228,7 +228,7 @@ void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const
     GeometricDot(Fp_up, S_up->getNormal(), s_wrk[0]);
     #pragma omp parallel for
     for(int i=0; i<s_wrk[0].size(); i++){
-        value_type smooth_factor = (1.0+tanh(s_wrk[0].begin()[i]*20.0))/2;
+        value_type smooth_factor = (1.0+tanh(s_wrk[0].begin()[i]*40.0))/2;
         S_up->contact_indicator_.begin()[i] = smooth_factor;
         s_wrk[0].begin()[i] = smooth_factor * params_.fg_pulling_force;
         impingement_rate_up.begin()[i] *= smooth_factor;
