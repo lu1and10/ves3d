@@ -102,6 +102,7 @@ class EvolveSurface : public Streamable
 
     value_type mass_before_;
     value_type mass_after_;
+    value_type contact_area_;
     value_type int_binding_;
   private:
 

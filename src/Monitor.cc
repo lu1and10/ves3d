@@ -84,6 +84,7 @@ Error_t Monitor<EvolveSurface>::operator()(const EvolveSurface *state,
              <<", mass integral after: " << std::setprecision(8) << state->mass_after_
              <<", rel err in mass cons: " << std::setprecision(3) << abs(state->mass_after_-state->mass_before_)/abs(state->mass_before_)
              <<", binding prob integral: " << std::setprecision(8) << state->int_binding_
+             <<", contact area: " << std::setprecision(8) << state->contact_area_
              <<", min distance: " << std::setprecision(8) << state->F_->min_dist_ << emph);
 
         int checkpoint_index(checkpoint_stride_ <= 0 ? last_checkpoint_+1 : t/checkpoint_stride_);

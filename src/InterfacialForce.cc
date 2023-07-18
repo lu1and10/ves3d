@@ -242,6 +242,7 @@ void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const
         }
         */
     }
+    COUT("max indicator upsampled: "<<MaxAbs(S_up->contact_indicator_));
     xv(s_wrk[0], Fp_up, Fp_up);
     xv(binding_probability_up, Fp_up, Fp_up);
     xv(density_up, Fp_up, Fp_up);
@@ -256,6 +257,7 @@ void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const
       impingement_rate.replicate(S.getPosition());
       Resample(impingement_rate_up, sht_up_, sht_, s_wrk[0], s_wrk[1], impingement_rate);
       Resample(S_up->contact_indicator_, sht_up_, sht_, s_wrk[0], s_wrk[1], S.contact_indicator_);
+      COUT("max indicator downsampled: "<<MaxAbs(S.contact_indicator_));
     }
 
     /*
