@@ -636,7 +636,7 @@ T Device<CPU>::MinAbs(const T *x_in, size_t length) const
 
     T min=min_arr[0];
     for(size_t idx = 0;idx<n_threads;idx++)
-        min = (min > min_arr[idx]) ? min : min_arr[idx];
+        min = (min < min_arr[idx]) ? min : min_arr[idx];
 
     Free(min_arr);
 
