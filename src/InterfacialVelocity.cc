@@ -191,6 +191,18 @@ updateJacobiExplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     xy(impingement_rate_, *wrk, *wrk); // R*(1 - e^{-c*(1-P)})/c
     axpy(-params_.fg_detachment_rate, binding_probability_, *wrk, *wrk); // R*(1 - e^{-c*(1-P)})/c - k *P
     axpy(dt_, *wrk, binding_probability_, binding_probability_);// dt * (R*(1 - e^{-c*(1-P)})/c - k *P) + P
+    // cap binding_probability_ to be [0,1]
+    //#pragma omp parallel for
+    //for(int ii=0; ii<binding_probability_.size(); ii++){
+    //  if(binding_probability_.begin()[ii] < 0)
+    //    binding_probability_.begin()[ii] = 0;
+    //  if(binding_probability_.begin()[ii] > 1)
+    //    binding_probability_.begin()[ii] = 1;
+    //}
+    //COUT(binding_probability_);
+    //COUT("bp maxabs:"<<MaxAbs(binding_probability_));
+    //COUT("bp minabs:"<<MinAbs(binding_probability_));
+    //xy(binding_probability_, S_.contact_indicator_, binding_probability_);
 
     // begin to update density
     // if no advection apart from membrane vel, that's it, since for a vesicle w/ local area-conservation, div_s u = 0!  (not divs u_s = 0 !)
@@ -239,6 +251,11 @@ updateJacobiExplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
         density_.begin()[ii] = 0;
     }
     */
+
+    // update centrosome_position
+    centrosome_pos_[0] += dt_ * params_.centrosome_velocity[0];
+    centrosome_pos_[1] += dt_ * params_.centrosome_velocity[1];
+    centrosome_pos_[2] += dt_ * params_.centrosome_velocity[2];
 
     recycle(u1);
     recycle(u2);
