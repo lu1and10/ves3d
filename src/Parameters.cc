@@ -35,6 +35,9 @@ void Parameters<T>::init()
     centrosome_position[0]  = 0.0;
     centrosome_position[1]  = 0.0;
     centrosome_position[2]  = 0.0;
+    centrosome_velocity[0]  = 0.0;
+    centrosome_velocity[1]  = 0.0;
+    centrosome_velocity[2]  = 0.0;
     mt_growth_velocity      = 0.0;
     mt_nucleation_rate      = 0.0;
     mt_catastrophe_rate     = 0.0;
@@ -183,6 +186,7 @@ void Parameters<T>::setUsage(AnyOption *opt)
     opt->addUsage( "          --fg-radius              The centrosome fg radius" );
     opt->addUsage( "          --fg-drag-coeff          The centrosome fg drag coefficient" );
     opt->addUsage( "          --centrosome-position    The centrosome position" );
+    opt->addUsage( "          --centrosome-velocity    The centrosome velocity" );
     opt->addUsage( "          --mt-growth-velocity     The MT growth velocity" );
     opt->addUsage( "          --mt-nucleation-rate     The MT nucleation rate" );
     opt->addUsage( "          --mt-catastrophe-rate    The MT catastrophe rate" );
@@ -297,6 +301,7 @@ void Parameters<T>::setOptions(AnyOption *opt)
     opt->setOption( "fg-radius" );
     opt->setOption( "fg-drag-coeff" );
     opt->setOption( "centrosome-position" );
+    opt->setOption( "centrosome-velocity" );
     opt->setOption( "mt-growth-velocity" );
     opt->setOption( "mt-nucleation-rate" );
     opt->setOption( "mt-catastrophe-rate" );
@@ -392,6 +397,13 @@ void Parameters<T>::getOptionValues(AnyOption *opt)
         centrosome_position[0] = strtod(next, &next);
         centrosome_position[1] = strtod(next, &next);
         centrosome_position[2] = strtod(next, NULL);
+    }
+
+    if( opt->getValue( "centrosome-velocity" ) != NULL  ){
+        char* next(opt->getValue("centrosome-velocity"));
+        centrosome_velocity[0] = strtod(next, &next);
+        centrosome_velocity[1] = strtod(next, &next);
+        centrosome_velocity[2] = strtod(next, NULL);
     }
 
     if( opt->getValue( "mt-growth-velocity" ) != NULL  )
@@ -540,6 +552,7 @@ Error_t Parameters<T>::pack(std::ostream &os, Format format) const
     os<<"fg_radius: "<<fg_radius<<"\n";
     os<<"fg_drag_coeff: "<<fg_drag_coeff<<"\n";
     os<<"centrosome_position: "<<centrosome_position[0]<<" "<<centrosome_position[1]<<" "<<centrosome_position[2]<<"\n";
+    os<<"centrosome_velocity: "<<centrosome_velocity[0]<<" "<<centrosome_velocity[1]<<" "<<centrosome_velocity[2]<<"\n";
     os<<"mt_growth_velocity: "<<mt_growth_velocity<<"\n";
     os<<"mt_nucleation_rate: "<<mt_nucleation_rate<<"\n";
     os<<"mt_catastrophe_rate: "<<mt_catastrophe_rate<<"\n";
@@ -653,6 +666,8 @@ Error_t Parameters<T>::unpack(std::istream &is, Format format)
     is>>key>>fg_drag_coeff; ASSERT(key=="fg_drag_coeff:", "Unexpected key (expected fg_drag_coeff)");
     is>>key>>centrosome_position[0]>>centrosome_position[1]>>centrosome_position[2];
     ASSERT(key=="centrosome_position:", "Unexpected key (expected centrosome_position)");
+    is>>key>>centrosome_velocity[0]>>centrosome_velocity[1]>>centrosome_velocity[2];
+    ASSERT(key=="centrosome_velocity:", "Unexpected key (expected centrosome_velocity)");
     is>>key>>mt_growth_velocity;ASSERT(key=="mt_growth_velocity:", "Unexpected key (expected mt_growth_velocity)");
     is>>key>>mt_nucleation_rate;ASSERT(key=="mt_nucleation_rate:", "Unexpected key (expected mt_nucleation_rate)");
     is>>key>>mt_catastrophe_rate;ASSERT(key=="mt_catastrophe_rate:", "Unexpected key (expected mt_catastrophe_rate)");
@@ -697,6 +712,10 @@ std::ostream& operator<<(std::ostream& output, const Parameters<T>& par)
     output<<"   Centrosome position      : "<<"["<<par.centrosome_position[0]
           <<", "<<par.centrosome_position[1]
           <<", "<<par.centrosome_position[2]
+          <<"]"<<std::endl;
+    output<<"   Centrosome velocity      : "<<"["<<par.centrosome_velocity[0]
+          <<", "<<par.centrosome_velocity[1]
+          <<", "<<par.centrosome_velocity[2]
           <<"]"<<std::endl;
     output<<"  Mt growth velocity        : "<<par.mt_growth_velocity<<std::endl;
     output<<"  Mt nucleation rate        : "<<par.mt_nucleation_rate<<std::endl;

@@ -652,9 +652,10 @@ void WriteVTK(const sctl::Vector<Real>& S, long p0, long p1, const char* fname, 
 }
 
 template <class Real>
-void WriteVTK(const sctl::Vector<Real>& S, long p0, long p1, const char* fname, Real period=0,
-        const std::vector<sctl::Vector<Real>> &v_l=NULL, std::initializer_list<const std::string> &v_l_name=NULL,
-        const std::vector<sctl::Vector<Real>> &s_l=NULL, std::initializer_list<const std::string> &s_l_name=NULL,
+void WriteVTK(const sctl::Vector<Real>& S, long p0, long p1, const char* fname,
+        const std::vector<sctl::Vector<Real>> &v_l, std::initializer_list<const std::string> &v_l_name,
+        const std::vector<sctl::Vector<Real>> &s_l, std::initializer_list<const std::string> &s_l_name,
+        Real period=0,
         Real* centrosome_pos=NULL, long n_centrosome=0, const char* fname_centrosome=NULL){
   typedef double VTKReal;
   int data__dof=VES3D_DIM;
@@ -986,5 +987,5 @@ void WriteVTK(const Surf& S, const char* fname,
     s_l_.push_back(sctl::Vector<Real>(s_ptr->size(),(Real*)s_ptr->begin(),false));
   }
 
-  WriteVTK(S_, p0, p1, fname, period, v_l_, v_list_name, s_l_, s_list_name, centrosome_pos, n_centrosome, fname_centrosome);
+  WriteVTK(S_, p0, p1, fname, v_l_, v_list_name, s_l_, s_list_name, period, centrosome_pos, n_centrosome, fname_centrosome);
 }

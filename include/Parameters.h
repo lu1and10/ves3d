@@ -43,6 +43,7 @@ class Parameters : public Streamable
     T fg_radius;
     T fg_drag_coeff;
     T centrosome_position[3];
+    T centrosome_velocity[3];
     T mt_growth_velocity;
     T mt_nucleation_rate;
     T mt_catastrophe_rate;
