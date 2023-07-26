@@ -253,9 +253,14 @@ updateJacobiExplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     */
 
     // update centrosome_position
+    // artificial velocity
     centrosome_pos_[0] += dt_ * params_.centrosome_velocity[0];
     centrosome_pos_[1] += dt_ * params_.centrosome_velocity[1];
     centrosome_pos_[2] += dt_ * params_.centrosome_velocity[2];
+    // drag model by pulling force on centrosome
+    centrosome_pos_[0] += dt_ * centrosome_pulling_.begin()[0] / params_.centrosome_drag_coeff;
+    centrosome_pos_[1] += dt_ * centrosome_pulling_.begin()[1] / params_.centrosome_drag_coeff;
+    centrosome_pos_[2] += dt_ * centrosome_pulling_.begin()[2] / params_.centrosome_drag_coeff;
 
     recycle(u1);
     recycle(u2);
