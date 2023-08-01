@@ -1905,6 +1905,7 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
             if (params_.rep_upsample)
                 WARN("Reparametrizaition is not advecting the tension in the upsample mode (fix!)");
             else {
+                INFO("reparam advect tension_, density_ and binding_probability_");
                 Surf->grad(tension_, *u2);
                 GeometricDot(*u2, *u1, *wrk);
                 axpy(1.0, *wrk, tension_, tension_);
@@ -1912,6 +1913,10 @@ Error_t InterfacialVelocity<SurfContainer, Interaction>::reparam()
                 Surf->grad(density_, *u2);
                 GeometricDot(*u2, *u1, *wrk);
                 axpy(1.0, *wrk, density_, density_);
+
+                Surf->grad(binding_probability_, *u2);
+                GeometricDot(*u2, *u1, *wrk);
+                axpy(1.0, *wrk, binding_probability_, binding_probability_);
             }
         }
 
