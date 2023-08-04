@@ -192,13 +192,13 @@ updateJacobiExplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     axpy(-params_.fg_detachment_rate, binding_probability_, *wrk, *wrk); // R*(1 - e^{-c*(1-P)})/c - k *P
     axpy(dt_, *wrk, binding_probability_, binding_probability_);// dt * (R*(1 - e^{-c*(1-P)})/c - k *P) + P
     // cap binding_probability_ to be [0,1]
-    //#pragma omp parallel for
-    //for(int ii=0; ii<binding_probability_.size(); ii++){
-    //  if(binding_probability_.begin()[ii] < 0)
-    //    binding_probability_.begin()[ii] = 0;
-    //  if(binding_probability_.begin()[ii] > 1)
-    //    binding_probability_.begin()[ii] = 1;
-    //}
+    #pragma omp parallel for
+    for(int ii=0; ii<binding_probability_.size(); ii++){
+      if(binding_probability_.begin()[ii] < 0)
+        binding_probability_.begin()[ii] = 0;
+      if(binding_probability_.begin()[ii] > 1)
+        binding_probability_.begin()[ii] = 1;
+    }
     //COUT(binding_probability_);
     //COUT("bp maxabs:"<<MaxAbs(binding_probability_));
     //COUT("bp minabs:"<<MinAbs(binding_probability_));

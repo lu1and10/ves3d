@@ -260,13 +260,11 @@ void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const
       COUT("max indicator downsampled: "<<MaxAbs(S.contact_indicator_));
     }
 
-    /*
     // cap impingement_rate
     #pragma omp parallel for
     for(int i=0; i<impingement_rate.size(); i++){
       if(impingement_rate.begin()[i] < 0) impingement_rate.begin()[i] = 0;
     }
-    */
 
     // calculate force on centrosome
     if(Fc){

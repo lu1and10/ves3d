@@ -122,7 +122,7 @@ Error_t Monitor<EvolveSurface>::operator()(const EvolveSurface *state,
                         {"f_p","f_b","f_s","flux","membrane_vel"},
                         {&(state->F_->density_), &(state->F_->binding_probability_), &(state->F_->impingement_rate_), &(state->F_->tension_), &(state->S_->contact_indicator_)},
                         {"concentration","binding_prob","impingement_rate","tension","contact_indicator"},
-                        32, params_->periodic_length, state->F_->centrosome_pos_, 1, vtkfbase_centrosome.c_str());
+                        -1, params_->periodic_length, state->F_->centrosome_pos_, 1, vtkfbase_centrosome.c_str());
             }
 
 #if HAVE_PVFMM
