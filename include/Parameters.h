@@ -48,6 +48,7 @@ class Parameters : public Streamable
     T mt_growth_velocity;
     T mt_nucleation_rate;
     T mt_catastrophe_rate;
+    T mt_pushing_force;
 
     //Time stepper
     T time_horizon;

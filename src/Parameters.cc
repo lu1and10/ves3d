@@ -41,7 +41,8 @@ void Parameters<T>::init()
     centrosome_velocity[2]  = 0.0;
     mt_growth_velocity      = 0.0;
     mt_nucleation_rate      = 0.0;
-    mt_catastrophe_rate     = 0.0;
+    mt_catastrophe_rate     = 0.75;
+    mt_pushing_force        = 0.0;
     filter_freq             = 8;
     gravity_field[0]        = 0;
     gravity_field[1]        = 0;
@@ -192,6 +193,7 @@ void Parameters<T>::setUsage(AnyOption *opt)
     opt->addUsage( "          --mt-growth-velocity     The MT growth velocity" );
     opt->addUsage( "          --mt-nucleation-rate     The MT nucleation rate" );
     opt->addUsage( "          --mt-catastrophe-rate    The MT catastrophe rate" );
+    opt->addUsage( "          --mt-pushing-force       The MT pushing force f0" );
     opt->addUsage( "          --viscosity-contrast     The viscosity contrast of vesicles" );
     opt->addUsage( "          --permeability-coeff     The permeability coefficient  of vesicles" );
     opt->addUsage( "          --gravity-field          The gravitational field vector (space separated)" );
@@ -308,6 +310,7 @@ void Parameters<T>::setOptions(AnyOption *opt)
     opt->setOption( "mt-growth-velocity" );
     opt->setOption( "mt-nucleation-rate" );
     opt->setOption( "mt-catastrophe-rate" );
+    opt->setOption( "mt-pushing-force" );
 
     //for options that will be checked only on the command and line not
     //in option/resource file
@@ -420,6 +423,9 @@ void Parameters<T>::getOptionValues(AnyOption *opt)
 
     if( opt->getValue( "mt-catastrophe-rate" ) != NULL  )
         mt_catastrophe_rate = atof(opt->getValue( "mt-catastrophe-rate" ));
+
+    if( opt->getValue( "mt-pushing-force" ) != NULL  )
+        mt_pushing_force = atof(opt->getValue( "mt-pushing-force" ));
 
     if( opt->getValue( "gravity-field" ) != NULL  ){
         char* next(opt->getValue("gravity-field"));
@@ -563,6 +569,7 @@ Error_t Parameters<T>::pack(std::ostream &os, Format format) const
     os<<"mt_growth_velocity: "<<mt_growth_velocity<<"\n";
     os<<"mt_nucleation_rate: "<<mt_nucleation_rate<<"\n";
     os<<"mt_catastrophe_rate: "<<mt_catastrophe_rate<<"\n";
+    os<<"mt_pushing_force: "<<mt_pushing_force<<"\n";
     os<<"gravity_field: "<<gravity_field[0]<<" "<<gravity_field[1]<<" "<<gravity_field[2]<<"\n";
     os<<"/PARAMETERS\n";
     return ErrorEvent::Success;
@@ -679,6 +686,7 @@ Error_t Parameters<T>::unpack(std::istream &is, Format format)
     is>>key>>mt_growth_velocity;ASSERT(key=="mt_growth_velocity:", "Unexpected key (expected mt_growth_velocity)");
     is>>key>>mt_nucleation_rate;ASSERT(key=="mt_nucleation_rate:", "Unexpected key (expected mt_nucleation_rate)");
     is>>key>>mt_catastrophe_rate;ASSERT(key=="mt_catastrophe_rate:", "Unexpected key (expected mt_catastrophe_rate)");
+    is>>key>>mt_pushing_force;ASSERT(key=="mt_pushing_force:", "Unexpected key (expected mt_pushing_force)");
 
     is>>key>>gravity_field[0]>>gravity_field[1]>>gravity_field[2];
     ASSERT(key=="gravity_field:", "Unexpected key (expected gravity_field)");
@@ -729,6 +737,7 @@ std::ostream& operator<<(std::ostream& output, const Parameters<T>& par)
     output<<"  Mt growth velocity        : "<<par.mt_growth_velocity<<std::endl;
     output<<"  Mt nucleation rate        : "<<par.mt_nucleation_rate<<std::endl;
     output<<"  Mt catastrophe rate       : "<<par.mt_catastrophe_rate<<std::endl;
+    output<<"  Mt pushing force          : "<<par.mt_pushing_force<<std::endl;
 
     output<<"------------------------------------"<<std::endl;
     output<<" Time stepper:"<<std::endl;
