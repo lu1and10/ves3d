@@ -142,6 +142,7 @@ updateJacobiExplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     this->updateFarField(); // puts u_inf in pos_vel_ first
 
     Intfcl_force_.bendingForce(S_, bending_force_); // compute f_b
+    // calculate pulling_force_ and impingement_rate_; binding_probability_ and density_ are also updated
     Intfcl_force_.pullingForce(S_, centrosome_pos_, binding_probability_, density_, pulling_force_, impingement_rate_, &centrosome_pulling_, &min_dist_); // f_p = c.P.f0.ksi, put it in pulling_force_ and compute impingement rate
     axpy(static_cast<value_type>(1.0), bending_force_, pulling_force_, *u1); // compute f_b+f_p and put it in u1
 
@@ -172,85 +173,6 @@ updateJacobiExplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
 
     dx.replicate(S_.getPosition());
     axpy(dt_, pos_vel_, dx);         // what does 3-arg axpy do ? update pos_vel?, 3-arg axpy does ax -> y
-
-    // update binding probability P
-    set_one(*wrk);
-    axpy(-1.0, binding_probability_, *wrk, *wrk); //1-P
-    axpy(-1.0, density_, *wrk2); // -c
-    xy(*wrk, *wrk2, *wrk);// -c*(1-P)
-    Exp(*wrk, *wrk); // e^{-c*(1-P)}
-    set_one(*wrk2);
-    axpy(-1.0, *wrk, *wrk2, *wrk);// 1 - e^{-c*(1-P)}
-    xyInv(*wrk, density_, *wrk); // (1 - e^{-c*(1-P)})/c
-    // in case density is near zero, take the limit
-    #pragma omp parallel for
-    for(int ii=0; ii<density_.size(); ii++){
-      if(abs(density_.begin()[ii]) < 1e-10)
-        wrk->begin()[ii] = 1.0 - binding_probability_.begin()[ii];
-    }
-    xy(impingement_rate_, *wrk, *wrk); // R*(1 - e^{-c*(1-P)})/c
-    axpy(-params_.fg_detachment_rate, binding_probability_, *wrk, *wrk); // R*(1 - e^{-c*(1-P)})/c - k *P
-    axpy(dt_, *wrk, binding_probability_, binding_probability_);// dt * (R*(1 - e^{-c*(1-P)})/c - k *P) + P
-    // cap binding_probability_ to be [0,1]
-    #pragma omp parallel for
-    for(int ii=0; ii<binding_probability_.size(); ii++){
-      if(binding_probability_.begin()[ii] < 0)
-        binding_probability_.begin()[ii] = 0;
-      if(binding_probability_.begin()[ii] > 1)
-        binding_probability_.begin()[ii] = 1;
-    }
-    //COUT(binding_probability_);
-    //COUT("bp maxabs:"<<MaxAbs(binding_probability_));
-    //COUT("bp minabs:"<<MinAbs(binding_probability_));
-    //xy(binding_probability_, S_.contact_indicator_, binding_probability_);
-
-    // begin to update density
-    // if no advection apart from membrane vel, that's it, since for a vesicle w/ local area-conservation, div_s u = 0!  (not divs u_s = 0 !)
-    // Lagrangian:    (d/dt)c + c (div_s u) = 0
-    // f_p = pulling force vector per unit force generator,  eta_m = drag
-    // v_p = pulling-related advection vel relative to u.
-    // D = diffusion const
-    // Lagrangian w/ extra transport (pulling) v_p = (I-nn).f_p / eta_m
-    //      (d/dt)c + div_s (v_p c)   + c (div_s u)          =    D \Delta_s c
-    //                pulling advec    stretching of dS           diffusion
-    // Test (d/dt) \int_surf c(x,t) dS = 0  "mass conservation"
-    // Simulation works in lagrangian!
-    /* Discussion from 3/31/23:
-      in R2: transport eqn  Eulerian  (par/par t)c + div(uc) = 0    u = advec vel
-                                       ^ means sit at fixed x, rate of change of c
-                            Lagrangian  (d/dt)c = 0
-                            d/dt = (par/par t) + u.grad  + (div u)
-                            d/dt = (par/par t) + div (u .)
-                                                  if div u nonzero
-      on moving Gamma surf that may leave x, what does (par/par t)c(x,t) mean ???
-     */
-
-    // advect density on surface: fill wrk with -dc/dt...
-    sht_.lowPassFilter(density_, *u1, *u2, density_);
-    // to do: add stretching term in case it's not const in some future setting?
-    // need: compute v_p         ... add eta_m, D, f_p (???) to Parameter struct
-    axpy(1.0/params_.fg_drag_coeff, pulling_force_, *u1);  // f_p/eta
-    S_.mapToTangentSpace(*u1, false);   // overwrites u1, now v_p, tangential
-    S_.div(*u1, *wrk);                // wrk = div_s.(c v_p)
-
-    // add D \Delta_s c = div_s (D grad_s c), and subtract from -dc/dt
-    value_type D = params_.diffusion_rate;        // diffusion rate, const    "real" ? -> value_type?
-    S_.grad(density_,*u1);
-    set_zero(*u2);
-    axpy(-D, *u1, *u2, *u1);      // u1 <-  -D grad_s c
-    S_.div(*u1, *wrk2);              // wrk2 <-  div_s (-D grad_s c)
-    axpy(1.0, *wrk, *wrk2, *wrk);     // wrk = add advection plus diffusion
-
-    axpy(-dt_, *wrk, density_, density_);          // den -= dt*wrk
-
-    /*
-    // cap density to be non-negative
-    #pragma omp parallel for
-    for(int ii=0; ii<density_.size(); ii++){
-      if(density_.begin()[ii] < 0)
-        density_.begin()[ii] = 0;
-    }
-    */
 
     // update centrosome_position
     // artificial velocity

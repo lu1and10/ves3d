@@ -42,7 +42,7 @@ class InterfacialForce
     void linearBendingForce(const SurfContainer &S, const Vec_t &x, Vec_t &Fb) const;
     void tensileForce(const SurfContainer &S, const Sca_t &tension, Vec_t &Fs) const;
     void gravityForce(const SurfContainer &S, const Vec_t &x, Vec_t &Fg) const;
-    void pullingForce(const SurfContainer &S, const value_type* centrosome_position, const Sca_t &binding_probability, const Sca_t &density, Vec_t &Fp, Sca_t &impingement_rate, Vec_t *Fc=nullptr, value_type *min_dist = nullptr) const;
+    void pullingForce(const SurfContainer &S, const value_type* centrosome_position, Sca_t &binding_probability, Sca_t &density, Vec_t &Fp, Sca_t &impingement_rate, Vec_t *Fc=nullptr, value_type *min_dist = nullptr) const;
 
     void explicitTractionJump(
 	const SurfContainer &S,

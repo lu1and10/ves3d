@@ -160,7 +160,7 @@ void InterfacialForce<SurfContainer>::gravityForce(const SurfContainer &S, const
 }
 
 template<typename SurfContainer>
-void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const value_type* centrosome_position, const Sca_t &binding_probability, const Sca_t &density, Vec_t &Fp, Sca_t &impingement_rate, Vec_t *Fc, value_type *min_dist) const
+void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const value_type* centrosome_position, Sca_t &binding_probability, Sca_t &density, Vec_t &Fp, Sca_t &impingement_rate, Vec_t *Fc, value_type *min_dist) const
 // returns 3d force vector per microtubule (not force density), ie f_0 \hat{\xi}(y) p(y,t)
 // at all surface points y.
 {
@@ -232,23 +232,95 @@ void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const
         S_up->contact_indicator_.begin()[i] = smooth_factor;
         s_wrk[0].begin()[i] = smooth_factor * params_.fg_pulling_force;
         impingement_rate_up.begin()[i] *= smooth_factor;
-        /*
-        if(s_wrk[0].begin()[i] >=0){
-            s_wrk[0].begin()[i] = params_.fg_pulling_force;     // f_0
-        }
-        else{
-            s_wrk[0].begin()[i] = 0.0;
-            impingement_rate_up.begin()[i] = 0;
-        }
-        */
+        if(impingement_rate_up.begin()[i] < 0) impingement_rate_up.begin()[i] = 0;
     }
-    COUT("max indicator upsampled: "<<MaxAbs(S_up->contact_indicator_));
+    // now, impingement_rate has been updated in upsampled space
+
+    // scale Fp_up by smoothed indicator function times fg_pulling_force
     xv(s_wrk[0], Fp_up, Fp_up);
+
+    // update binding probability P
+    set_one(s_wrk[1]);
+    axpy(-1.0, binding_probability_up, s_wrk[1], s_wrk[1]); //1-P
+    axpy(-1.0, density_up, s_wrk[2]); // -c
+    xy(s_wrk[1], s_wrk[2], s_wrk[1]);// -c*(1-P)
+    Exp(s_wrk[1], s_wrk[1]); // e^{-c*(1-P)}
+    set_one(s_wrk[2]);
+    axpy(-1.0, s_wrk[1], s_wrk[2], s_wrk[1]);// 1 - e^{-c*(1-P)}
+    xyInv(s_wrk[1], density_up, s_wrk[1]); // (1 - e^{-c*(1-P)})/c
+    // in case density is near zero, take the limit
+    #pragma omp parallel for
+    for(int i=0; i<density_up.size(); i++){
+      if(abs(density_up.begin()[i]) < 1e-10)
+        s_wrk[1].begin()[i] = 1.0 - binding_probability_up.begin()[i];
+    }
+    xy(impingement_rate_up, s_wrk[1], s_wrk[1]); // R*(1 - e^{-c*(1-P)})/c
+    axpy(-params_.fg_detachment_rate, binding_probability_up, s_wrk[1], s_wrk[1]); // R*(1 - e^{-c*(1-P)})/c - k *P
+    axpy(params_.ts, s_wrk[1], binding_probability_up, binding_probability_up);// dt * (R*(1 - e^{-c*(1-P)})/c - k *P) + P
+
+    // cap binding_probability_ to be [0,1]
+    #pragma omp parallel for
+    for(int i=0; i<binding_probability_up.size(); i++){
+      if(binding_probability_up.begin()[i] < 0)
+        binding_probability_up.begin()[i] = 0;
+      if(binding_probability_up.begin()[i] > 1)
+        binding_probability_up.begin()[i] = 1;
+    }
+
+    // calculate fp
+    // scale Fp_up by binding_probability
     xv(binding_probability_up, Fp_up, Fp_up);
+    // scale Fp_up by density
     xv(density_up, Fp_up, Fp_up);
+
+    // FIXME : update density
+    // begin to update density
+    // if no advection apart from membrane vel, that's it, since for a vesicle w/ local area-conservation, div_s u = 0!  (not divs u_s = 0 !)
+    // Lagrangian:    (d/dt)c + c (div_s u) = 0
+    // f_p = pulling force vector per unit force generator,  eta_m = drag
+    // v_p = pulling-related advection vel relative to u.
+    // D = diffusion const
+    // Lagrangian w/ extra transport (pulling) v_p = (I-nn).f_p / eta_m
+    //      (d/dt)c + div_s (v_p c)   + c (div_s u)          =    D \Delta_s c
+    //                pulling advec    stretching of dS           diffusion
+    // Test (d/dt) \int_surf c(x,t) dS = 0  "mass conservation"
+    // Simulation works in lagrangian!
+    /* Discussion from 3/31/23:
+      in R2: transport eqn  Eulerian  (par/par t)c + div(uc) = 0    u = advec vel
+                                       ^ means sit at fixed x, rate of change of c
+                            Lagrangian  (d/dt)c = 0
+                            d/dt = (par/par t) + u.grad  + (div u)
+                            d/dt = (par/par t) + div (u .)
+                                                  if div u nonzero
+      on moving Gamma surf that may leave x, what does (par/par t)c(x,t) mean ???
+     */
+    // advect density on surface: fill wrk with -dc/dt...
+    // sht_.lowPassFilter(density_up, s_wrk[0], s_wrk[1], density_up);
+    // to do: add stretching term in case it's not const in some future setting?
+    // need: compute v_p         ... add eta_m, D, f_p (???) to Parameter struct
+    axpy(1.0/params_.fg_drag_coeff, Fp_up, v_wrk[0]);  // f_p/eta
+    S_up->mapToTangentSpace(v_wrk[0], false);   // overwrites u1, now v_p, tangential
+    S_up->div(v_wrk[0], s_wrk[0]);                // wrk = div_s.(c v_p)
+    // add D \Delta_s c = div_s (D grad_s c), and subtract from -dc/dt
+    S_up->grad(density_up, v_wrk[0]);
+    set_zero(v_wrk[1]);
+    axpy(-params_.diffusion_rate, v_wrk[0], v_wrk[1], v_wrk[0]);      // u1 <-  -D grad_s c
+    S_up->div(v_wrk[0], s_wrk[1]);              // wrk2 <-  div_s (-D grad_s c)
+    axpy(1.0, s_wrk[0], s_wrk[1], s_wrk[0]);     // wrk = add advection plus diffusion
+    axpy(-params_.ts, s_wrk[0], density_up, density_up);          // den -= dt*wrk
+    /*
+    // cap density to be non-negative
+    #pragma omp parallel for
+    for(int ii=0; ii<density_.size(); ii++){
+      if(density_.begin()[ii] < 0)
+        density_.begin()[ii] = 0;
+    }
+    */
 
     //sht_.lowPassFilter(Fp_up, v_wrk[0], v_wrk[1], Fp_up);  //filter high frequency
     //sht_.lowPassFilter(impingement_rate_up, s_wrk[0], s_wrk[1], impingement_rate_up);  //filter high frequency
+    //sht_.lowPassFilter(binding_probability_up, s_wrk[0], s_wrk[1], binding_probability_up);  //filter high frequency
+    //sht_.lowPassFilter(density_up, s_wrk[0], s_wrk[1], density_up);  //filter high frequency
 
     { // downsample Fp
       Fp.replicate(S.getPosition());
@@ -256,14 +328,24 @@ void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const
       // downsample impingement_rate
       impingement_rate.replicate(S.getPosition());
       Resample(impingement_rate_up, sht_up_, sht_, s_wrk[0], s_wrk[1], impingement_rate);
+      Resample(binding_probability_up, sht_up_, sht_, s_wrk[0], s_wrk[1], binding_probability);
+      Resample(density_up, sht_up_, sht_, s_wrk[0], s_wrk[1], density);
       Resample(S_up->contact_indicator_, sht_up_, sht_, s_wrk[0], s_wrk[1], S.contact_indicator_);
-      COUT("max indicator downsampled: "<<MaxAbs(S.contact_indicator_));
     }
 
     // cap impingement_rate
     #pragma omp parallel for
     for(int i=0; i<impingement_rate.size(); i++){
       if(impingement_rate.begin()[i] < 0) impingement_rate.begin()[i] = 0;
+    }
+
+    // cap binding_probability_ to be [0,1]
+    #pragma omp parallel for
+    for(int i=0; i<binding_probability.size(); i++){
+      if(binding_probability.begin()[i] < 0)
+        binding_probability.begin()[i] = 0;
+      if(binding_probability.begin()[i] > 1)
+        binding_probability.begin()[i] = 1;
     }
 
     // calculate force on centrosome

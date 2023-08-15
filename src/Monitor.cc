@@ -111,7 +111,7 @@ Error_t Monitor<EvolveSurface>::operator()(const EvolveSurface *state,
 
             if(params_->write_vtk.size()){
                 std::string vtkfbase_centrosome(params_->write_vtk);
-                std::string centrosome_suffix("_centrosome_");
+                std::string centrosome_suffix("centrosome_");
                 vtkfbase_centrosome += centrosome_suffix;
                 vtkfbase_centrosome += suffix;
                 std::string vtkfbase(params_->write_vtk);
