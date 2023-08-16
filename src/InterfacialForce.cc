@@ -160,7 +160,7 @@ void InterfacialForce<SurfContainer>::gravityForce(const SurfContainer &S, const
 }
 
 template<typename SurfContainer>
-void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const value_type* centrosome_position, Sca_t &binding_probability, Sca_t &density, Vec_t &Fp, Sca_t &impingement_rate, Vec_t *Fc, value_type *min_dist) const
+void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const value_type* centrosome_position, const value_type* centrosome_velocity, Sca_t &binding_probability, Sca_t &density, Vec_t &Fpull, Vec_t &Fpush, Sca_t &impingement_rate, Vec_t *Fcpull, Vec_t *Fcpush, value_type *min_dist) const
 // returns 3d force vector per microtubule (not force density), ie f_0 \hat{\xi}(y) p(y,t)
 // at all surface points y.
 {
@@ -179,7 +179,8 @@ void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const
     Sca_t binding_probability_up;
     Sca_t density_up;
     Sca_t impingement_rate_up;
-    Vec_t Fp_up;
+    Vec_t Fpull_up;
+    Vec_t Fpush_up;
     { // upsample binding_probability
       binding_probability_up.resize(binding_probability.getNumSubs(), params_.upsample_freq);
       Resample(binding_probability, sht_, sht_up_, s_wrk[0], s_wrk[1], binding_probability_up);
@@ -189,24 +190,39 @@ void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const
       Resample(density, sht_, sht_up_, s_wrk[0], s_wrk[1], density_up);
 
       impingement_rate_up.resize(impingement_rate.getNumSubs(), params_.upsample_freq);
-      Fp_up.resize(Fp.getNumSubs(), params_.upsample_freq);
+      Fpull_up.resize(Fpull.getNumSubs(), params_.upsample_freq);
+      Fpush_up.resize(Fpush.getNumSubs(), params_.upsample_freq);
     }
 
     // pulling force direction
-    int N = Fp_up.size()/VES3D_DIM;
+    // FIXME
+    // need to put this loop(each 3D-vector of vector field minus const 3D-vector) to help functions
+    int N = Fpull_up.size()/VES3D_DIM;
     for(int idim=0; idim<VES3D_DIM; idim++){
       #pragma omp parallel for
       for(int i=0; i<N; i++){
-        Fp_up.begin()[idim*N+i] = centrosome_position[idim] - S_up->getPosition().begin()[idim*N+i];
+        Fpull_up.begin()[idim*N+i] = centrosome_position[idim] - S_up->getPosition().begin()[idim*N+i];
       }
     }
     // normalizing  to get \hat\xi
-    GeometricDot(Fp_up, Fp_up, s_wrk[0]);
+    GeometricDot(Fpull_up, Fpull_up, s_wrk[0]);
     // s_wrk[0] stores D, distance between centrosome and membrane surface points
     Sqrt(s_wrk[0], s_wrk[0]);
-    uyInv(Fp_up, s_wrk[0], Fp_up);
+    uyInv(Fpull_up, s_wrk[0], Fpull_up);
     *min_dist = MinAbs(s_wrk[0]);
+    // at this point Fpull_up stores the unit direction of pullingForce
+    // s_wrk[0] stores the distance between centrosome and membrane points
 
+    // calaculate pushing force
+    // get pushing force coefficient
+    value_type pushing_coeff = params_.mt_nucleation_rate * params_.mt_pushing_force / (params_.mt_catastrophe_rate * 4.0 * M_PI);
+    xy(s_wrk[0], s_wrk[0], s_wrk[1]); // D^2
+    //xy(s_wrk[1], s_wrk[1], s_wrk[1]); // D^4
+    xInv(s_wrk[1], s_wrk[1]); // 1/D^2
+    axpy(-pushing_coeff, s_wrk[1], s_wrk[1]); // -pushing_coeff/D^2
+    xv(s_wrk[1], Fpull_up, Fpush_up); // pushing_force =  -pushing_coeff / D^2 * \hat\xi
+
+    // calculate the impingement rate
     set_one(s_wrk[1]);
     axpy(1.0/params_.fg_radius, s_wrk[0], s_wrk[2]);
     xy(s_wrk[2], s_wrk[2], s_wrk[2]);
@@ -219,13 +235,21 @@ void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const
     Exp(s_wrk[1], s_wrk[1]);
     xy(s_wrk[1], s_wrk[2], s_wrk[1]);
     xv(s_wrk[1], S_up->getNormal(), v_wrk[0]);
-    axpy(params_.mt_growth_velocity, Fp_up, v_wrk[1]);
+    axpy(params_.mt_growth_velocity, Fpull_up, v_wrk[1]);
+    // FIXME: subtract the last time step centrosome velocity from v_wrk[1]
+    // need to put this loop(each 3D-vector of vector field minus const 3D-vector) to help functions
+    for(int idim=0; idim<VES3D_DIM; idim++){
+      #pragma omp parallel for
+      for(int i=0; i<N; i++){
+        v_wrk[1].begin()[idim*N+i] -= centrosome_velocity[idim];
+      }
+    }
     GeometricDot(v_wrk[0], v_wrk[1], impingement_rate_up);
 
     // only consider the surface points which centrosome can directly connent to
     // TODO: use ray tracing for complex shapes and get number of collisions to the surface
     // now only consider force direction dot with outward normal
-    GeometricDot(Fp_up, S_up->getNormal(), s_wrk[0]);
+    GeometricDot(Fpull_up, S_up->getNormal(), s_wrk[0]);
     #pragma omp parallel for
     for(int i=0; i<s_wrk[0].size(); i++){
         value_type smooth_factor = (1.0+tanh(s_wrk[0].begin()[i]*40.0))/2;
@@ -236,8 +260,11 @@ void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const
     }
     // now, impingement_rate has been updated in upsampled space
 
-    // scale Fp_up by smoothed indicator function times fg_pulling_force
-    xv(s_wrk[0], Fp_up, Fp_up);
+    // scale Fpush_up by smoothed indicator function
+    xv(S_up->contact_indicator_, Fpush_up, Fpush_up);
+
+    // scale Fpull_up by smoothed indicator function times fg_pulling_force
+    xv(s_wrk[0], Fpull_up, Fpull_up);
 
     // update binding probability P
     set_one(s_wrk[1]);
@@ -268,13 +295,24 @@ void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const
     }
 
     // calculate fp
-    // scale Fp_up by binding_probability
-    xv(binding_probability_up, Fp_up, Fp_up);
-    // scale Fp_up by density
-    xv(density_up, Fp_up, Fp_up);
+    // scale Fpull_up by binding_probability
+    xv(binding_probability_up, Fpull_up, Fpull_up);
+    // scale Fpull_up by density
+    xv(density_up, Fpull_up, Fpull_up);
 
-    // FIXME : update density
+    // calculate force on centrosome
+    if(Fcpull){
+        integrator_(Fpull_up, S_up->getAreaElement(), *Fcpull);
+        axpy(static_cast<value_type>(-1.0), *Fcpull, *Fcpull);
+    }
+    // calculate force on centrosome
+    if(Fcpush){
+        integrator_(Fpush_up, S_up->getAreaElement(), *Fcpush);
+        axpy(static_cast<value_type>(-1.0), *Fcpush, *Fcpush);
+    } 
+
     // begin to update density
+    // note that f_push does not advect density as in the model
     // if no advection apart from membrane vel, that's it, since for a vesicle w/ local area-conservation, div_s u = 0!  (not divs u_s = 0 !)
     // Lagrangian:    (d/dt)c + c (div_s u) = 0
     // f_p = pulling force vector per unit force generator,  eta_m = drag
@@ -298,7 +336,7 @@ void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const
     // sht_.lowPassFilter(density_up, s_wrk[0], s_wrk[1], density_up);
     // to do: add stretching term in case it's not const in some future setting?
     // need: compute v_p         ... add eta_m, D, f_p (???) to Parameter struct
-    axpy(1.0/params_.fg_drag_coeff, Fp_up, v_wrk[0]);  // f_p/eta
+    axpy(1.0/params_.fg_drag_coeff, Fpull_up, v_wrk[0]);  // f_p/eta
     S_up->mapToTangentSpace(v_wrk[0], false);   // overwrites u1, now v_p, tangential
     S_up->div(v_wrk[0], s_wrk[0]);                // wrk = div_s.(c v_p)
     // add D \Delta_s c = div_s (D grad_s c), and subtract from -dc/dt
@@ -317,14 +355,18 @@ void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const
     }
     */
 
-    //sht_.lowPassFilter(Fp_up, v_wrk[0], v_wrk[1], Fp_up);  //filter high frequency
+    //sht_.lowPassFilter(Fpull_up, v_wrk[0], v_wrk[1], Fpull_up);  //filter high frequency
+    //sht_.lowPassFilter(Fpush_up, v_wrk[0], v_wrk[1], Fpush_up);  //filter high frequency
     //sht_.lowPassFilter(impingement_rate_up, s_wrk[0], s_wrk[1], impingement_rate_up);  //filter high frequency
     //sht_.lowPassFilter(binding_probability_up, s_wrk[0], s_wrk[1], binding_probability_up);  //filter high frequency
     //sht_.lowPassFilter(density_up, s_wrk[0], s_wrk[1], density_up);  //filter high frequency
 
-    { // downsample Fp
-      Fp.replicate(S.getPosition());
-      Resample(Fp_up, sht_up_, sht_, v_wrk[0], v_wrk[1], Fp);
+    { // downsample Fpull
+      Fpull.replicate(S.getPosition());
+      Resample(Fpull_up, sht_up_, sht_, v_wrk[0], v_wrk[1], Fpull);
+      // downsample Fpush
+      Fpush.replicate(S.getPosition());
+      Resample(Fpush_up, sht_up_, sht_, v_wrk[0], v_wrk[1], Fpush);
       // downsample impingement_rate
       impingement_rate.replicate(S.getPosition());
       Resample(impingement_rate_up, sht_up_, sht_, s_wrk[0], s_wrk[1], impingement_rate);
@@ -348,11 +390,6 @@ void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const
         binding_probability.begin()[i] = 1;
     }
 
-    // calculate force on centrosome
-    if(Fc){
-        integrator_(Fp, S.getAreaElement(), *Fc);
-        axpy(static_cast<value_type>(-1.0), *Fc, *Fc);
-    }
 }
 
 template<typename SurfContainer>

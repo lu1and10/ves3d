@@ -77,6 +77,9 @@ Error_t Monitor<EvolveSurface>::operator()(const EvolveSurface *state,
              <<", t = "<<SCI_PRINT_FRMT<<t
              <<", dt = "<<SCI_PRINT_FRMT<<dt
              <<", centrosome_pulling = "<<SCI_PRINT_FRMT<<state->F_->centrosome_pulling_.begin()[0]<<" "<<state->F_->centrosome_pulling_.begin()[1]<<" "<<state->F_->centrosome_pulling_.begin()[2]
+             <<", centrosome_pushing = "<<SCI_PRINT_FRMT<<state->F_->centrosome_pushing_.begin()[0]<<" "<<state->F_->centrosome_pushing_.begin()[1]<<" "<<state->F_->centrosome_pushing_.begin()[2]
+             <<", centrosome_position = "<<SCI_PRINT_FRMT<<state->F_->centrosome_pos_[0]<<" "<<state->F_->centrosome_pos_[1]<<" "<<state->F_->centrosome_pos_[2]
+             <<", centrosome_velocity = "<<SCI_PRINT_FRMT<<state->F_->centrosome_vel_[0]<<" "<<state->F_->centrosome_vel_[1]<<" "<<state->F_->centrosome_vel_[2]
              <<", area error = "<<SCI_PRINT_FRMT<<(DA/A0_)
              <<", volume error = "<<SCI_PRINT_FRMT<<(DV/V0_)
              <<", volume = "<<SCI_PRINT_FRMT<<v0_new<<emph);
@@ -118,8 +121,8 @@ Error_t Monitor<EvolveSurface>::operator()(const EvolveSurface *state,
                 vtkfbase += suffix;
                 INFO("Writing VTK file "<<vtkfbase);
                 WriteVTK(*state->S_, vtkfbase.c_str(),
-                        {&(state->F_->pulling_force_), &(state->F_->bending_force_), &(state->F_->tensile_force_), &(state->F_->flux_), &(state->F_->pos_vel_)},
-                        {"f_p","f_b","f_s","flux","membrane_vel"},
+                        {&(state->F_->pulling_force_), &(state->F_->pushing_force_), &(state->F_->bending_force_), &(state->F_->tensile_force_), &(state->F_->flux_), &(state->F_->pos_vel_)},
+                        {"f_pull","f_push","f_bending","f_tensile","flux","membrane_vel"},
                         {&(state->F_->density_), &(state->F_->binding_probability_), &(state->F_->impingement_rate_), &(state->F_->tension_), &(state->S_->contact_indicator_)},
                         {"concentration","binding_prob","impingement_rate","tension","contact_indicator"},
                         -1, params_->periodic_length, state->F_->centrosome_pos_, 1, vtkfbase_centrosome.c_str());

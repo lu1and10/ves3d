@@ -27,26 +27,33 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
     stokes_(params_.sh_order,params_.upsample_freq,params_.periodic_length),
     S_up_(NULL)
 {
+    // allocate memory space
     pos_vel_.replicate(S_.getPosition());
     tension_.replicate(S_.getPosition());
     density_.replicate(S_.getPosition());
     binding_probability_.replicate(S_.getPosition());
     impingement_rate_.replicate(S_.getPosition());
     pulling_force_.replicate(S_.getPosition());
+    pushing_force_.replicate(S_.getPosition());
     bending_force_.replicate(S_.getPosition());
     tensile_force_.replicate(S_.getPosition());
     flux_.replicate(S_.getPosition());
     centrosome_pulling_.replicate(S_.getPosition());
+    centrosome_pushing_.replicate(S_.getPosition());
 
+    // init to zero
     pos_vel_.getDevice().Memset(pos_vel_.begin(), 0, sizeof(value_type)*pos_vel_.size());
     tension_.getDevice().Memset(tension_.begin(), 0, sizeof(value_type)*tension_.size());
     density_.getDevice().Memset(density_.begin(), 0, sizeof(value_type)*density_.size());
     binding_probability_.getDevice().Memset(binding_probability_.begin(), 0, sizeof(value_type)*binding_probability_.size());
     impingement_rate_.getDevice().Memset(impingement_rate_.begin(), 0, sizeof(value_type)*impingement_rate_.size());
     pulling_force_.getDevice().Memset(pulling_force_.begin(), 0, sizeof(value_type)*pulling_force_.size());
+    pushing_force_.getDevice().Memset(pushing_force_.begin(), 0, sizeof(value_type)*pushing_force_.size());
     bending_force_.getDevice().Memset(bending_force_.begin(), 0, sizeof(value_type)*bending_force_.size());
     tensile_force_.getDevice().Memset(tensile_force_.begin(), 0, sizeof(value_type)*tensile_force_.size());
     flux_.getDevice().Memset(flux_.begin(), 0, sizeof(value_type)*flux_.size());
+    centrosome_pulling_.getDevice().Memset(centrosome_pulling_.begin(), 0, sizeof(value_type)*centrosome_pulling_.size());
+    centrosome_pushing_.getDevice().Memset(centrosome_pushing_.begin(), 0, sizeof(value_type)*centrosome_pushing_.size());
 
     //Setting initial tension to zero
     tension_.getDevice().Memset(tension_.begin(), 0,
@@ -93,6 +100,13 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
     centrosome_pos_ = new value_type[VES3D_DIM];
     for(int i=0; i<VES3D_DIM; i++)
         centrosome_pos_[i] = params_.centrosome_position[i];
+
+    // store centrosome_vel in interfacial velocity class
+    centrosome_vel_ = new value_type[VES3D_DIM];
+    for(int i=0; i<VES3D_DIM; i++)
+        centrosome_vel_[i] = params_.centrosome_velocity[i]; 
+
+    // init denisty
     set_one(density_);
 }
 
@@ -113,6 +127,7 @@ InterfacialVelocity<SurfContainer, Interaction>::
 
     if(S_up_) delete S_up_;
     if(centrosome_pos_) delete[] centrosome_pos_;
+    if(centrosome_vel_) delete[] centrosome_vel_;
 }
 
 // Performs the following computation:
@@ -138,20 +153,21 @@ updateJacobiExplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     std::auto_ptr<Sca_t> wrk2 = checkoutSca();
 
     // puts u_inf and interaction in pos_vel_
-    // so pos_vel_ = u_inf + S[f_b+f_p+f_sigma] + \beta (f_b+f_p+f_sigma) \cdot n n
+    // so pos_vel_ = u_inf + S[f_b+f_pull+f_push+f_sigma] + \beta (f_b+f_pull+f_push+f_sigma) \cdot n n
     this->updateFarField(); // puts u_inf in pos_vel_ first
 
     Intfcl_force_.bendingForce(S_, bending_force_); // compute f_b
-    // calculate pulling_force_ and impingement_rate_; binding_probability_ and density_ are also updated
-    Intfcl_force_.pullingForce(S_, centrosome_pos_, binding_probability_, density_, pulling_force_, impingement_rate_, &centrosome_pulling_, &min_dist_); // f_p = c.P.f0.ksi, put it in pulling_force_ and compute impingement rate
-    axpy(static_cast<value_type>(1.0), bending_force_, pulling_force_, *u1); // compute f_b+f_p and put it in u1
+    // calculate pulling_force_, pushing_force_ and impingement_rate_; binding_probability_ and density_ are also updated
+    Intfcl_force_.pullingForce(S_, centrosome_pos_, centrosome_vel_, binding_probability_, density_, pulling_force_, pushing_force_, impingement_rate_, &centrosome_pulling_, &centrosome_pushing_, &min_dist_); // f_pull = c.P.f0.ksi and f_push, put it in pulling_force_ and compute impingement rate
+    axpy(static_cast<value_type>(1.0), bending_force_, pulling_force_, *u1); // compute f_b+f_pull and put it in u1
+    axpy(static_cast<value_type>(1.0), *u1, pushing_force_, *u1); // compute f_b+f_pull+f_push and put it in u1
 
-    CHK(stokes(*u1, *u2)); // compute S[f_b+f_p] and put it in u2
-    axpy(static_cast<value_type>(1.0), *u2, pos_vel_, pos_vel_); // add S[f_b+f_p] to pos_vel_, now pos_vel_ = u_inf + S[f_b+f_p]
+    CHK(stokes(*u1, *u2)); // compute S[f_b+f_pull+f_push] and put it in u2
+    axpy(static_cast<value_type>(1.0), *u2, pos_vel_, pos_vel_); // add S[f_b+f_pull+f_push] to pos_vel_, now pos_vel_ = u_inf + S[f_b+f_pull+f_push]
 
-    GeometricDot(*u1, S_.getNormal(), *wrk); // compute (f_p+f_b) \cdot n and put it in wrk
-    xv(*wrk, S_.getNormal(), *u2); // compute (f_p+f_b) \cdot n n and put it in u2
-    axpy(params_.permeability_coeff, *u2, pos_vel_, pos_vel_); // compute \beta (f_b+f_p) \cdot n n and add it in pos_vel_, now pos_vel_ = u_inf + S[f_b+f_p] + \beta (f_b+f_p) \cdot n n
+    GeometricDot(*u1, S_.getNormal(), *wrk); // compute (f_pull+f_push+f_b) \cdot n and put it in wrk
+    xv(*wrk, S_.getNormal(), *u2); // compute (f_pull+f_push+f_b) \cdot n n and put it in u2
+    axpy(params_.permeability_coeff, *u2, pos_vel_, pos_vel_); // compute \beta (f_b+f_pull+f_push) \cdot n n and add it in pos_vel_, now pos_vel_ = u_inf + S[f_b+f_pull+f_push] + \beta (f_b+f_pull+f_push) \cdot n n
 
     // compute tension
     CHK(getTension(pos_vel_, tension_));
@@ -159,30 +175,27 @@ updateJacobiExplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     // function Intfcl_force_.tensileForce returns the total tensile force, i.e., normal part + tangential part, fs = fs_normal + fs_tangential
     Intfcl_force_.tensileForce(S_, tension_, tensile_force_); // compute f_sigma and put it in tensile_force_
     CHK(stokes(tensile_force_, *u1)); // compute S[f_sigma] and put it in u2
-    axpy(static_cast<value_type>(1.0), *u1, pos_vel_, pos_vel_); // pos_vel_ = u_inf + S[f_b+f_p+f_sigma] + \beta (f_b+f_p) \cdot n n
+    axpy(static_cast<value_type>(1.0), *u1, pos_vel_, pos_vel_); // pos_vel_ = u_inf + S[f_b+f_pull+f_push+f_sigma] + \beta (f_b+f_pull+f_push) \cdot n n
 
     // TODO: optimization can be done if only normal part of tensile force can be returned.
     // we just need to scale the normal part by permeability_coeff \beta, the following computation can be shorten as,
     // axpy(params_.permeability_coeff, f_sigma_normal, pos_vel_, pos_vel_)
     GeometricDot(tensile_force_, S_.getNormal(), *wrk); // compute f_sigma \cdot n and put it in wrk
     xv(*wrk, S_.getNormal(), *u1); // compute f_sigma \cdot n n and put it in u2
-    axpy(params_.permeability_coeff, *u1, pos_vel_, pos_vel_); // compute pos_vel_ = u_inf + S[f_b+f_p+f_sigma] + \beta (f_b+f_p+f_sigma) \cdot n n
+    axpy(params_.permeability_coeff, *u1, pos_vel_, pos_vel_); // compute pos_vel_ = u_inf + S[f_b+f_pull+f_push+f_sigma] + \beta (f_b+f_pull+f_push+f_sigma) \cdot n n
 
-    axpy(static_cast<value_type>(1.0), *u1, *u2, flux_); // compute (f_b+f_p+f_sigma) \cdot n n
-    axpy(-params_.permeability_coeff, flux_, flux_); // compute flux = \beta (f_b+f_p+f_sigma) \cdot n n
+    axpy(static_cast<value_type>(1.0), *u1, *u2, flux_); // compute (f_b+f_pull+f_push+f_sigma) \cdot n n
+    axpy(-params_.permeability_coeff, flux_, flux_); // compute flux = \beta (f_b+f_pull+f_push+f_sigma) \cdot n n
 
     dx.replicate(S_.getPosition());
     axpy(dt_, pos_vel_, dx);         // what does 3-arg axpy do ? update pos_vel?, 3-arg axpy does ax -> y
 
-    // update centrosome_position
-    // artificial velocity
-    centrosome_pos_[0] += dt_ * params_.centrosome_velocity[0];
-    centrosome_pos_[1] += dt_ * params_.centrosome_velocity[1];
-    centrosome_pos_[2] += dt_ * params_.centrosome_velocity[2];
-    // drag model by pulling force on centrosome
-    centrosome_pos_[0] += dt_ * centrosome_pulling_.begin()[0] / params_.centrosome_drag_coeff;
-    centrosome_pos_[1] += dt_ * centrosome_pulling_.begin()[1] / params_.centrosome_drag_coeff;
-    centrosome_pos_[2] += dt_ * centrosome_pulling_.begin()[2] / params_.centrosome_drag_coeff;
+    // update centrosome_vel and centrosome_pos
+    for(int idim=0; idim<VES3D_DIM; idim++){
+        centrosome_vel_[idim] = params_.centrosome_velocity[idim] + centrosome_pulling_.begin()[idim] / params_.centrosome_drag_coeff
+                                                                  + centrosome_pushing_.begin()[idim] / params_.centrosome_drag_coeff;
+        centrosome_pos_[idim] += dt_ * centrosome_vel_[idim];
+    }
 
     recycle(u1);
     recycle(u2);

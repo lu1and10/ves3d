@@ -83,13 +83,16 @@ class InterfacialVelocity
     mutable Sca_t binding_probability_;
     mutable Sca_t impingement_rate_;
     mutable Vec_t pulling_force_;
+    mutable Vec_t pushing_force_;
     mutable Vec_t bending_force_;
     mutable Vec_t tensile_force_;
     mutable Vec_t flux_;
     mutable value_type* centrosome_pos_;
+    mutable value_type* centrosome_vel_;
     mutable Vec_t pos_vel_;
     mutable Sca_t tension_;
     mutable Vec_t centrosome_pulling_;
+    mutable Vec_t centrosome_pushing_;
     mutable value_type min_dist_;
   private:
     SurfContainer &S_;
