@@ -158,7 +158,7 @@ updateJacobiExplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
 
     Intfcl_force_.bendingForce(S_, bending_force_); // compute f_b
     // calculate pulling_force_, pushing_force_ and impingement_rate_; binding_probability_ and density_ are also updated
-    Intfcl_force_.pullingForce(S_, centrosome_pos_, centrosome_vel_, binding_probability_, density_, pulling_force_, pushing_force_, impingement_rate_, &centrosome_pulling_, &centrosome_pushing_, &min_dist_); // f_pull = c.P.f0.ksi and f_push, put it in pulling_force_ and compute impingement rate
+    Intfcl_force_.pullingForce(S_, centrosome_pos_, centrosome_vel_, binding_probability_, density_, pulling_force_, pushing_force_, impingement_rate_, &centrosome_pulling_, &centrosome_pushing_, &min_dist_); // calculate f_pull = c.P.f0.ksi and put it in pulling_force_; also calculate f_push and compute impingement rate
     axpy(static_cast<value_type>(1.0), bending_force_, pulling_force_, *u1); // compute f_b+f_pull and put it in u1
     axpy(static_cast<value_type>(1.0), *u1, pushing_force_, *u1); // compute f_b+f_pull+f_push and put it in u1
 
