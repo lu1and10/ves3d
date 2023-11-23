@@ -213,39 +213,30 @@ void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const
     // at this point Fpull_up stores the unit direction of pullingForce
     // s_wrk[0] stores the distance between centrosome and membrane points
 
-    // calaculate pushing force
-    // get pushing force coefficient
-    value_type pushing_coeff = params_.mt_nucleation_rate * params_.mt_pushing_force / (params_.mt_catastrophe_rate * 4.0 * M_PI);
-    xy(s_wrk[0], s_wrk[0], s_wrk[1]); // D^2
-    //xy(s_wrk[1], s_wrk[1], s_wrk[1]); // D^4
-    xInv(s_wrk[1], s_wrk[1]); // 1/D^2
-    axpy(-pushing_coeff, s_wrk[1], s_wrk[1]); // -pushing_coeff/D^2
-    xv(s_wrk[1], Fpull_up, Fpush_up); // pushing_force =  -pushing_coeff / D^2 * \hat\xi
-
     // calculate the impingement rate
-    set_one(s_wrk[1]);
-    axpy(1.0/params_.fg_radius, s_wrk[0], s_wrk[2]);
-    xy(s_wrk[2], s_wrk[2], s_wrk[2]);
-    axpy(1.0, s_wrk[1], s_wrk[2], s_wrk[2]);
-    Sqrt(s_wrk[2], s_wrk[2]);
-    xyInv(s_wrk[1], s_wrk[2], s_wrk[2]);
-    axpy(-1.0, s_wrk[2], s_wrk[1], s_wrk[2]);
-    axpy(0.5*params_.mt_nucleation_rate/params_.mt_growth_velocity, s_wrk[2], s_wrk[2]);
-    axpy(-params_.mt_catastrophe_rate/params_.mt_growth_velocity, s_wrk[0], s_wrk[1]);
-    Exp(s_wrk[1], s_wrk[1]);
-    xy(s_wrk[1], s_wrk[2], s_wrk[1]);
-    xv(s_wrk[1], S_up->getNormal(), v_wrk[0]);
-    axpy(params_.mt_growth_velocity, Fpull_up, v_wrk[1]);
+    set_one(s_wrk[1]); // 1
+    axpy(1.0/params_.fg_radius, s_wrk[0], s_wrk[2]); // s_wrk2 = D/r_m
+    xyInv(s_wrk[1], s_wrk[2], s_wrk[2]); // s_wrk2 = r_m/D
+    xy(s_wrk[2], s_wrk[2], s_wrk[2]); // s_wrk2 = (r_m/D)^2
+    axpy(1.0, s_wrk[1], s_wrk[2], s_wrk[2]); // s_wrk2 = 1 + (r_m/D)^2
+    Sqrt(s_wrk[2], s_wrk[2]); // s_wrk2 = sqrt(1+(r_m/D)^2)
+    xyInv(s_wrk[1], s_wrk[2], s_wrk[2]); // s_wrk2 = 1/sqrt(1+(r_m/D)^2)
+    axpy(-1.0, s_wrk[2], s_wrk[1], s_wrk[2]); //s_wrk2 = 1 - 1/sqrt(1+(r_m/D)^2)
+    axpy(0.5, s_wrk[2], s_wrk[2]); // s_wrk[2] = 0.5*(1 - 1/sqrt(1+(r_m/D)^2))
+    axpy(-params_.mt_catastrophe_rate/params_.mt_growth_velocity, s_wrk[0], s_wrk[1]); // s_wrk[1] = -k_cat/V_g * D
+    Exp(s_wrk[1], s_wrk[1]); // s_wrk[1] = exp(-k_cat/V_g*D)
+    axpy(params_.mt_nucleation_rate/params_.mt_growth_velocity, s_wrk[1], s_wrk[1]); // s_wrk[1] = \dot{n}/V_g * exp(-k_cat/V_g*D)
+    xv(s_wrk[1], S_up->getNormal(), v_wrk[0]); // v_wrk[0] = \dot{n}/V_g * exp(-k_cat/V_g*D) * n
+    axpy(params_.mt_growth_velocity, Fpull_up, v_wrk[1]); // v_wrk[1] = V_g * \xi
     // FIXME: subtract the last time step centrosome velocity from v_wrk[1]
     // need to put this loop(each 3D-vector of vector field minus const 3D-vector) to help functions
     for(int idim=0; idim<VES3D_DIM; idim++){
       #pragma omp parallel for
       for(int i=0; i<N; i++){
-        v_wrk[1].begin()[idim*N+i] -= centrosome_velocity[idim];
+        v_wrk[1].begin()[idim*N+i] -= centrosome_velocity[idim]; // v_wrk[1] = Vg*\xi - Vc
       }
     }
-    GeometricDot(v_wrk[0], v_wrk[1], impingement_rate_up);
-
+    GeometricDot(v_wrk[0], v_wrk[1], impingement_rate_up); // impingement_rate_up = (\dot{n}/V_g * exp(-k_cat/V_g*D) * n)*(Vg*\xi - Vc)
     // only consider the surface points which centrosome can directly connent to
     // TODO: use ray tracing for complex shapes and get number of collisions to the surface
     // now only consider force direction dot with outward normal
@@ -259,9 +250,12 @@ void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const
         if(impingement_rate_up.begin()[i] < 0) impingement_rate_up.begin()[i] = 0;
     }
     // now, impingement_rate has been updated in upsampled space
+    // calaculate pushing force
+    xv(impingement_rate_up, Fpull_up, Fpush_up);
+    axpy(-params_.mt_pushing_force, Fpush_up, Fpush_up);
 
-    // scale Fpush_up by smoothed indicator function
-    xv(S_up->contact_indicator_, Fpush_up, Fpush_up);
+    // get impingement_rate_up
+    xv(s_wrk[2], impingement_rate_up, impingement_rate_up); // impingement_rate_up = 0.5*(1 - 1/sqrt(1+(r_m/D)^2)) * (\dot{n}/V_g * exp(-k_cat/V_g*D) * n)*(Vg*\xi - Vc)
 
     // scale Fpull_up by smoothed indicator function times fg_pulling_force
     xv(s_wrk[0], Fpull_up, Fpull_up);
