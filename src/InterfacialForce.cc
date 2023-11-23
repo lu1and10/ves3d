@@ -255,7 +255,7 @@ void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const
     axpy(-params_.mt_pushing_force, Fpush_up, Fpush_up);
 
     // get impingement_rate_up
-    xv(s_wrk[2], impingement_rate_up, impingement_rate_up); // impingement_rate_up = 0.5*(1 - 1/sqrt(1+(r_m/D)^2)) * (\dot{n}/V_g * exp(-k_cat/V_g*D) * n)*(Vg*\xi - Vc)
+    xy(s_wrk[2], impingement_rate_up, impingement_rate_up); // impingement_rate_up = 0.5*(1 - 1/sqrt(1+(r_m/D)^2)) * (\dot{n}/V_g * exp(-k_cat/V_g*D) * n)*(Vg*\xi - Vc)
 
     // scale Fpull_up by smoothed indicator function times fg_pulling_force
     xv(s_wrk[0], Fpull_up, Fpull_up);
