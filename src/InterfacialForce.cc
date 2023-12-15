@@ -252,7 +252,7 @@ void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const
     // by now, s_wrk[1] stores the smooth_factor * fg_pulling_force
     // by now, impingement_rate has been updated in upsampled space
 
-    // calaculate pushing force
+    // calculate pushing force
     xy(s_wrk[0], s_wrk[0], s_wrk[0]); // s_wrk[0] = D^2
     uyInv(Fpull_up, s_wrk[0], Fpush_up); // Fpush_up = unit direction of pullingForce / D^2
     xv(impingement_rate_up, Fpush_up, Fpush_up); // Fpush_up = pushing_impingement_rate * unit direction of pullingForce / D^2
