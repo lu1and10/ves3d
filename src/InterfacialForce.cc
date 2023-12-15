@@ -240,25 +240,29 @@ void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const
     // only consider the surface points which centrosome can directly connent to
     // TODO: use ray tracing for complex shapes and get number of collisions to the surface
     // now only consider force direction dot with outward normal
-    GeometricDot(Fpull_up, S_up->getNormal(), s_wrk[0]);
+    GeometricDot(Fpull_up, S_up->getNormal(), s_wrk[1]);  //compute angle store in s_wrk[1]
     #pragma omp parallel for
-    for(int i=0; i<s_wrk[0].size(); i++){
-        value_type smooth_factor = (1.0+tanh(s_wrk[0].begin()[i]*40.0))/2;
+    for(int i=0; i<s_wrk[1].size(); i++){
+        value_type smooth_factor = (1.0+tanh(s_wrk[1].begin()[i]*40.0))/2;
         S_up->contact_indicator_.begin()[i] = smooth_factor;
-        s_wrk[0].begin()[i] = smooth_factor * params_.fg_pulling_force;
+        s_wrk[1].begin()[i] = smooth_factor * params_.fg_pulling_force;
         impingement_rate_up.begin()[i] *= smooth_factor;
         if(impingement_rate_up.begin()[i] < 0) impingement_rate_up.begin()[i] = 0;
     }
-    // now, impingement_rate has been updated in upsampled space
+    // by now, s_wrk[1] stores the smooth_factor * fg_pulling_force
+    // by now, impingement_rate has been updated in upsampled space
+
     // calaculate pushing force
-    xv(impingement_rate_up, Fpull_up, Fpush_up);
-    axpy(-params_.mt_pushing_force, Fpush_up, Fpush_up);
+    xy(s_wrk[0], s_wrk[0], s_wrk[0]); // s_wrk[0] = D^2
+    uyInv(Fpull_up, s_wrk[0], Fpush_up); // Fpush_up = unit direction of pullingForce / D^2
+    xv(impingement_rate_up, Fpush_up, Fpush_up); // Fpush_up = pushing_impingement_rate * unit direction of pullingForce / D^2
+    axpy(-params_.mt_pushing_force, Fpush_up, Fpush_up); // scale fpush_up by mt_pushing_force and negate force direction
 
     // get impingement_rate_up
     xy(s_wrk[2], impingement_rate_up, impingement_rate_up); // impingement_rate_up = 0.5*(1 - 1/sqrt(1+(r_m/D)^2)) * (\dot{n}/V_g * exp(-k_cat/V_g*D) * n)*(Vg*\xi - Vc)
 
     // scale Fpull_up by smoothed indicator function times fg_pulling_force
-    xv(s_wrk[0], Fpull_up, Fpull_up);
+    xv(s_wrk[1], Fpull_up, Fpull_up);
 
     // update binding probability P
     set_one(s_wrk[1]);
