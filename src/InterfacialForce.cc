@@ -243,7 +243,7 @@ void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const
     GeometricDot(Fpull_up, S_up->getNormal(), s_wrk[1]);  //compute angle store in s_wrk[1]
     #pragma omp parallel for
     for(int i=0; i<s_wrk[1].size(); i++){
-        value_type smooth_factor = (1.0+tanh(s_wrk[1].begin()[i]*40.0))/2;
+        value_type smooth_factor = (1.0+tanh(s_wrk[1].begin()[i]*params_.mt_smooth_factor))/2;
         S_up->contact_indicator_.begin()[i] = smooth_factor;
         s_wrk[1].begin()[i] = smooth_factor * params_.fg_pulling_force;
         impingement_rate_up.begin()[i] *= smooth_factor;
@@ -339,8 +339,7 @@ void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const
     S_up->div(v_wrk[0], s_wrk[0]);                // wrk = div_s.(c v_p)
     // add D \Delta_s c = div_s (D grad_s c), and subtract from -dc/dt
     S_up->grad(density_up, v_wrk[0]);
-    set_zero(v_wrk[1]);
-    axpy(-params_.diffusion_rate, v_wrk[0], v_wrk[1], v_wrk[0]);      // u1 <-  -D grad_s c
+    axpy(-params_.diffusion_rate, v_wrk[0], v_wrk[0]);      // u1 <-  -D grad_s c
     S_up->div(v_wrk[0], s_wrk[1]);              // wrk2 <-  div_s (-D grad_s c)
     axpy(1.0, s_wrk[0], s_wrk[1], s_wrk[0]);     // wrk = add advection plus diffusion
     axpy(-params_.ts, s_wrk[0], density_up, density_up);          // den -= dt*wrk
