@@ -569,3 +569,18 @@ void set_exp_simple(const VectorContainer &x, const typename ScalarContainer::va
       out.begin()[idx] = std::exp(-std::sqrt(d2));
     }
 }
+
+template<typename ScalarContainer>
+void chi(const ScalarContainer &x_in, const ScalarContainer &one_in,
+    ScalarContainer &chi_out)
+{
+    ASSERT(AreCompatible(x_in,y_in),"Incompatible containers");
+    ASSERT(AreCompatible(y_in,xyInv_out),"Incompatible containers");
+
+    xy(x_in, x_in, chi_out); // chi_out= x_in^2
+    axpy(1.0, one_in, chi_out, chi_out); // chi_out = 1 + x_in^2
+    Sqrt(chi_out, chi_out); // chi_out = sqrt(1+x_in^2)
+    xyInv(one_in, chi_out, chi_out); // chi_out = 1/sqrt(1+x_in^2)
+    axpy(-1.0, chi_out, one_in, chi_out); // chi_out = 1 - 1/sqrt(1+x_in^2)
+    axpy(0.5, chi_out, chi_out); // chi_out = 0.5*(1 - 1/sqrt(1+x_in^2))
+}

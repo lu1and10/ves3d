@@ -21,6 +21,7 @@ MovePole<Container, Operators>::MovePole(const Operators &mats) :
     eager_results_(NULL),
     eager_last_latitude_(-1)
 {
+    return;
     if ( mats.all_rot_mats_ == NULL )
         all_rot_mats_.resize(0);
     else
@@ -91,6 +92,7 @@ MovePole<Container, Operators>::MovePole(const Operators &mats) :
 template<typename Container, typename Operators>
 MovePole<Container, Operators>::~MovePole()
 {
+    return;
     Container::getDevice().Free(row_idx);
     Container::getDevice().Free(col_idx);
     delete[] shc_;

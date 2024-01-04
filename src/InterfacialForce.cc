@@ -211,18 +211,9 @@ void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const
     uyInv(Fpull_up, s_wrk[0], Fpull_up);
     *min_dist = MinAbs(s_wrk[0]);
     // at this point Fpull_up stores the unit direction of pullingForce
-    // s_wrk[0] stores the distance between centrosome and membrane points
+    // s_wrk[0] stores the distance between centrosome and membrane points ,i.e., D
 
-    // calculate the impingement rate
-    set_one(s_wrk[1]); // 1
-    axpy(1.0/params_.fg_radius, s_wrk[0], s_wrk[2]); // s_wrk2 = D/r_m
-    xyInv(s_wrk[1], s_wrk[2], s_wrk[2]); // s_wrk2 = r_m/D
-    xy(s_wrk[2], s_wrk[2], s_wrk[2]); // s_wrk2 = (r_m/D)^2
-    axpy(1.0, s_wrk[1], s_wrk[2], s_wrk[2]); // s_wrk2 = 1 + (r_m/D)^2
-    Sqrt(s_wrk[2], s_wrk[2]); // s_wrk2 = sqrt(1+(r_m/D)^2)
-    xyInv(s_wrk[1], s_wrk[2], s_wrk[2]); // s_wrk2 = 1/sqrt(1+(r_m/D)^2)
-    axpy(-1.0, s_wrk[2], s_wrk[1], s_wrk[2]); //s_wrk2 = 1 - 1/sqrt(1+(r_m/D)^2)
-    axpy(0.5, s_wrk[2], s_wrk[2]); // s_wrk[2] = 0.5*(1 - 1/sqrt(1+(r_m/D)^2))
+    // calculate geometric factor and the impingement rate for pushing
     axpy(-params_.mt_catastrophe_rate/params_.mt_growth_velocity, s_wrk[0], s_wrk[1]); // s_wrk[1] = -k_cat/V_g * D
     Exp(s_wrk[1], s_wrk[1]); // s_wrk[1] = exp(-k_cat/V_g*D)
     axpy(params_.mt_nucleation_rate/params_.mt_growth_velocity, s_wrk[1], s_wrk[1]); // s_wrk[1] = \dot{n}/V_g * exp(-k_cat/V_g*D)
@@ -245,24 +236,30 @@ void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const
     for(int i=0; i<s_wrk[1].size(); i++){
         value_type smooth_factor = (1.0+tanh(s_wrk[1].begin()[i]*params_.mt_smooth_factor))/2;
         S_up->contact_indicator_.begin()[i] = smooth_factor;
-        s_wrk[1].begin()[i] = smooth_factor * params_.fg_pulling_force;
-        impingement_rate_up.begin()[i] *= smooth_factor;
-        if(impingement_rate_up.begin()[i] < 0) impingement_rate_up.begin()[i] = 0;
+        impingement_rate_up.begin()[i] *= smooth_factor; // impingement_rate_up = (\dot{n}/V_g * exp(-k_cat/V_g*D) * n)*(Vg*\xi - Vc)*contact_indicator_
+        if(impingement_rate_up.begin()[i] < 0) impingement_rate_up.begin()[i] = 0; // cap impingement_rate_up
     }
-    // by now, s_wrk[1] stores the smooth_factor * fg_pulling_force
-    // by now, impingement_rate has been updated in upsampled space
+    // by now, impingement_rate without chi factor has been updated in upsampled space
 
     // calculate pushing force
-    xy(s_wrk[0], s_wrk[0], s_wrk[0]); // s_wrk[0] = D^2
-    uyInv(Fpull_up, s_wrk[0], Fpush_up); // Fpush_up = unit direction of pullingForce / D^2
-    xv(impingement_rate_up, Fpush_up, Fpush_up); // Fpush_up = pushing_impingement_rate * unit direction of pullingForce / D^2
+    set_one(s_wrk[1]); // 1
+    axpy(1.0/M_PI, S_up->getAreaElement(), s_wrk[2]); // ds/pi
+    Sqrt(s_wrk[2], s_wrk[2]); // rp = sqrt(ds/pi)
+    xyInv(s_wrk[2], s_wrk[0], s_wrk[2]); // s_wrk2 = rp/D
+    chi(s_wrk[2], s_wrk[1], s_wrk[2]); // s_wrk2 = 0.5*(1 - 1/sqrt(1+(rp/D)^2))
+    xv(s_wrk[2], Fpull_up, Fpush_up); // Fpush_up = unit direction of pullingForce * chi(rp/D)
+    xv(impingement_rate_up, Fpush_up, Fpush_up); // Fpush_up = pushing_impingement_rate * unit direction of pullingForce * chi(rp/D)
     axpy(-params_.mt_pushing_force, Fpush_up, Fpush_up); // scale fpush_up by mt_pushing_force and negate force direction
 
-    // get impingement_rate_up
-    xy(s_wrk[2], impingement_rate_up, impingement_rate_up); // impingement_rate_up = 0.5*(1 - 1/sqrt(1+(r_m/D)^2)) * (\dot{n}/V_g * exp(-k_cat/V_g*D) * n)*(Vg*\xi - Vc)
+    // get impingement_rate_up for pulling
+    axpy(1.0/params_.fg_radius, s_wrk[0], s_wrk[2]); // s_wrk2 = D/r_m
+    xInv(s_wrk[2], s_wrk[2]); // s_wrk2 = r_m/D
+    chi(s_wrk[2], s_wrk[1], s_wrk[2]); // s_wrk2 = 0.5*(1 - 1/sqrt(1+(r_m/D)^2))
+    xy(s_wrk[2], impingement_rate_up, impingement_rate_up); // impingement_rate_up = 0.5*(1 - 1/sqrt(1+(r_m/D)^2)) * (\dot{n}/V_g * exp(-k_cat/V_g*D) * n)*(Vg*\xi - Vc)*contact_indicator_
 
     // scale Fpull_up by smoothed indicator function times fg_pulling_force
-    xv(s_wrk[1], Fpull_up, Fpull_up);
+    axpy(params_.fg_pulling_force, Fpull_up, Fpull_up);
+    xv(S_up->contact_indicator_, Fpull_up, Fpull_up);
 
     // update binding probability P
     set_one(s_wrk[1]);
@@ -307,7 +304,7 @@ void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const
     if(Fcpush){
         integrator_(Fpush_up, S_up->getAreaElement(), *Fcpush);
         axpy(static_cast<value_type>(-1.0), *Fcpush, *Fcpush);
-    } 
+    }
 
     // begin to update density
     // note that f_push does not advect density as in the model
