@@ -243,7 +243,8 @@ void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const
 
     // calculate pushing force
     set_one(s_wrk[1]); // 1
-    axpy(1.0/M_PI, S_up->getAreaElement(), s_wrk[2]); // ds/pi
+    xy(S_up->getAreaElement(), *integrator_.getQuadWeights(params_.upsample_freq), s_wrk[2]); // ds = sqrt(EG-F) * quadrature weight -> s_wrk2
+    axpy(1.0/M_PI, s_wrk[2], s_wrk[2]); // ds/pi
     Sqrt(s_wrk[2], s_wrk[2]); // rp = sqrt(ds/pi)
     xyInv(s_wrk[2], s_wrk[0], s_wrk[2]); // s_wrk2 = rp/D
     chi(s_wrk[2], s_wrk[1], s_wrk[2]); // s_wrk2 = 0.5*(1 - 1/sqrt(1+(rp/D)^2))
