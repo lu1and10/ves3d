@@ -130,8 +130,13 @@ void Reduce(const Container &w_in, const Container &quad_w_in,
 template<typename ScalarContainer>
 typename ScalarContainer::value_type Max(const ScalarContainer &x_in)
 {
-    return(x_in.getDevice().Max(x_in.begin(),
-            x_in.getStride() * x_in.getNumSubFuncs()));
+    return(x_in.getDevice().Max(x_in.begin(),x_in.size()));
+}
+
+template<typename ScalarContainer>
+typename ScalarContainer::value_type Min(const ScalarContainer &x_in)
+{
+    return(x_in.getDevice().Min(x_in.begin(),x_in.size()));
 }
 
 template<typename Container>

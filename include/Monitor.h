@@ -34,6 +34,7 @@ class Monitor : public MonitorBase<EvolveSurface>
     int time_idx_;
     DictString_t d_;
     const Parameters<value_type> *params_;
+    typename EvolveSurface::Vec_t v_work;
 
   public:
     Monitor(const Parameters<value_type> *params);

@@ -646,6 +646,82 @@ T Device<CPU>::MinAbs(const T *x_in, size_t length) const
 
 template<>
 template<typename T>
+T Device<CPU>::Max(const T *x_in, size_t length) const
+{
+    PROFILESTART();
+    T *max_arr;
+    int n_threads;
+
+    if (length == 0)
+        return 0;
+
+#pragma omp parallel
+    {
+        if(omp_get_thread_num() == 0)
+            max_arr= (T*) this->Malloc(omp_get_num_threads() * sizeof(T));
+
+        T max_loc = *x_in;
+#pragma omp for
+        for(size_t idx = 0;idx<length;idx++)
+            max_loc = (max_loc > x_in[idx]) ?
+                max_loc : x_in[idx];
+
+        max_arr[omp_get_thread_num()] =  max_loc;
+
+        if(omp_get_thread_num() == 0)
+            n_threads = omp_get_num_threads();
+    }
+
+    T max=max_arr[0];
+    for(size_t idx = 0;idx<n_threads;idx++)
+        max = (max > max_arr[idx]) ? max : max_arr[idx];
+
+    Free(max_arr);
+
+    PROFILEEND("CPU",0);
+    return(max);
+}
+
+template<>
+template<typename T>
+T Device<CPU>::Min(const T *x_in, size_t length) const
+{
+    PROFILESTART();
+    T *min_arr;
+    int n_threads;
+
+    if (length == 0)
+        return 0;
+
+#pragma omp parallel
+    {
+        if(omp_get_thread_num() == 0)
+            min_arr= (T*) this->Malloc(omp_get_num_threads() * sizeof(T));
+
+        T min_loc = *x_in;
+#pragma omp for
+        for(size_t idx = 0;idx<length;idx++)
+            min_loc = (min_loc < x_in[idx]) ?
+                min_loc : x_in[idx];
+
+        min_arr[omp_get_thread_num()] =  min_loc;
+
+        if(omp_get_thread_num() == 0)
+            n_threads = omp_get_num_threads();
+    }
+
+    T min=min_arr[0];
+    for(size_t idx = 0;idx<n_threads;idx++)
+        min = (min < min_arr[idx]) ? min : min_arr[idx];
+
+    Free(min_arr);
+
+    PROFILEEND("CPU",0);
+    return(min);
+}
+
+template<>
+template<typename T>
 T* Device<CPU>::Transpose(const T *in, size_t height, size_t width, T *out) const
 {
     assert(out != in || height * width == 0);

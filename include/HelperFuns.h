@@ -44,6 +44,10 @@ template<typename ScalarContainer>
 inline typename ScalarContainer::value_type Max(
     const ScalarContainer &x_in);
 
+template<typename ScalarContainer>
+inline typename ScalarContainer::value_type Min(
+    const ScalarContainer &x_in);
+
 template<typename Container>
 inline void fillRand(Container &x_in);
 

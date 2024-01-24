@@ -50,6 +50,9 @@ Error_t Monitor<EvolveSurface>::operator()(const EvolveSurface *state,
     const typename EvolveSurface::Sca_t::device_type& device=EvolveSurface::Sca_t::getDevice();
     size_t N_ves=state->S_->getPosition().getNumSubs();
 
+    v_work.replicate(state->S_->getPosition());
+    state->S_->grad(state->F_->tension_, v_work);
+
     area_new.replicate(state->S_->getPosition());
     vol_new .replicate(state->S_->getPosition());
     state->S_->area  (area_new);
@@ -88,7 +91,14 @@ Error_t Monitor<EvolveSurface>::operator()(const EvolveSurface *state,
              <<", rel err in mass cons: " << std::setprecision(3) << abs(state->mass_after_-state->mass_before_)/abs(state->mass_before_)
              <<", binding prob integral: " << std::setprecision(8) << state->int_binding_
              <<", contact area: " << std::setprecision(8) << state->contact_area_
-             <<", min distance: " << std::setprecision(8) << state->F_->min_dist_ << emph);
+             <<", min distance: " << std::setprecision(8) << state->F_->min_dist_
+             <<", max C: " << std::setprecision(8) << Max(state->F_->density_)
+             <<", min C: " << std::setprecision(8) << Min(state->F_->density_)
+             <<", max mean curvature: " << std::setprecision(8) << Max(state->S_->getMeanCurv())
+             <<", min mean curvature: " << std::setprecision(8) << Min(state->S_->getMeanCurv())
+             <<", max tension: " << std::setprecision(8) << Max(state->F_->tension_)
+             <<", min tension: " << std::setprecision(8) << Min(state->F_->tension_)
+             <<", max flux: " << std::setprecision(8) << Max(state->F_->flux_) << emph);
 
         int checkpoint_index(checkpoint_stride_ <= 0 ? last_checkpoint_+1 : t/checkpoint_stride_);
 
@@ -122,8 +132,8 @@ Error_t Monitor<EvolveSurface>::operator()(const EvolveSurface *state,
                 INFO("Writing VTK file "<<vtkfbase);
                 WriteVTK(*state->S_, vtkfbase.c_str(),
                         {&(state->F_->pulling_force_), &(state->F_->pushing_force_), &(state->F_->bending_force_), &(state->F_->tensile_force_), &(state->F_->flux_), &(state->F_->pos_vel_)},
-                        {"f_pull","f_push","f_bending","f_tensile","flux","membrane_vel"},
-                        {&(state->F_->density_), &(state->F_->binding_probability_), &(state->F_->impingement_rate_), &(state->F_->tension_), &(state->S_->contact_indicator_)},
+                        {"f_pull","f_push","f_bending","f_tensile","flux","membrane_vel", "surf_grad_tension"},
+                        {&(state->F_->density_), &(state->F_->binding_probability_), &(state->F_->impingement_rate_), &(state->F_->tension_), &(state->S_->contact_indicator_), &v_work},
                         {"concentration","binding_prob","impingement_rate","tension","contact_indicator"},
                         -1, params_->periodic_length, state->F_->centrosome_pos_, 1, vtkfbase_centrosome.c_str());
             }

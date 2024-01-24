@@ -226,6 +226,12 @@ class Device
     T MinAbs(const T *x_in, size_t length) const;
 
     template<typename T>
+    T Max(const T *x_in, size_t length) const;
+
+    template<typename T>
+    T Min(const T *x_in, size_t length) const;
+
+    template<typename T>
     void fillRand(T *x_in, size_t length) const;
 
     //! Transpose of a matrix
