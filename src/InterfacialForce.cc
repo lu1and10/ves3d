@@ -332,7 +332,20 @@ void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const
     // sht_.lowPassFilter(density_up, s_wrk[0], s_wrk[1], density_up);
     // to do: add stretching term in case it's not const in some future setting?
     // need: compute v_p         ... add eta_m, D, f_p (???) to Parameter struct
-    axpy(1.0/params_.fg_drag_coeff, Fpull_up, v_wrk[0]);  // f_p/eta
+    // start to calculate drag for concentration
+    set_one(s_wrk[0]); // s_wrk0 = 1
+    axpy(params_.concentration_thresh, s_wrk[0], s_wrk[0]); // s_wrk0 = c1
+    axpy(-1.0, s_wrk[0], density_up, s_wrk[0]); // s_wrk0 = c - c1
+    axpy(params_.mt_smooth_factor, s_wrk[0], s_wrk[0]); // s_wrk0 = smooth_factor * (c - c1)
+    // s_wrk0 = 1.0 + eta_delta * (1.0 + tanh(smooth_factor*(c-c1))) / 2.0
+    #pragma omp parallel for
+    for(int i=0; i<s_wrk[0].size(); i++) {
+        s_wrk[0].begin()[i] =  1.0 + params_.fg_drag_coeff_delta * (1.0 + tanh(s_wrk[0].begin()[i])) / 2.0;
+    }
+    axpy(params_.fg_drag_coeff, s_wrk[0], s_wrk[0]); // s_wrk0 = eta0 * (1.0 + eta_delta * (1.0 + tanh(smooth_factor*(c-c1))) / 2.0)
+    // now drag for concentration is stored in s_wrk[0]
+    uyInv(Fpull_up, s_wrk[0], v_wrk[0]); // f_p/eta -> v_wrk0
+    //axpy(1.0/params_.fg_drag_coeff, Fpull_up, v_wrk[0]);  // f_p/eta
     S_up->mapToTangentSpace(v_wrk[0], false);   // overwrites u1, now v_p, tangential
     S_up->div(v_wrk[0], s_wrk[0]);                // wrk = div_s.(c v_p)
     // add D \Delta_s c = div_s (D grad_s c), and subtract from -dc/dt

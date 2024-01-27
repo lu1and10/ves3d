@@ -32,6 +32,8 @@ void Parameters<T>::init()
     fg_detachment_rate      = 0.0;
     fg_radius               = 0.0;
     fg_drag_coeff           = 1.0;
+    fg_drag_coeff_delta     = 2.0;
+    concentration_thresh    = 2.0;
     centrosome_drag_coeff   = 1e16;
     centrosome_position[0]  = 0.0;
     centrosome_position[1]  = 0.0;
@@ -188,6 +190,8 @@ void Parameters<T>::setUsage(AnyOption *opt)
     opt->addUsage( "          --fg-detachment-rate     The centrosome fg detachment rate" );
     opt->addUsage( "          --fg-radius              The centrosome fg radius" );
     opt->addUsage( "          --fg-drag-coeff          The centrosome fg drag coefficient" );
+    opt->addUsage( "          --fg-drag-coeff-delta    The centrosome fg drag coefficient delta" );
+    opt->addUsage( "          --concentration-thresh   The concentration threshold to increase fg drag coefficient" );
     opt->addUsage( "          --centrosome-drag-coeff  The centrosome drag coefficient" );
     opt->addUsage( "          --centrosome-position    The centrosome position" );
     opt->addUsage( "          --centrosome-velocity    The centrosome velocity" );
@@ -306,6 +310,8 @@ void Parameters<T>::setOptions(AnyOption *opt)
     opt->setOption( "fg-detachment-rate" );
     opt->setOption( "fg-radius" );
     opt->setOption( "fg-drag-coeff" );
+    opt->setOption( "fg-drag-coeff-delta" );
+    opt->setOption( "concentration-thresh" );
     opt->setOption( "centrosome-drag-coeff" );
     opt->setOption( "centrosome-position" );
     opt->setOption( "centrosome-velocity" );
@@ -400,6 +406,12 @@ void Parameters<T>::getOptionValues(AnyOption *opt)
 
     if( opt->getValue( "fg-drag-coeff" ) != NULL )
         fg_drag_coeff = atof(opt->getValue( "fg-drag-coeff" ));
+
+    if( opt->getValue( "fg-drag-coeff-delta" ) != NULL )
+        fg_drag_coeff_delta = atof(opt->getValue( "fg-drag-coeff-delta" ));
+
+    if( opt->getValue( "concentration-thresh" ) != NULL )
+        concentration_thresh = atof(opt->getValue( "concentration-thresh" ));
 
     if( opt->getValue( "centrosome-drag-coeff" ) != NULL )
         centrosome_drag_coeff = atof(opt->getValue( "centrosome-drag-coeff" ));
@@ -569,6 +581,8 @@ Error_t Parameters<T>::pack(std::ostream &os, Format format) const
     os<<"fg_detachment_rate: "<<fg_detachment_rate<<"\n";
     os<<"fg_radius: "<<fg_radius<<"\n";
     os<<"fg_drag_coeff: "<<fg_drag_coeff<<"\n";
+    os<<"fg_drag_coeff_delta: "<<fg_drag_coeff_delta<<"\n";
+    os<<"concentration_thresh: "<<concentration_thresh<<"\n";
     os<<"centrosome_drag_coeff: "<<centrosome_drag_coeff<<"\n";
     os<<"centrosome_position: "<<centrosome_position[0]<<" "<<centrosome_position[1]<<" "<<centrosome_position[2]<<"\n";
     os<<"centrosome_velocity: "<<centrosome_velocity[0]<<" "<<centrosome_velocity[1]<<" "<<centrosome_velocity[2]<<"\n";
@@ -685,6 +699,8 @@ Error_t Parameters<T>::unpack(std::istream &is, Format format)
     is>>key>>fg_detachment_rate; ASSERT(key=="fg_detachment_rate:", "Unexpected key (expected fg_detachment_rate)");
     is>>key>>fg_radius; ASSERT(key=="fg_radius:", "Unexpected key (expected fg_radius)");
     is>>key>>fg_drag_coeff; ASSERT(key=="fg_drag_coeff:", "Unexpected key (expected fg_drag_coeff)");
+    is>>key>>fg_drag_coeff_delta; ASSERT(key=="fg_drag_coeff_delta:", "Unexpected key (expected fg_drag_coeff_delta)");
+    is>>key>>concentration_thresh; ASSERT(key=="concentration_thresh:", "Unexpected key (expected concentration_thresh)");
     is>>key>>centrosome_drag_coeff; ASSERT(key=="centrosome_drag_coeff:", "Unexpected key (expected centrosome_drag_coeff)");
     is>>key>>centrosome_position[0]>>centrosome_position[1]>>centrosome_position[2];
     ASSERT(key=="centrosome_position:", "Unexpected key (expected centrosome_position)");
@@ -733,6 +749,8 @@ std::ostream& operator<<(std::ostream& output, const Parameters<T>& par)
     output<<"   Fg detachment rate       : "<<par.fg_detachment_rate<<std::endl;
     output<<"   Fg radius                : "<<par.fg_radius<<std::endl;
     output<<"   Fg drag coefficient      : "<<par.fg_drag_coeff<<std::endl;
+    output<<"   Fg drag coefficient delta: "<<par.fg_drag_coeff_delta<<std::endl;
+    output<<"   Concentration threshold  : "<<par.concentration_thresh<<std::endl;
     output<<"   Centrosome drag coeff    : "<<par.centrosome_drag_coeff<<std::endl;
     output<<"   Centrosome position      : "<<"["<<par.centrosome_position[0]
           <<", "<<par.centrosome_position[1]

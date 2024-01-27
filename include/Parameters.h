@@ -42,6 +42,8 @@ class Parameters : public Streamable
     T fg_detachment_rate;
     T fg_radius;
     T fg_drag_coeff;
+    T fg_drag_coeff_delta;
+    T concentration_thresh;
     T centrosome_drag_coeff;
     T centrosome_position[3];
     T centrosome_velocity[3];
