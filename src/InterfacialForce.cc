@@ -342,9 +342,9 @@ void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const
     for(int i=0; i<s_wrk[0].size(); i++) {
         s_wrk[0].begin()[i] =  1.0 + params_.fg_drag_coeff_delta * (1.0 + tanh(s_wrk[0].begin()[i])) / 2.0;
     }
-    axpy(params_.fg_drag_coeff, s_wrk[0], s_wrk[0]); // s_wrk0 = eta0 * (1.0 + eta_delta * (1.0 + tanh(smooth_factor*(c-c1))) / 2.0)
-    // now drag for concentration is stored in s_wrk[0]
-    uyInv(Fpull_up, s_wrk[0], v_wrk[0]); // f_p/eta -> v_wrk0
+    axpy(params_.fg_drag_coeff, s_wrk[0], S_up->concentration_drag_); // concentration_drag_ = eta0 * (1.0 + eta_delta * (1.0 + tanh(smooth_factor*(c-c1))) / 2.0)
+    // now drag for concentration is stored in concentration_drag_
+    uyInv(Fpull_up, S_up->concentration_drag_, v_wrk[0]); // f_p/eta -> v_wrk0
     //axpy(1.0/params_.fg_drag_coeff, Fpull_up, v_wrk[0]);  // f_p/eta
     S_up->mapToTangentSpace(v_wrk[0], false);   // overwrites u1, now v_p, tangential
     S_up->div(v_wrk[0], s_wrk[0]);                // wrk = div_s.(c v_p)
@@ -381,6 +381,7 @@ void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const
       Resample(binding_probability_up, sht_up_, sht_, s_wrk[0], s_wrk[1], binding_probability);
       Resample(density_up, sht_up_, sht_, s_wrk[0], s_wrk[1], density);
       Resample(S_up->contact_indicator_, sht_up_, sht_, s_wrk[0], s_wrk[1], S.contact_indicator_);
+      Resample(S_up->concentration_drag_, sht_up_, sht_, s_wrk[0], s_wrk[1], S.concentration_drag_);
     }
 
     // cap impingement_rate

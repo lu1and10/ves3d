@@ -131,10 +131,10 @@ Error_t Monitor<EvolveSurface>::operator()(const EvolveSurface *state,
                 vtkfbase += suffix;
                 INFO("Writing VTK file "<<vtkfbase);
                 WriteVTK(*state->S_, vtkfbase.c_str(),
-                        {&(state->F_->pulling_force_), &(state->F_->pushing_force_), &(state->F_->bending_force_), &(state->F_->tensile_force_), &(state->F_->flux_), &(state->F_->pos_vel_)},
-                        {"f_pull","f_push","f_bending","f_tensile","flux","membrane_vel", "surf_grad_tension"},
-                        {&(state->F_->density_), &(state->F_->binding_probability_), &(state->F_->impingement_rate_), &(state->F_->tension_), &(state->S_->contact_indicator_), &v_work},
-                        {"concentration","binding_prob","impingement_rate","tension","contact_indicator"},
+                        {&(state->F_->pulling_force_), &(state->F_->pushing_force_), &(state->F_->bending_force_), &(state->F_->tensile_force_), &(state->F_->flux_), &(state->F_->pos_vel_), &v_work},
+                        {"f_pull","f_push","f_bending","f_tensile","flux","membrane_vel","surf_grad_tension"},
+                        {&(state->F_->density_), &(state->F_->binding_probability_), &(state->F_->impingement_rate_), &(state->F_->tension_), &(state->S_->contact_indicator_), &(state->S_->concentration_drag_)},
+                        {"concentration","binding_prob","impingement_rate","tension","contact_indicator","concentration_drag"},
                         -1, params_->periodic_length, state->F_->centrosome_pos_, 1, vtkfbase_centrosome.c_str());
             }
 

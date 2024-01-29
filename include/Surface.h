@@ -85,6 +85,7 @@ class Surface : public Streamable
     int reparamFilterFreq() const {return reparam_filter_freq_;}
 
     mutable Sca_t contact_indicator_;
+    mutable Sca_t concentration_drag_;
   private:
     Vec_t x_;
     mutable Vec_t normal_;
