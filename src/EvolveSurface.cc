@@ -346,7 +346,7 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::Evolve()
         F_->reparam();
         //pvfmm::Profile::Toc();
         //pvfmm::Profile::Tic("AreaVolume",&comm,true);
-        //AreaVolumeCorrection(area, vol);
+        AreaVolumeCorrection(area, vol);
         //pvfmm::Profile::Toc();
         //pvfmm::Profile::Tic("Repartition",&comm,true);
         //(*repartition_)(S_->getPositionModifiable(), F_->tension());
@@ -378,6 +378,7 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::AreaVolumeCorrection(con
     const DT& device=Sca_t::getDevice();
     int N_ves=S_->getNumberOfSurfaces();
     int iter(-1);
+    value_type vol_correction = 0.0;
 
     while (++iter < params_->rep_maxit){
         S_->resample(params_->upsample_freq, &S_up_); // up-sample
@@ -412,7 +413,7 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::AreaVolumeCorrection(con
                 value_type area_max_err=device.MaxAbs(area_err.begin(),N_ves)/device.MaxAbs(area.begin(),N_ves);
                 value_type  vol_max_err=device.MaxAbs( vol_err.begin(),N_ves)/device.MaxAbs( vol.begin(),N_ves);
                 COUTDEBUG("Iteration = "<<iter<<", area error="<<area_max_err<<", vol error="<<vol_max_err);
-                if(std::max(area_max_err, vol_max_err)<tol) break;
+                if(std::max(area_max_err, vol_correction * vol_max_err)<tol) break;
             }
 
             Sca_t dAdX(N_ves,1);
@@ -466,12 +467,14 @@ Error_t EvolveSurface<T, DT, DEVICE, Interact, Repart>::AreaVolumeCorrection(con
             { // dX = dX/dA*area_err + dX/dV*vol_err
               device.xy(dXdA.begin(), area_err.begin(), N_ves, dXdA.begin());
               device.xy(dXdV.begin(),  vol_err.begin(), N_ves, dXdV.begin());
-              device.axpy(1.0, dXdA.begin(), dXdV.begin(), N_ves, dX.begin());
+              //device.axpy(1.0, dXdA.begin(), dXdV.begin(), N_ves, dX.begin());
+              device.axpy(vol_correction, dXdV.begin(), dXdA.begin(), N_ves, dX.begin());
             }
             { // dY = dY/dA*area_err + dY/dV*vol_err
               device.xy(dYdA.begin(), area_err.begin(), N_ves, dYdA.begin());
               device.xy(dYdV.begin(),  vol_err.begin(), N_ves, dYdV.begin());
-              device.axpy(1.0, dYdA.begin(), dYdV.begin(), N_ves, dY.begin());
+              //device.axpy(1.0, dYdA.begin(), dYdV.begin(), N_ves, dY.begin());
+              device.axpy(vol_correction, dYdV.begin(), dYdA.begin(), N_ves, dY.begin());
             }
         }
 
