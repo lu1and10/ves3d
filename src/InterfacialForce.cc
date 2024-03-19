@@ -204,6 +204,7 @@ void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const
         Fpull_up.begin()[idim*N+i] = centrosome_position[idim] - S_up->getPosition().begin()[idim*N+i];
       }
     }
+    // TODO: \hat\xi here has different sign compared to \hat\xi in the writeup
     // normalizing  to get \hat\xi
     GeometricDot(Fpull_up, Fpull_up, s_wrk[0]);
     // s_wrk[0] stores D, distance between centrosome and membrane surface points

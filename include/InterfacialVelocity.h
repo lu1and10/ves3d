@@ -18,6 +18,7 @@
 #include "VesicleProps.h"
 #include "MovePole.h"
 #include "StokesVelocity.h"
+#include "PullingBoundary.h"
 
 template<typename SurfContainer, typename Interaction>
 class InterfacialVelocity
@@ -92,8 +93,11 @@ class InterfacialVelocity
     mutable Vec_t pos_vel_;
     mutable Sca_t tension_;
     mutable Vec_t centrosome_pulling_;
+    mutable Vec_t bdry_centrosome_pulling_;
     mutable Vec_t centrosome_pushing_;
     mutable value_type min_dist_;
+    mutable value_type bdry_min_dist_;
+    mutable PullingBoundary<SurfContainer> pulling_boundary_;
   private:
     SurfContainer &S_;
     const Interaction &interaction_;

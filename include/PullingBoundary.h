@@ -1,36 +1,40 @@
 #ifndef _PULLINGBOUNDARY_H_
 #define _PULLINGBOUNDARY_H_
 
+#include "Parameters.h"
+#include "DataIO.h"
+#include "OperatorsMats.h"
+#include "GLIntegrator.h"
 
-//template<typename SurfContainer, typename Interaction>
+template<typename SurfContainer>
 class PullingBoundary
 {
   public:
-      PullingBoundary();
+      typedef typename SurfContainer::value_type value_type;
+      typedef typename SurfContainer::device_type device_type;
+      typedef typename SurfContainer::Arr_t Arr_t;
+      typedef typename SurfContainer::Sca_t Sca_t;
+      typedef typename SurfContainer::Vec_t Vec_t;
+      typedef Parameters<value_type> Params_t;
+      typedef OperatorsMats<Arr_t> Mats_t;
+
+      PullingBoundary(const Params_t &params, const Mats_t &mats);
       ~PullingBoundary();
-      void EvalPotential(int num_target_points, double* target_address, double* target_potential);
+
       void Solve();
+      void GetCentrosomePulling(const value_type* centrosome_position, const value_type* centrosome_velocity, Vec_t *Fcpull, value_type *min_dist);
 
-      PatchSurfFaceMap* surface;
-      SolverGMRESDoubleLayer* solver;
-      MPI_Comm comm;
+      SurfContainer* S_;
 
-      Vec solved_density;
-      Vec solved_density_tmp;
-      Vec boundary_data;
-      Vec boundary_flow;
-      Vec boundary_flow_tmp;
+      GaussLegendreIntegrator<Sca_t> integrator_;
 
-      double* GetSamplePoints(int& num_sample_points);
-      void RestoreSamplePoints(double **local_sample_points);
-      void SetBoundaryData(double* boundary_data_address);
-      void SetTriData();
-      void SetBoundaryFlow();
-      void BuildInOutLets();
-      void FillVesicle(double cell_size);
-      void LoadDensity(bool flag);
-      void SaveDensity();
-
+      Vec_t solved_density_;
+      Vec_t Fpull_;
+      Sca_t binding_probability_;
+      Sca_t impingement_rate_;
+      value_type M0_;
+      value_type area_;
+      const Params_t &params_;
   private:
 };
 

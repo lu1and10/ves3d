@@ -79,6 +79,7 @@ Error_t Monitor<EvolveSurface>::operator()(const EvolveSurface *state,
              <<", progress = "<<static_cast<int>(100*t/params_->time_horizon)<<"%"
              <<", t = "<<SCI_PRINT_FRMT<<t
              <<", dt = "<<SCI_PRINT_FRMT<<dt
+             <<", bdry_centrosome_pulling = "<<SCI_PRINT_FRMT<<state->F_->bdry_centrosome_pulling_.begin()[0]<<" "<<state->F_->bdry_centrosome_pulling_.begin()[1]<<" "<<state->F_->bdry_centrosome_pulling_.begin()[2]
              <<", centrosome_pulling = "<<SCI_PRINT_FRMT<<state->F_->centrosome_pulling_.begin()[0]<<" "<<state->F_->centrosome_pulling_.begin()[1]<<" "<<state->F_->centrosome_pulling_.begin()[2]
              <<", centrosome_pushing = "<<SCI_PRINT_FRMT<<state->F_->centrosome_pushing_.begin()[0]<<" "<<state->F_->centrosome_pushing_.begin()[1]<<" "<<state->F_->centrosome_pushing_.begin()[2]
              <<", centrosome_position = "<<SCI_PRINT_FRMT<<state->F_->centrosome_pos_[0]<<" "<<state->F_->centrosome_pos_[1]<<" "<<state->F_->centrosome_pos_[2]
@@ -92,6 +93,7 @@ Error_t Monitor<EvolveSurface>::operator()(const EvolveSurface *state,
              <<", binding prob integral: " << std::setprecision(8) << state->int_binding_
              <<", contact area: " << std::setprecision(8) << state->contact_area_
              <<", min distance: " << std::setprecision(8) << state->F_->min_dist_
+             <<", boundary min distance: " << std::setprecision(8) << state->F_->bdry_min_dist_
              <<", max C: " << std::setprecision(8) << Max(state->F_->density_)
              <<", min C: " << std::setprecision(8) << Min(state->F_->density_)
              <<", max mean curvature: " << std::setprecision(8) << Max(state->S_->getMeanCurv())
@@ -127,6 +129,9 @@ Error_t Monitor<EvolveSurface>::operator()(const EvolveSurface *state,
                 std::string centrosome_suffix("centrosome_");
                 vtkfbase_centrosome += centrosome_suffix;
                 vtkfbase_centrosome += suffix;
+                std::string vtkfbase_boundary(params_->write_vtk);
+                vtkfbase_boundary += "boundary_";
+                vtkfbase_boundary += suffix;
                 std::string vtkfbase(params_->write_vtk);
                 vtkfbase += suffix;
                 INFO("Writing VTK file "<<vtkfbase);
@@ -136,6 +141,13 @@ Error_t Monitor<EvolveSurface>::operator()(const EvolveSurface *state,
                         {&(state->F_->density_), &(state->F_->binding_probability_), &(state->F_->impingement_rate_), &(state->F_->tension_), &(state->S_->contact_indicator_), &(state->S_->concentration_drag_)},
                         {"concentration","binding_prob","impingement_rate","tension","contact_indicator","concentration_drag"},
                         -1, params_->periodic_length, state->F_->centrosome_pos_, 1, vtkfbase_centrosome.c_str());
+
+                WriteVTK(*state->F_->pulling_boundary_.S_, vtkfbase_boundary.c_str(),
+                        {&(state->F_->pulling_boundary_.Fpull_)},
+                        {"f_pull"},
+                        {&(state->F_->pulling_boundary_.binding_probability_),&(state->F_->pulling_boundary_.impingement_rate_)},
+                        {"binding_prob","impingement_rate"},
+                        -1, params_->periodic_length);
             }
 
 #if HAVE_PVFMM

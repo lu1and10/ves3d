@@ -25,7 +25,8 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
     checked_out_work_sca_(0),
     checked_out_work_vec_(0),
     stokes_(params_.sh_order,params_.upsample_freq,params_.periodic_length),
-    S_up_(NULL)
+    S_up_(NULL),
+    pulling_boundary_(params,mats)
 {
     // allocate memory space
     pos_vel_.replicate(S_.getPosition());
@@ -40,6 +41,7 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
     flux_.replicate(S_.getPosition());
     centrosome_pulling_.replicate(S_.getPosition());
     centrosome_pushing_.replicate(S_.getPosition());
+    bdry_centrosome_pulling_.resize(1,1);
 
     // init to zero
     pos_vel_.getDevice().Memset(pos_vel_.begin(), 0, sizeof(value_type)*pos_vel_.size());
@@ -54,6 +56,7 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
     flux_.getDevice().Memset(flux_.begin(), 0, sizeof(value_type)*flux_.size());
     centrosome_pulling_.getDevice().Memset(centrosome_pulling_.begin(), 0, sizeof(value_type)*centrosome_pulling_.size());
     centrosome_pushing_.getDevice().Memset(centrosome_pushing_.begin(), 0, sizeof(value_type)*centrosome_pushing_.size());
+    bdry_centrosome_pulling_.getDevice().Memset(bdry_centrosome_pulling_.begin(), 0, sizeof(value_type)*bdry_centrosome_pulling_.size());
 
     //Setting initial tension to zero
     tension_.getDevice().Memset(tension_.begin(), 0,
@@ -190,10 +193,13 @@ updateJacobiExplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     dx.replicate(S_.getPosition());
     axpy(dt_, pos_vel_, dx);         // what does 3-arg axpy do ? update pos_vel?, 3-arg axpy does ax -> y
 
+    // get pulling from pulling boundary
+    pulling_boundary_.GetCentrosomePulling(centrosome_pos_, centrosome_vel_, &bdry_centrosome_pulling_, &bdry_min_dist_);
     // update centrosome_vel and centrosome_pos
     for(int idim=0; idim<VES3D_DIM; idim++){
-        centrosome_vel_[idim] = params_.centrosome_velocity[idim] + centrosome_pulling_.begin()[idim] / params_.centrosome_drag_coeff
-                                                                  + centrosome_pushing_.begin()[idim] / params_.centrosome_drag_coeff;
+        centrosome_vel_[idim] = params_.centrosome_velocity[idim] + (bdry_centrosome_pulling_.begin()[idim]
+                                                                  +  centrosome_pulling_.begin()[idim]
+                                                                  +  centrosome_pushing_.begin()[idim]) / params_.centrosome_drag_coeff;
         centrosome_pos_[idim] += dt_ * centrosome_vel_[idim];
     }
 

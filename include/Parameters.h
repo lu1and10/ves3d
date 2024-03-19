@@ -52,6 +52,8 @@ class Parameters : public Streamable
     T mt_catastrophe_rate;
     T mt_pushing_force;
     T mt_smooth_factor;
+    T boundary_radius;
+    T boundary_M;
 
     //Time stepper
     T time_horizon;
