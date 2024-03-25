@@ -1,3 +1,5 @@
+#include "IntersectionCheck.h"
+
 template<typename SurfContainer>
 PullingBoundary<SurfContainer>::
 PullingBoundary(const Params_t &params, const Mats_t &mats) :
@@ -20,11 +22,13 @@ PullingBoundary(const Params_t &params, const Mats_t &mats) :
     Fpull_.replicate(x0);
     binding_probability_.replicate(x0);
     impingement_rate_.replicate(x0);
+    visible_zone_.replicate(x0);
 
     // init member variables
     binding_probability_.getDevice().Memset(binding_probability_.begin(), 0, sizeof(value_type)*binding_probability_.size());
     impingement_rate_.getDevice().Memset(impingement_rate_.begin(), 0, sizeof(value_type)*impingement_rate_.size());
     Fpull_.getDevice().Memset(Fpull_.begin(), 0, sizeof(value_type)*Fpull_.size());
+    visible_zone_.getDevice().Memset(visible_zone_.begin(), 0, sizeof(value_type)*visible_zone_.size());
 
     // calculate pulling boundary area
     Sca_t area;
@@ -157,4 +161,67 @@ GetCentrosomePulling(const value_type* centrosome_position, const value_type* ce
         axpy(static_cast<value_type>(-1.0), *Fcpull, *Fcpull);
     }
 
+}
+
+template<typename SurfContainer>
+void PullingBoundary<SurfContainer>::
+GetVisibleZone(const value_type* centrosome_position, const Vec_t &vesicle_position)
+{
+    int p0 = vesicle_position.getShOrder();
+    int p1 = 2*p0;
+    int ves_stride_dim = 2*p1*(p1+1);
+    int bdry_stride_dim = S_->getPosition().getStride();
+
+    sctl::Vector<value_type> X0(vesicle_position.size(), vesicle_position.begin(), false);
+    sctl::Vector<value_type> X, Xpole, Xcoef;
+
+    SphericalHarmonics<value_type>::Grid2SHC(X0,p0,p0,Xcoef);
+    SphericalHarmonics<value_type>::SHC2Grid(Xcoef,p0,p1,X);
+    SphericalHarmonics<value_type>::SHC2Pole(Xcoef,p0,Xpole);
+
+    // calculate vesicle axis aligned bounding box
+    value_type ves_bb_min[VES3D_DIM], ves_bb_max[VES3D_DIM];
+    for(size_t k=0; k<VES3D_DIM; k++){
+        ves_bb_min[k] = std::min(Xpole[0+2*k],Xpole[1+2*k]);
+        ves_bb_max[k] = std::max(Xpole[0+2*k],Xpole[1+2*k]);
+        #pragma omp parallel for
+        for(size_t i=0; i<ves_stride_dim; i++){
+            ves_bb_min[k] = std::min(ves_bb_min[k], X[i+k*ves_stride_dim]);
+            ves_bb_max[k] = std::max(ves_bb_max[k], X[i+k*ves_stride_dim]);
+        }
+    }
+
+    // set visible zone to all 0
+    visible_zone_.getDevice().Memset(visible_zone_.begin(), 0, sizeof(value_type)*visible_zone_.size());
+
+    // calculate visible zone
+    #pragma omp parallel for
+    for(size_t i=0; i<bdry_stride_dim; i++){
+        visible_zone_.begin()[i] = 0;
+        // do vesicle bounding box and ray intersection check
+        bool ray_box_intersect = true;
+        if(ray_box_intersect)
+        {
+            for(size_t j=0; j<2*p1; j++){
+                // do triangle and ray intersection check
+                bool ray_tri_intersect = true;
+                if(ray_tri_intersect){
+                    visible_zone_.begin()[i] = 1;
+                    break;
+                }
+            }
+            for(size_t j=0; j<p1; j++){
+                bool ray_quad_intersect = false;
+                for(size_t k=0; k<2*p1; k++){
+                    // do quad and ray intersection check
+                    ray_quad_intersect = true;
+                    if(ray_quad_intersect){
+                        visible_zone_.begin()[i] = 1;
+                        break;
+                    }
+                }
+                if(ray_quad_intersect) break;
+            }
+        }
+    }
 }

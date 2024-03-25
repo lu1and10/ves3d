@@ -5,6 +5,7 @@
 #include "DataIO.h"
 #include "OperatorsMats.h"
 #include "GLIntegrator.h"
+#include "SphericalHarmonics.h"
 
 template<typename SurfContainer>
 class PullingBoundary
@@ -23,6 +24,7 @@ class PullingBoundary
 
       void Solve();
       void GetCentrosomePulling(const value_type* centrosome_position, const value_type* centrosome_velocity, Vec_t *Fcpull, value_type *min_dist);
+      void GetVisibleZone(const value_type* centrosome_position, const Vec_t &vesicle_position);
 
       SurfContainer* S_;
 
@@ -32,6 +34,7 @@ class PullingBoundary
       Vec_t Fpull_;
       Sca_t binding_probability_;
       Sca_t impingement_rate_;
+      Sca_t visible_zone_;
       value_type M0_;
       value_type area_;
       const Params_t &params_;
