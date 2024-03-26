@@ -22,6 +22,7 @@ bool RayBoxCheck(value_type minB[CHECKDIM], value_type maxB[CHECKDIM], value_typ
     /* Find candidate planes; this loop can be avoided if
        rays cast all from the eye(assume perpsective view) */
     for (i=0; i<CHECKDIM; i++)
+    {
         if(origin[i] < minB[i]) {
             quadrant[i] = LEFT;
             candidatePlane[i] = minB[i];
@@ -33,43 +34,59 @@ bool RayBoxCheck(value_type minB[CHECKDIM], value_type maxB[CHECKDIM], value_typ
         }else    {
             quadrant[i] = MIDDLE;
         }
+    }
 
     /* Ray origin inside bounding box */
     if(inside)    {
         coord = origin;
-        return (true);
+        return true;
     }
-
 
     /* Calculate T distances to candidate planes */
     for (i = 0; i < CHECKDIM; i++)
+    {
         if (quadrant[i] != MIDDLE && dir[i] !=0.)
             maxT[i] = (candidatePlane[i]-origin[i]) / dir[i];
         else
             maxT[i] = -1.;
+    }
 
     /* Get largest of the maxT's for final choice of intersection */
     whichPlane = 0;
     for (i = 1; i < CHECKDIM; i++)
+    {
         if (maxT[whichPlane] < maxT[i])
             whichPlane = i;
+    }
 
     /* Check final candidate actually inside box */
-    if (maxT[whichPlane] < 0.) return (false);
+    if (maxT[whichPlane] < 0.) return false;
     for (i = 0; i < CHECKDIM; i++)
+    {
         if (whichPlane != i) {
             coord[i] = origin[i] + maxT[whichPlane] *dir[i];
             if (coord[i] < minB[i] || coord[i] > maxB[i])
-                return (false);
+                return false;
         } else {
             coord[i] = candidatePlane[i];
         }
-    return (true);                /* ray hits box */
+    }
+
+    return true;                /* ray hits box */
 }
 
 template <typename value_type>
 bool RayTriCheck(value_type tri[3][3], value_type origin[3], value_type dir[3])
 {
+    // calculate t where origin + t * dir is the intersection point of the ray to the triangle plane
+    value_type v0[3] = {tri[1][0] - tri[0][0], tri[1][1] - tri[0][1], tri[1][2] - tri[0][2]};
+    value_type v1[3] = {tri[2][0] - tri[0][0], tri[2][1] - tri[0][1], tri[2][2] - tri[0][2]};
+    value_type n[3]  = {v0[1]*v1[2]-v0[2]*v1[1], v0[2]*v1[0]-v0[0]*v1[2], v0[0]*v1[1]-v0[1]*v1[0]};
+    value_type d = tri[0][0]*n[0] + tri[0][1]*n[1] + tri[0][2]*n[2];
+    value_type n_dot_dir = dir[0]*n[0]+dir[1]*n[1]+dir[2]*n[2];
+    if(std::fabs(n_dot_dir) < 1e-8) return false;
+    value_type t =  -(d+origin[0]*n[0]+origin[1]*n[1]+origin[2]*n[2])/n_dot_dir;
+
     return false;
 }
 
