@@ -192,31 +192,92 @@ GetVisibleZone(const value_type* centrosome_position, const Vec_t &vesicle_posit
     }
 
     // set visible zone to all 0
-    visible_zone_.getDevice().Memset(visible_zone_.begin(), 0, sizeof(value_type)*visible_zone_.size());
+    set_one(visible_zone_);
 
+    value_type origin[VES3D_DIM] = {centrosome_position[0], centrosome_position[1], centrosome_position[2]};
     // calculate visible zone
     #pragma omp parallel for
     for(size_t i=0; i<bdry_stride_dim; i++){
-        visible_zone_.begin()[i] = 0;
         // do vesicle bounding box and ray intersection check
-        bool ray_box_intersect = true;
+        value_type dir[VES3D_DIM] = { S_->getPosition().begin()[0*bdry_stride_dim+i] - origin[0],
+                                      S_->getPosition().begin()[1*bdry_stride_dim+i] - origin[1],
+                                      S_->getPosition().begin()[2*bdry_stride_dim+i] - origin[2] };
+        value_type coord[VES3D_DIM];
+        bool ray_box_intersect = RayBoxCheck(ves_bb_min, ves_bb_max, origin, dir, coord);
         if(ray_box_intersect)
         {
+            bool ray_tri_intersect = false;
+            value_type tri[3][VES3D_DIM];
+
+            // north pole triangles
+            for(size_t k=0; k<VES3D_DIM; k++){
+                tri[0][k] = Xpole[0+2*k];
+            }
             for(size_t j=0; j<2*p1; j++){
+                size_t i0 = 0;
+                size_t j0 = ((j+0)       );
+                size_t j1 = ((j+1)%(2*p1));
+                for(size_t k=0; k<VES3D_DIM; k++){
+                   tri[1][k] = X[j0 + 2*p1*(i0+(p1+1)*k)];
+                   tri[2][k] = X[j1 + 2*p1*(i0+(p1+1)*k)];
+                }
                 // do triangle and ray intersection check
-                bool ray_tri_intersect = true;
+                ray_tri_intersect = RayTriCheck(tri, origin, dir);
                 if(ray_tri_intersect){
-                    visible_zone_.begin()[i] = 1;
+                    visible_zone_.begin()[i] = 0;
                     break;
                 }
             }
+            if(ray_tri_intersect) continue;
+
+            // south pole triangles
+            for(size_t k=0; k<VES3D_DIM; k++){
+                tri[0][k] = Xpole[1+2*k];
+            }
+            for(size_t j=0; j<2*p1; j++){
+                size_t i0 = p1;
+                size_t j0 = ((j+0)       );
+                size_t j1 = ((j+1)%(2*p1));
+                for(size_t k=0; k<VES3D_DIM; k++){
+                   tri[1][k] = X[j0 + 2*p1*(i0+(p1+1)*k)];
+                   tri[2][k] = X[j1 + 2*p1*(i0+(p1+1)*k)];
+                }
+                // do triangle and ray intersection check
+                ray_tri_intersect = RayTriCheck(tri, origin, dir);
+                if(ray_tri_intersect){
+                    visible_zone_.begin()[i] = 0;
+                    break;
+                }
+            }
+            if(ray_tri_intersect) continue;
+
+            // middle quads
             for(size_t j=0; j<p1; j++){
+                size_t j0 = (j+0);
+                size_t j1 = (j+1);
                 bool ray_quad_intersect = false;
                 for(size_t k=0; k<2*p1; k++){
+                    size_t k0 = ((k+0)       );
+                    size_t k1 = ((k+1)%(2*p1));
                     // do quad and ray intersection check
-                    ray_quad_intersect = true;
+                    for(size_t l=0; l<VES3D_DIM; l++){
+                        tri[0][l] = X[k0 + 2*p1*(j0+(p1+1)*l)];
+                        tri[1][l] = X[k0 + 2*p1*(j1+(p1+1)*l)];
+                        tri[2][l] = X[k1 + 2*p1*(j0+(p1+1)*l)];
+                    }
+                    ray_quad_intersect = RayTriCheck(tri, origin, dir);
                     if(ray_quad_intersect){
-                        visible_zone_.begin()[i] = 1;
+                        visible_zone_.begin()[i] = 0;
+                        break;
+                    }
+                    for(size_t l=0; l<VES3D_DIM; l++){
+                        tri[0][l] = X[k1 + 2*p1*(j1+(p1+1)*l)];
+                        tri[1][l] = X[k1 + 2*p1*(j0+(p1+1)*l)];
+                        tri[2][l] = X[k0 + 2*p1*(j1+(p1+1)*l)];
+                    }
+                    ray_quad_intersect = RayTriCheck(tri, origin, dir);
+                    if(ray_quad_intersect){
+                        visible_zone_.begin()[i] = 0;
                         break;
                     }
                 }
