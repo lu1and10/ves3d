@@ -79,87 +79,49 @@ template <typename value_type>
 bool RayTriCheck(value_type tri[3][3], value_type origin[3], value_type dir[3])
 {
     // calculate t where origin + t * dir is the intersection point of the ray to the triangle plane
-    value_type v0[3] = {tri[1][0] - tri[0][0], tri[1][1] - tri[0][1], tri[1][2] - tri[0][2]};
-    value_type v1[3] = {tri[2][0] - tri[0][0], tri[2][1] - tri[0][1], tri[2][2] - tri[0][2]};
-    value_type n[3]  = {v0[1]*v1[2]-v0[2]*v1[1], v0[2]*v1[0]-v0[0]*v1[2], v0[0]*v1[1]-v0[1]*v1[0]};
-    value_type d = tri[0][0]*n[0] + tri[0][1]*n[1] + tri[0][2]*n[2];
+    value_type e0[3] = {tri[1][0] - tri[0][0], tri[1][1] - tri[0][1], tri[1][2] - tri[0][2]};
+    value_type e1[3] = {tri[2][0] - tri[0][0], tri[2][1] - tri[0][1], tri[2][2] - tri[0][2]};
+    value_type n[3]  = {e0[1]*e1[2] - e0[2]*e1[1], e0[2]*e1[0] - e0[0]*e1[2], e0[0]*e1[1] - e0[1]*e1[0]};
+
+    // plane axis to project
+    int i1=1, i2=2;
+    if(std::fabs(n[1]) > std::max(std::fabs(n[0]),std::fabs(n[2]))) i1 = 0;
+    if(std::fabs(n[2]) > std::max(std::fabs(n[0]),std::fabs(n[1]))) i2 = 0;
+
+    value_type d = -tri[0][0]*n[0] - tri[0][1]*n[1] - tri[0][2]*n[2];
     value_type n_dot_dir = dir[0]*n[0]+dir[1]*n[1]+dir[2]*n[2];
     if(std::fabs(n_dot_dir) < 1e-8) return false;
     value_type t =  -(d+origin[0]*n[0]+origin[1]*n[1]+origin[2]*n[2])/n_dot_dir;
+    value_type p[3] = {origin[0]+t*dir[0], origin[1]+t*dir[1], origin[2]+t*dir[2]};
 
-    return false;
+    value_type u0,u1,u2;
+    value_type v0,v1,v2;
+    u0 = p[i1] - tri[0][i1]; v0 = p[i2] - tri[0][i2];
+    u1 = e0[i1]; v1 = e0[i2];
+    u2 = e1[i1]; v2 = e1[i2];
+
+    bool inter = false;
+    value_type alpha, beta;
+    if (u1 == 0) {
+        beta = u0 / u2;
+        if ((beta >= 0.) && (beta <= 1.)) {
+            alpha = (v0 - beta*v2) / v1;
+            inter = ((alpha >= 0.) && (alpha + beta) <= 1.);
+        }
+    }
+    else {
+        beta = (v0*u1 - u0*v1) / (v2*u1 - u2*v1);
+        if ((beta >= 0.) && (beta <= 1.)) {
+            alpha = (u0 - beta*u2) / u1;
+            inter = ((alpha >= 0) && ((alpha + beta) <= 1.));
+        }
+    }
+
+    return inter;
 }
 
 template <typename value_type>
 bool RayPolyCheck()
 {
     return false;
-}
-
-typedef double Point[3];
-typedef double Vector[3];
-struct Ray {
-    Point O, D;
-    Point P;
-    Vector normal;
-} ray;
-struct Polygon {
-    int n;
-    bool interpolate;
-};
-
-bool intersect(struct Polygon poly, struct Ray ray, double t, int i1, int i2) {
-    double alpha, beta, gamma, u0, u1, u2, v0, v1, v2;
-    bool inter;
-    int i;
-    Point V[5];
-    Point P;
-    Vector N[3];
-
-    /* the value of t is computed.
-     * i1 and i2 come from the polygon description.
-     * V is the vertex table for the polygon and N the
-     * associated normal vectors.
-     */
-    P[0] = ray.O[0] + ray.D[0] * t;
-    P[1] = ray.O[1] + ray.D[1] * t;
-    P[2] = ray.O[2] + ray.D[2] * t;
-    u0 = P[i1] - V[0][i1]; v0 = P[i2] - V[0][i2];
-    inter = false; i = 2;
-    do {
-        /* The polygon is viewed as (n-2) triangles. */
-        u1 = V[i - 1][i1] - V[0][i1]; v1 = V[i - 1][i2] - V[0][i2];
-        u2 = V[i][i1] - V[0][i1]; v2 = V[i][i2] - V[0][i2];
-
-        if (u1 == 0) {
-            beta = u0 / u2;
-            if ((beta >= 0.) && (beta <= 1.)) {
-                alpha = (v0 - beta*v2) / v1;
-                inter = ((alpha >= 0.) && (alpha + beta) <= 1.);
-            }
-        }
-        else {
-            beta = (v0*u1 - u0*v1) / (v2*u1 - u2*v1);
-            if ((beta >= 0.) && (beta <= 1.)) {
-                alpha = (u0 - beta*u2) / u1;
-                inter = ((alpha >= 0) && ((alpha + beta) <= 1.));
-            }
-        }
-    } while ((!inter) && (++i < poly.n));
-
-    if (inter) {
-        /* Storing the intersection point. */
-        ray.P[0] = P[0]; ray.P[1] = P[1]; ray.P[2] = P[2];
-        /* the normal vector can be interpolated now or later. */
-        if (poly.interpolate) {
-            gamma = 1 - (alpha + beta);
-            ray.normal[0] = gamma * N[0][0] + alpha * N[i - 1][0] +
-                beta * N[i][0];
-            ray.normal[1] = gamma * N[0][1] + alpha * N[i - 1][1] +
-                beta * N[i][1];
-            ray.normal[2] = gamma * N[0][2] + alpha * N[i - 1][2] +
-                beta * N[i][2];
-        }
-    }
-    return inter;
 }
