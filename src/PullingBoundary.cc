@@ -60,8 +60,11 @@ Solve()
 
 template<typename SurfContainer>
 void PullingBoundary<SurfContainer>::
-GetCentrosomePulling(const value_type* centrosome_position, const value_type* centrosome_velocity, Vec_t *Fcpull, value_type *min_dist)
+GetCentrosomePulling(const value_type* centrosome_position, const value_type* centrosome_velocity, const Vec_t &vesicle_position, Vec_t *Fcpull, value_type *min_dist)
 {
+    // compute visible_zone_
+    GetVisibleZone(centrosome_position, vesicle_position);
+
     // init work space
     // TODO: Pre-allocate
     Sca_t s_wrk[2];
@@ -119,6 +122,7 @@ GetCentrosomePulling(const value_type* centrosome_position, const value_type* ce
 
     // calculate impingement_rate_ with geometric factor
     xy(s_wrk[0], impingement_rate_, impingement_rate_); // impingement_rate_ = 0.5*(1 - 1/sqrt(1+(r_m/D)^2)) * (\dot{n}/V_g * exp(-k_cat/V_g*D) * n)*(-Vg*\xi + Vc)
+    xy(visible_zone_, impingement_rate_, impingement_rate_); // impingement_rate_ = 0.5*(1 - 1/sqrt(1+(r_m/D)^2)) * (\dot{n}/V_g * exp(-k_cat/V_g*D) * n)*(-Vg*\xi + Vc) * visible_zone_
 
     // cap impingement_rate
     #pragma omp parallel for
@@ -154,6 +158,8 @@ GetCentrosomePulling(const value_type* centrosome_position, const value_type* ce
     axpy(params_.fg_pulling_force*params_.boundary_M/area_, Fpull_, Fpull_);
     // scale Fpull_ by binding_probability
     xv(binding_probability_, Fpull_, Fpull_);
+    // scale Fpull_ by visible_zone_
+    xv(visible_zone_, Fpull_, Fpull_);
 
     // calculate force on centrosome
     if(Fcpull){
@@ -172,7 +178,7 @@ GetVisibleZone(const value_type* centrosome_position, const Vec_t &vesicle_posit
     int ves_stride_dim = 2*p1*(p1+1);
     int bdry_stride_dim = S_->getPosition().getStride();
 
-    sctl::Vector<value_type> X0(vesicle_position.size(), vesicle_position.begin(), false);
+    sctl::Vector<value_type> X0(vesicle_position.size(), (value_type*)vesicle_position.begin(), false);
     sctl::Vector<value_type> X, Xpole, Xcoef;
 
     SphericalHarmonics<value_type>::Grid2SHC(X0,p0,p0,Xcoef);

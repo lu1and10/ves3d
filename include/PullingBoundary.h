@@ -23,7 +23,7 @@ class PullingBoundary
       ~PullingBoundary();
 
       void Solve();
-      void GetCentrosomePulling(const value_type* centrosome_position, const value_type* centrosome_velocity, Vec_t *Fcpull, value_type *min_dist);
+      void GetCentrosomePulling(const value_type* centrosome_position, const value_type* centrosome_velocity, const Vec_t &vesicle_position, Vec_t *Fcpull, value_type *min_dist);
       void GetVisibleZone(const value_type* centrosome_position, const Vec_t &vesicle_position);
 
       SurfContainer* S_;

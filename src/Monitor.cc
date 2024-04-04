@@ -145,8 +145,8 @@ Error_t Monitor<EvolveSurface>::operator()(const EvolveSurface *state,
                 WriteVTK(*state->F_->pulling_boundary_.S_, vtkfbase_boundary.c_str(),
                         {&(state->F_->pulling_boundary_.Fpull_)},
                         {"f_pull"},
-                        {&(state->F_->pulling_boundary_.binding_probability_),&(state->F_->pulling_boundary_.impingement_rate_)},
-                        {"binding_prob","impingement_rate"},
+                        {&(state->F_->pulling_boundary_.binding_probability_),&(state->F_->pulling_boundary_.impingement_rate_),&(state->F_->pulling_boundary_.visible_zone_)},
+                        {"binding_prob","impingement_rate","visible_zone"},
                         -1, params_->periodic_length);
             }
 

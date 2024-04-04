@@ -111,6 +111,8 @@ InterfacialVelocity(SurfContainer &S_in, const Interaction &Inter,
 
     // init denisty
     set_one(density_);
+
+    pulling_boundary_.GetVisibleZone(centrosome_pos_, S_.getPosition());
 }
 
 template<typename SurfContainer, typename Interaction>
@@ -194,7 +196,7 @@ updateJacobiExplicit(const SurfContainer& S_, const value_type &dt, Vec_t& dx)
     axpy(dt_, pos_vel_, dx);         // what does 3-arg axpy do ? update pos_vel?, 3-arg axpy does ax -> y
 
     // get pulling from pulling boundary
-    pulling_boundary_.GetCentrosomePulling(centrosome_pos_, centrosome_vel_, &bdry_centrosome_pulling_, &bdry_min_dist_);
+    pulling_boundary_.GetCentrosomePulling(centrosome_pos_, centrosome_vel_, S_.getPosition(), &bdry_centrosome_pulling_, &bdry_min_dist_);
     // update centrosome_vel and centrosome_pos
     for(int idim=0; idim<VES3D_DIM; idim++){
         centrosome_vel_[idim] = params_.centrosome_velocity[idim] + (bdry_centrosome_pulling_.begin()[idim]
