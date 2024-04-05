@@ -197,7 +197,7 @@ GetVisibleZone(const value_type* centrosome_position, const Vec_t &vesicle_posit
         }
     }
 
-    // set visible zone to all 0
+    // set visible zone to all 1
     set_one(visible_zone_);
 
     value_type origin[VES3D_DIM] = {centrosome_position[0], centrosome_position[1], centrosome_position[2]};
