@@ -106,14 +106,14 @@ bool RayTriCheck(value_type tri[3][3], value_type origin[3], value_type dir[3])
         beta = u0 / u2;
         if ((beta >= 0.) && (beta <= 1.)) {
             alpha = (v0 - beta*v2) / v1;
-            inter = ((alpha >= 0.) && (alpha + beta) <= 1.);
+            inter = ((alpha >= 0.) && ((alpha + beta) <= 1.));
         }
     }
     else {
         beta = (v0*u1 - u0*v1) / (v2*u1 - u2*v1);
         if ((beta >= 0.) && (beta <= 1.)) {
             alpha = (u0 - beta*u2) / u1;
-            inter = ((alpha >= 0) && ((alpha + beta) <= 1.));
+            inter = ((alpha >= 0.) && ((alpha + beta) <= 1.));
         }
     }
 
