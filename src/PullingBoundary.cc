@@ -202,7 +202,8 @@ GetVisibleZone(const value_type* centrosome_position, const Vec_t &vesicle_posit
 
     value_type origin[VES3D_DIM] = {centrosome_position[0], centrosome_position[1], centrosome_position[2]};
     // calculate visible zone
-    #pragma omp parallel for
+    // use chunk size 16 for now, not sure best chunk size
+    #pragma omp parallel for schedule(dynamic,16)
     for(size_t i=0; i<bdry_stride_dim; i++){
         // do vesicle bounding box and ray intersection check
         value_type dir[VES3D_DIM] = { S_->getPosition().begin()[0*bdry_stride_dim+i] - origin[0],
