@@ -190,7 +190,7 @@ GetVisibleZone(const value_type* centrosome_position, const Vec_t &vesicle_posit
     for(size_t k=0; k<VES3D_DIM; k++){
         ves_bb_min[k] = std::min(Xpole[0+2*k],Xpole[1+2*k]);
         ves_bb_max[k] = std::max(Xpole[0+2*k],Xpole[1+2*k]);
-        #pragma omp parallel for
+        //#pragma omp parallel for
         for(size_t i=0; i<ves_stride_dim; i++){
             ves_bb_min[k] = std::min(ves_bb_min[k], X[i+k*ves_stride_dim]);
             ves_bb_max[k] = std::max(ves_bb_max[k], X[i+k*ves_stride_dim]);
