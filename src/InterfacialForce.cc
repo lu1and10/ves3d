@@ -276,7 +276,7 @@ void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const
     // in case density is near zero, take the limit
     #pragma omp parallel for
     for(int i=0; i<density_up.size(); i++){
-      if(abs(density_up.begin()[i]) < 1e-10)
+      if(abs(params_.alpha * density_up.begin()[i]) < 1e-10)
         s_wrk[1].begin()[i] = 1.0 - binding_probability_up.begin()[i];
     }
     xy(impingement_rate_up, s_wrk[1], s_wrk[1]); // R*(1 - e^{-c*(1-P)})/c
