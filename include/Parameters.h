@@ -54,6 +54,7 @@ class Parameters : public Streamable
     T mt_smooth_factor;
     T boundary_radius;
     T boundary_M;
+    T alpha;
 
     //Time stepper
     T time_horizon;

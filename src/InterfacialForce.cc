@@ -266,12 +266,13 @@ void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const
     // update binding probability P
     set_one(s_wrk[1]);
     axpy(-1.0, binding_probability_up, s_wrk[1], s_wrk[1]); //1-P
-    axpy(-1.0, density_up, s_wrk[2]); // -c
-    xy(s_wrk[1], s_wrk[2], s_wrk[1]);// -c*(1-P)
-    Exp(s_wrk[1], s_wrk[1]); // e^{-c*(1-P)}
+    axpy(-1.0*params_.alpha, density_up, s_wrk[2]); // -alpha c
+    xy(s_wrk[1], s_wrk[2], s_wrk[1]);// -alpha c*(1-P)
+    Exp(s_wrk[1], s_wrk[1]); // e^{-alpha c*(1-P)}
     set_one(s_wrk[2]);
-    axpy(-1.0, s_wrk[1], s_wrk[2], s_wrk[1]);// 1 - e^{-c*(1-P)}
-    xyInv(s_wrk[1], density_up, s_wrk[1]); // (1 - e^{-c*(1-P)})/c
+    axpy(-1.0, s_wrk[1], s_wrk[2], s_wrk[1]);// 1 - e^{-alpha c*(1-P)}
+    xyInv(s_wrk[1], density_up, s_wrk[1]); // (1 - e^{-alpha c*(1-P)})/c
+    axpy(1.0/params_.alpha, s_wrk[1], s_wrk[1]); // (1 - e^{-alpha c*(1-P)})/(alpha c)
     // in case density is near zero, take the limit
     #pragma omp parallel for
     for(int i=0; i<density_up.size(); i++){
