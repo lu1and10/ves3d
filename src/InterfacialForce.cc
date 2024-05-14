@@ -279,9 +279,9 @@ void InterfacialForce<SurfContainer>::pullingForce(const SurfContainer &S, const
       if(abs(params_.alpha * density_up.begin()[i]) < 1e-10)
         s_wrk[1].begin()[i] = 1.0 - binding_probability_up.begin()[i];
     }
-    xy(impingement_rate_up, s_wrk[1], s_wrk[1]); // R*(1 - e^{-c*(1-P)})/c
-    axpy(-params_.fg_detachment_rate, binding_probability_up, s_wrk[1], s_wrk[1]); // R*(1 - e^{-c*(1-P)})/c - k *P
-    axpy(params_.ts, s_wrk[1], binding_probability_up, binding_probability_up);// dt * (R*(1 - e^{-c*(1-P)})/c - k *P) + P
+    xy(impingement_rate_up, s_wrk[1], s_wrk[1]); // R*(1 - e^{-alpha c*(1-P)})/(alpha c)
+    axpy(-params_.fg_detachment_rate, binding_probability_up, s_wrk[1], s_wrk[1]); // R*(1 - e^{-alpha c*(1-P)})/(alpha c) - k *P
+    axpy(params_.ts, s_wrk[1], binding_probability_up, binding_probability_up);// dt * (R*(1 - e^{-alpha c*(1-P)})/(alpha c) - k *P) + P
 
     // cap binding_probability_ to be [0,1]
     #pragma omp parallel for
